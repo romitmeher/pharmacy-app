@@ -453,6 +453,8 @@ export interface AIInteractionRecord {
   is_helpful?: boolean | null;
   feedback_notes?: string | null;
   feedback_recorded_at?: string | null;
+}
+
 export interface AlternativeCandidateData {
   medicine_id: number;
   brand_name: string;
