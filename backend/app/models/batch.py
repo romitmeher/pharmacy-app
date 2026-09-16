@@ -69,5 +69,8 @@ class Batch(db.Model):
         "Inventory", back_populates="batch", cascade="all, delete-orphan"
     )
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<Batch {self.id}: {self.batch_number} exp={self.expiry_date}>"

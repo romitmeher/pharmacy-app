@@ -102,6 +102,9 @@ class Medicine(db.Model):
     )
     batches = db.relationship("Batch", back_populates="medicine", lazy="dynamic")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<Medicine {self.id}: {self.brand_name} {self.strength or ''}>"
 
@@ -121,6 +124,9 @@ class Ingredient(db.Model):
 
     # Relationships
     medicine = db.relationship("Medicine", back_populates="ingredients")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"<Ingredient {self.id}: {self.name}>"
@@ -147,6 +153,9 @@ class MedicineAlias(db.Model):
     # Relationships
     medicine = db.relationship("Medicine", back_populates="aliases")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<MedicineAlias {self.id}: {self.alias_name}>"
 
@@ -171,6 +180,9 @@ class MedicineVisualFeature(db.Model):
 
     # Relationships
     medicine = db.relationship("Medicine", back_populates="visual_features")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def __repr__(self):
         return f"<MedicineVisualFeature {self.id}: {self.feature_type}>"

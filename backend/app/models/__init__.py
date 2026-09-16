@@ -32,3 +32,63 @@ from app.models.inventory import Inventory  # noqa: F401
 
 # Supplier
 from app.models.supplier import Supplier  # noqa: F401
+
+# Sales & Billing domain
+from app.models.sale import (  # noqa: F401
+    Customer,
+    Sale,
+    SaleItem,
+    Payment,
+    PaymentMethod,
+    PaymentStatus,
+)
+
+# Purchases & Invoices domain
+from app.models.purchase import (  # noqa: F401
+    PurchaseInvoice,
+    PurchaseItem,
+    PurchaseInvoiceStatus,
+)
+
+# Offline Sync Queue domain
+from app.models.sync_transaction import (  # noqa: F401
+    SyncTransaction,
+    SyncStatus,
+)
+
+# Multi-Branch & Stock Transfers domain
+from app.models.stock_transfer import (  # noqa: F401
+    StockTransfer,
+    StockTransferItem,
+    TransferStatus,
+)
+
+# Centralized Audit Log domain
+from app.models.audit_log import AuditLog  # noqa: F401
+
+# Sales Returns & Refunds domain
+from app.models.sale_return import (  # noqa: F401
+    Return,
+    ReturnItem,
+    ReturnStatus,
+    RestockCondition,
+)
+
+# Prescriptions domain
+from app.models.prescription import (  # noqa: F401
+    Prescription,
+    PrescriptionItem,
+    PrescriptionStatus,
+)
+
+# Operating Expenses domain
+from app.models.expense import (  # noqa: F401
+    Expense,
+    ExpenseCategory,
+    ExpensePaymentMethod,
+)
+
+# AI / Copilot Interactions domain
+from app.models.ai_interaction import AIInteraction  # noqa: F401
+
+

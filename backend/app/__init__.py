@@ -48,9 +48,47 @@ def create_app(config_class=None):
     with application.app_context():
         importlib.import_module("app.models")
 
-    # Register API blueprints (added as APIs are implemented)
-    # from app.api import register_blueprints
-    # register_blueprints(application)
+    # Register API blueprints
+    from app.api.auth import auth_bp
+    from app.api.medicines import medicines_bp
+    from app.api.locations import locations_bp
+    from app.api.suppliers import suppliers_bp
+    from app.api.inventory import inventory_bp
+    from app.api.sales import sales_bp
+    from app.api.purchases import purchases_bp
+    from app.api.vision import vision_bp
+    from app.api.distributor import distributor_bp
+    from app.api.ai import ai_bp
+    from app.api.ml import ml_bp
+    from app.api.shelf import shelf_bp
+    from app.api.sync import sync_bp
+    from app.api.voice import voice_bp
+    from app.api.multibranch import multibranch_bp
+    from app.api.audit import audit_bp
+    from app.api.returns import returns_bp
+    from app.api.prescriptions import prescriptions_bp
+    from app.api.expenses import expenses_bp
+    application.register_blueprint(auth_bp)
+    application.register_blueprint(medicines_bp)
+    application.register_blueprint(locations_bp)
+    application.register_blueprint(suppliers_bp)
+    application.register_blueprint(inventory_bp)
+    application.register_blueprint(sales_bp)
+    application.register_blueprint(purchases_bp)
+    application.register_blueprint(vision_bp)
+    application.register_blueprint(distributor_bp)
+    application.register_blueprint(ai_bp)
+    application.register_blueprint(ml_bp)
+    application.register_blueprint(shelf_bp)
+    application.register_blueprint(sync_bp)
+    application.register_blueprint(voice_bp)
+    application.register_blueprint(multibranch_bp)
+    application.register_blueprint(audit_bp)
+    application.register_blueprint(returns_bp)
+    application.register_blueprint(prescriptions_bp)
+    application.register_blueprint(expenses_bp)
+
+
 
     # Health check endpoint
     @application.route("/api/health")

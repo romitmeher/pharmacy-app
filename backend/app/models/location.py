@@ -53,5 +53,8 @@ class Location(db.Model):
     store = db.relationship("Store", back_populates="locations")
     inventory = db.relationship("Inventory", back_populates="location", lazy="dynamic")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<Location {self.id}: {self.name} ({self.location_type.value})>"

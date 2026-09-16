@@ -18,7 +18,7 @@ class TestConfig:
     """Test configuration using SQLite in-memory database."""
 
     TESTING = True
-    SECRET_KEY = "test-secret-key"
+    SECRET_KEY = "test-secret-key-at-least-32-bytes-long-for-hmac-sha256"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     CORS_ORIGINS = ["http://localhost:3000"]
@@ -82,3 +82,79 @@ def sample_owner(db, sample_store):
     db.session.add(user)
     db.session.commit()
     return user
+
+
+@pytest.fixture(scope="function")
+def owner_token(sample_owner):
+    """Generate a JWT token for the sample owner."""
+    from app.services.auth_service import create_access_token
+    return create_access_token(sample_owner)
+
+
+@pytest.fixture(scope="function")
+def sample_pharmacist(db, sample_store):
+    """Create a sample pharmacist user."""
+    user = User(
+        store_id=sample_store.id,
+        email="pharmacist@testpharmacy.com",
+        username="pharmacist",
+        full_name="Test Pharmacist",
+        role=UserRole.PHARMACIST,
+    )
+    user.set_password("testpassword123")
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope="function")
+def pharmacist_token(sample_pharmacist):
+    """Generate a JWT token for the sample pharmacist."""
+    from app.services.auth_service import create_access_token
+    return create_access_token(sample_pharmacist)
+
+
+@pytest.fixture(scope="function")
+def sample_cashier(db, sample_store):
+    """Create a sample cashier user."""
+    user = User(
+        store_id=sample_store.id,
+        email="cashier@testpharmacy.com",
+        username="cashier",
+        full_name="Test Cashier",
+        role=UserRole.CASHIER,
+    )
+    user.set_password("testpassword123")
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope="function")
+def cashier_token(sample_cashier):
+    """Generate a JWT token for the sample cashier."""
+    from app.services.auth_service import create_access_token
+    return create_access_token(sample_cashier)
+
+
+@pytest.fixture(scope="function")
+def sample_inventory_staff(db, sample_store):
+    """Create a sample inventory staff user."""
+    user = User(
+        store_id=sample_store.id,
+        email="inventory@testpharmacy.com",
+        username="inventory_staff",
+        full_name="Inventory Clerk",
+        role=UserRole.INVENTORY_STAFF,
+    )
+    user.set_password("testpassword123")
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture(scope="function")
+def inventory_staff_token(sample_inventory_staff):
+    """Generate a JWT token for the inventory staff."""
+    from app.services.auth_service import create_access_token
+    return create_access_token(sample_inventory_staff)

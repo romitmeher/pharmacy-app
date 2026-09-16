@@ -39,5 +39,8 @@ class Store(db.Model):
     locations = db.relationship("Location", back_populates="store", lazy="dynamic")
     suppliers = db.relationship("Supplier", back_populates="store", lazy="dynamic")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<Store {self.id}: {self.name}>"

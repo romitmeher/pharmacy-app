@@ -54,6 +54,9 @@ class User(db.Model):
     # Relationships
     store = db.relationship("Store", back_populates="users")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def set_password(self, password):
         """Hash and store the user's password."""
         self.password_hash = bcrypt.generate_password_hash(password).decode("utf-8")

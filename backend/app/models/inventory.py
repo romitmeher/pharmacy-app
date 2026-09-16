@@ -66,6 +66,9 @@ class Inventory(db.Model):
     store = db.relationship("Store", back_populates="inventory")
     location = db.relationship("Location", back_populates="inventory")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return (
             f"<Inventory {self.id}: batch={self.batch_id} "

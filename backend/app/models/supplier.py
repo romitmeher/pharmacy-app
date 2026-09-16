@@ -43,5 +43,8 @@ class Supplier(db.Model):
     # Relationships
     store = db.relationship("Store", back_populates="suppliers")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<Supplier {self.id}: {self.name}>"
