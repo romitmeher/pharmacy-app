@@ -1,2 +1,5 @@
-
 backend/ca.pem
+*.pem
+backend/env
+.env
+.env.*
