@@ -28,7 +28,7 @@ from app.models.medicine import Medicine
 from app.models.inventory import Inventory
 from app.ai.vector_store import default_vector_store
 from app.vision.image_vector_indexer import default_image_vector_indexer
-from app.ml.forecasting import default_forecasting_engine
+from app.vision.medicine_ocr_trainer import default_medicine_ocr_indexer
 from app.ml.forecasting import default_forecasting_engine
 from app.ml.stockout import default_stockout_predictor
 from app.ml.expiry_risk import default_expiry_predictor
@@ -41,7 +41,7 @@ logger = logging.getLogger("train_all")
 def train_all_models(store_id: int = 1) -> Dict[str, Any]:
     """
     Executes full training pipeline across vector database embeddings,
-    computer vision training images, ML demand forecasting, and inventory risk models.
+    computer vision training images, actual medicine packaging OCR, ML demand forecasting, and inventory risk models.
     """
     summary = {
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -65,15 +65,18 @@ def train_all_models(store_id: int = 1) -> Dict[str, Any]:
             logger.error(f"Catalog Vector Indexing Failed: {e}")
             summary["results"]["catalog_vector_indexing"] = {"status": "error", "error": str(e)}
 
-        # 2. Train & Index Prescription & Actual Medicine Packaging Visual Feature Vectors (pgvector)
-        logger.info("=== STEP 2/5: Indexing Prescription & Actual Medicine Packaging Images into Aiven PostgreSQL pgvector ===")
+        # 2. Train & Index Prescription & Actual Medicine Packaging Visual Feature Vectors + PaddleOCR Text Extraction (pgvector)
+        logger.info("=== STEP 2/5: Indexing Prescription & Actual Medicine Packaging Images + Running PaddleOCR ===")
         try:
             img_result = default_image_vector_indexer.index_all_images(max_images=10000)
+            ocr_result = default_medicine_ocr_indexer.process_actual_medicine_ocr(max_images=500, store_id=store_id)
             summary["results"]["image_vector_indexing"] = img_result
-            logger.info(f"Image Vector Indexing Complete: {img_result.get('total_indexed', 0)} visual vectors pushed.")
+            summary["results"]["actual_medicine_packaging_ocr"] = ocr_result
+            logger.info(f"Image Vector & OCR Complete: {img_result.get('total_indexed', 0)} visual vectors and {ocr_result.get('total_processed', 0)} actual packaging OCR images processed.")
         except Exception as e:
-            logger.error(f"Image Vector Indexing Failed: {e}")
+            logger.error(f"Image Vector & OCR Failed: {e}")
             summary["results"]["image_vector_indexing"] = {"status": "error", "error": str(e)}
+
 
 
         # 3. Train & Evaluate ML Demand Forecasting Engine

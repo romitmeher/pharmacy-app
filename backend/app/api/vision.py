@@ -284,4 +284,21 @@ def search_image_vector():
     }), 200
 
 
+@vision_bp.route("/ocr-actual-medicines", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def ocr_actual_medicines():
+    """
+    Trigger PaddleOCR text recognition and entity extraction over actual medicine packaging images
+    (data/Medicine_data/). Pushes OCR tokens and embeddings to Aiven PostgreSQL pgvector.
+    """
+    data = request.get_json(silent=True) or {}
+    max_images = data.get("max_images", 500)
+
+    from app.vision.medicine_ocr_trainer import default_medicine_ocr_indexer
+    result = default_medicine_ocr_indexer.process_actual_medicine_ocr(max_images=max_images)
+    return jsonify(result), 200
+
+
+
 
