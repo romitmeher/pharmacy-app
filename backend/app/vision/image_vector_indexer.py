@@ -111,7 +111,7 @@ class PrescriptionImageVectorIndexer:
                 );
             """)
 
-    def index_actual_medicine_images(self, max_images: int = 5000, batch_size: int = 200) -> Dict[str, Any]:
+    def index_actual_medicine_images(self, max_images: int = 50000, batch_size: int = 500) -> Dict[str, Any]:
         """
         Scans data/Medicine_data/ and data/reference_images/ for actual medicine packaging images,
         computes 384-D visual embeddings, and pushes them to Aiven PostgreSQL pgvector.
@@ -133,14 +133,14 @@ class PrescriptionImageVectorIndexer:
                 continue
             for root, dirs, files in os.walk(dpath):
                 for f in files:
-                    if f.lower().endswith((".jpg", ".jpeg", ".png")):
+                    if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".webp")):
                         ds_name = os.path.basename(root) if root != dpath else default_ds
                         image_files.append((os.path.join(root, f), f, ds_name))
-                        if len(image_files) >= max_images:
+                        if max_images and max_images > 0 and len(image_files) >= max_images:
                             break
-                if len(image_files) >= max_images:
+                if max_images and max_images > 0 and len(image_files) >= max_images:
                     break
-            if len(image_files) >= max_images:
+            if max_images and max_images > 0 and len(image_files) >= max_images:
                 break
 
         logger.info(f"Indexing {len(image_files)} actual medicine packaging images into Aiven PostgreSQL pgvector...")
@@ -179,10 +179,10 @@ class PrescriptionImageVectorIndexer:
             "dataset_type": "actual_medicine_packaging",
         }
 
-    def index_all_prescription_images(self, max_images: int = 5000, batch_size: int = 200) -> Dict[str, Any]:
+    def index_all_prescription_images(self, max_images: int = 50000, batch_size: int = 500) -> Dict[str, Any]:
         """
-        Scans data/HAND WRITHING/ for prescription images, computes 384-D visual embeddings,
-        and pushes them to Aiven PostgreSQL pgvector cloud store.
+        Scans data/HAND WRITHING/ for all prescription images across BD Handwritten & RxHandBD datasets,
+        computes 384-D visual embeddings, and pushes them to Aiven PostgreSQL pgvector cloud store.
         """
         conn = default_vector_store._get_pg_connection()
         if not conn:
@@ -193,11 +193,11 @@ class PrescriptionImageVectorIndexer:
         image_files = []
         for root, dirs, files in os.walk(self.HANDWRITING_DATA_DIR):
             for f in files:
-                if f.lower().endswith((".jpg", ".jpeg", ".png")):
+                if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".webp")):
                     image_files.append((os.path.join(root, f), f, os.path.basename(root)))
-                    if len(image_files) >= max_images:
+                    if max_images and max_images > 0 and len(image_files) >= max_images:
                         break
-            if len(image_files) >= max_images:
+            if max_images and max_images > 0 and len(image_files) >= max_images:
                 break
 
         logger.info(f"Indexing {len(image_files)} prescription training images into Aiven PostgreSQL pgvector...")
@@ -236,16 +236,17 @@ class PrescriptionImageVectorIndexer:
             "dataset_type": "handwritten_prescriptions",
         }
 
-    def index_all_images(self, max_images: int = 10000) -> Dict[str, Any]:
-        """Indexes both handwritten prescriptions and actual medicine packaging images."""
-        p_res = self.index_all_prescription_images(max_images=max_images // 2)
-        m_res = self.index_actual_medicine_images(max_images=max_images // 2)
+    def index_all_images(self, max_images: int = 50000) -> Dict[str, Any]:
+        """Indexes all handwritten prescriptions AND actual medicine packaging images on disk."""
+        p_res = self.index_all_prescription_images(max_images=max_images)
+        m_res = self.index_actual_medicine_images(max_images=max_images)
         return {
             "status": "success",
             "prescriptions_indexed": p_res.get("total_images_indexed", 0),
             "actual_medicines_indexed": m_res.get("total_images_indexed", 0),
             "total_indexed": p_res.get("total_images_indexed", 0) + m_res.get("total_images_indexed", 0),
         }
+
 
 
     def search_similar_images(self, image_input: Any, top_k: int = 5) -> List[Dict[str, Any]]:

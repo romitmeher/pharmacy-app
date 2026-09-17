@@ -68,14 +68,15 @@ def train_all_models(store_id: int = 1) -> Dict[str, Any]:
         # 2. Train & Index Prescription & Actual Medicine Packaging Visual Feature Vectors + PaddleOCR Text Extraction (pgvector)
         logger.info("=== STEP 2/5: Indexing Prescription & Actual Medicine Packaging Images + Running PaddleOCR ===")
         try:
-            img_result = default_image_vector_indexer.index_all_images(max_images=10000)
-            ocr_result = default_medicine_ocr_indexer.process_actual_medicine_ocr(max_images=500, store_id=store_id)
+            img_result = default_image_vector_indexer.index_all_images(max_images=50000)
+            ocr_result = default_medicine_ocr_indexer.process_actual_medicine_ocr(max_images=50000, store_id=store_id)
             summary["results"]["image_vector_indexing"] = img_result
             summary["results"]["actual_medicine_packaging_ocr"] = ocr_result
             logger.info(f"Image Vector & OCR Complete: {img_result.get('total_indexed', 0)} visual vectors and {ocr_result.get('total_processed', 0)} actual packaging OCR images processed.")
         except Exception as e:
             logger.error(f"Image Vector & OCR Failed: {e}")
             summary["results"]["image_vector_indexing"] = {"status": "error", "error": str(e)}
+
 
 
 
