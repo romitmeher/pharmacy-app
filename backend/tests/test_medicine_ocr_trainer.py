@@ -18,9 +18,9 @@ def test_process_actual_medicine_ocr_runs(app, sample_store):
         assert "status" in res
 
 
-def test_ocr_actual_medicines_api(client, pharmacist_token):
+def test_ocr_actual_medicines_api(client, owner_token):
     """Test POST /api/vision/ocr-actual-medicines endpoint."""
-    headers = {"Authorization": f"Bearer {pharmacist_token}"}
+    headers = {"Authorization": f"Bearer {owner_token}"}
     res = client.post(
         "/api/vision/ocr-actual-medicines",
         json={"max_images": 2},
@@ -29,3 +29,4 @@ def test_ocr_actual_medicines_api(client, pharmacist_token):
     assert res.status_code == 200
     data = res.get_json()
     assert data["status"] == "success"
+
