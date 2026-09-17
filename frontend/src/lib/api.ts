@@ -5,8 +5,8 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
-// Standard development/demonstration JWT token for store #1 pharmacist
-const DEFAULT_DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJzdG9yZV9pZCI6MSwicm9sZSI6IlBIQVJNQUNJU1QifQ.fake_token_for_dev";
+// Standard development/demonstration JWT token for store #1 (owner/pharmacist)
+const DEFAULT_DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic3RvcmVfaWQiOjEsInJvbGUiOiJvd25lciIsImlhdCI6MTc4OTYzNzY3NSwiZXhwIjoyMTA0OTk3Njc1fQ.1XVIWaxzwlZ4fth3bbJhdAsxujpyViJVAOHsDivGbf0";
 
 export function getAuthToken(): string {
   if (typeof window !== "undefined") {
@@ -1614,31 +1614,173 @@ export async function listStockTransfers(): Promise<StockTransferData[]> {
   return json.data;
 }
 
+export interface MedicineIngredient {
+  id?: number;
+  name: string;
+  strength?: string | null;
+  unit?: string | null;
+}
+
+export interface MedicineAlias {
+  id?: number;
+  alias_name: string;
+  alias_type?: string | null;
+}
+
 export interface Medicine {
   id: number;
+  store_id: number;
   brand_name: string;
-  generic_name: string;
+  generic_name: string | null;
+  manufacturer: string | null;
+  strength: string | null;
+  dosage_form: string | null;
+  route: string | null;
+  category: string | null;
+  is_prescription_only: boolean;
+  mrp: number | null;
+  selling_price: number | null;
+  hsn_code: string | null;
+  gst_percentage: number | null;
+  storage_requirements: string | null;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+  ingredients?: MedicineIngredient[];
+  aliases?: MedicineAlias[];
+  batch_count?: number;
+}
+
+export interface MedicineListResponse {
+  items: Medicine[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface CreateMedicinePayload {
+  brand_name: string;
+  generic_name?: string;
+  manufacturer?: string;
   strength?: string;
   dosage_form?: string;
-  mrp: number;
+  route?: string;
+  category?: string;
+  is_prescription_only?: boolean;
+  mrp?: number;
   selling_price?: number;
-  manufacturer?: string;
+  hsn_code?: string;
+  gst_percentage?: number;
+  storage_requirements?: string;
+  ingredients?: { name: string; strength?: string; unit?: string }[];
+  aliases?: { alias_name: string; alias_type?: string }[];
+}
+
+export interface UpdateMedicinePayload extends Partial<CreateMedicinePayload> {
+  is_active?: boolean;
 }
 
 /**
- * Fetch paginated medicines from store catalog
+ * Fetch paginated medicines from store catalog with search and filters
  */
-export async function getMedicines(
-  page: number = 1,
-  perPage: number = 50
-): Promise<{ medicines: Medicine[]; total: number; page: number; per_page: number }> {
+export async function getMedicines(params?: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  category?: string;
+  is_prescription_only?: boolean;
+  is_active?: boolean | string;
+}): Promise<MedicineListResponse> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/api/medicines?page=${page}&per_page=${perPage}`, {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.per_page) query.set("per_page", String(params.per_page));
+  if (params?.search) query.set("search", params.search);
+  if (params?.category) query.set("category", params.category);
+  if (params?.is_prescription_only !== undefined) query.set("is_prescription_only", String(params.is_prescription_only));
+  if (params?.is_active !== undefined) query.set("is_active", String(params.is_active));
+
+  const res = await fetch(`${API_BASE_URL}/api/medicines?${query.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json();
   if (!res.ok) {
     throw new Error(json.message || "Failed to fetch medicines.");
+  }
+  return json;
+}
+
+/**
+ * Get detailed medicine by ID
+ */
+export async function getMedicine(id: number): Promise<Medicine> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/medicines/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to fetch medicine with ID ${id}.`);
+  }
+  return json.medicine;
+}
+
+/**
+ * Create a new medicine entry (Licensed Pharmacist / Owner only)
+ */
+export async function createMedicine(payload: CreateMedicinePayload): Promise<{ message: string; medicine: Medicine }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/medicines`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to create medicine.");
+  }
+  return json;
+}
+
+/**
+ * Update medicine fields
+ */
+export async function updateMedicine(
+  id: number,
+  payload: UpdateMedicinePayload
+): Promise<{ message: string; medicine: Medicine }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/medicines/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to update medicine ${id}.`);
+  }
+  return json;
+}
+
+/**
+ * Soft-delete / deactivate a medicine
+ */
+export async function deactivateMedicine(id: number): Promise<{ message: string }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/medicines/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to deactivate medicine ${id}.`);
   }
   return json;
 }
