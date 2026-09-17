@@ -3,15 +3,6 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  CheckCircle,
-  Clock,
-  Box,
-  File,
-  Bookmark,
-  Building,
-  Location,
-} from "@duo-icons/react";
-import {
   Search,
   RefreshCw,
   Download,
@@ -23,6 +14,12 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
+  Clock,
+  Package,
+  Bookmark,
+  Building2,
+  MapPin,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -246,7 +243,7 @@ export default function AuditPage() {
                 Total Audit Events
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Committed</span>
               </span>
             </div>
@@ -284,7 +281,7 @@ export default function AuditPage() {
                 Stock Adjustments (7d)
               </span>
               <span className="status-badge med">
-                <span className="badge-icon"><Box size={12} /></span>
+                <span className="badge-icon"><Package size={12} /></span>
                 <span>Overrides</span>
               </span>
             </div>
@@ -457,7 +454,7 @@ export default function AuditPage() {
                   color: "var(--text-muted)",
                 }}
               >
-                <CheckCircle size={22} />
+                <CheckCircle2 size={22} />
               </div>
               <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
                 No Audit Records Found
@@ -591,7 +588,7 @@ export default function AuditPage() {
           <div className="modal-content" style={{ maxWidth: "680px" }}>
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <CheckCircle size={18} />
+                <CheckCircle2 size={18} />
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     Audit Log #{selectedLog.id}: {selectedLog.action}

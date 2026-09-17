@@ -33,14 +33,31 @@ class Config:
     # SSL configuration for Aiven / cloud MySQL
     SQLALCHEMY_ENGINE_OPTIONS = {}
     if DB_SSL_CA:
-        _ssl_ca_path = os.path.join(
+        _ssl_ca_path = DB_SSL_CA if os.path.isabs(DB_SSL_CA) else os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             DB_SSL_CA,
         )
+        if os.path.exists(_ssl_ca_path):
+            SQLALCHEMY_ENGINE_OPTIONS = {
+                "connect_args": {
+                    "ssl": {
+                        "ca": _ssl_ca_path,
+                    }
+                }
+            }
+        else:
+            SQLALCHEMY_ENGINE_OPTIONS = {
+                "connect_args": {
+                    "ssl": {
+                        "ssl_mode": "REQUIRED",
+                    }
+                }
+            }
+    elif DB_HOST not in ("localhost", "127.0.0.1", "test_db"):
         SQLALCHEMY_ENGINE_OPTIONS = {
             "connect_args": {
                 "ssl": {
-                    "ca": _ssl_ca_path,
+                    "ssl_mode": "REQUIRED",
                 }
             }
         }
@@ -68,19 +85,30 @@ class TestingConfig(Config):
         f"@{Config.DB_HOST}:{Config.DB_PORT}/{DB_NAME}"
         "?charset=utf8mb4"
     )
+    # Disable SSL connect_args for local test DB — tests use localhost/127.0.0.1.
+    SQLALCHEMY_ENGINE_OPTIONS = {}
 
 
 class ProductionConfig(Config):
     """Production environment configuration."""
 
     DEBUG = False
-
-    @property
-    def SECRET_KEY(self):
-        key = os.environ.get("SECRET_KEY")
-        if not key or key == "dev-secret-key-change-in-production":
-            raise ValueError("SECRET_KEY must be set in production")
-        return key
+    # NOTE: Flask's config.from_object() reads class attributes, not instance
+    # properties. Do NOT use @property here — it would store the descriptor
+    # object rather than the string value. Instead, read env at class-body time
+    # and fail fast if the key is missing or still set to the development placeholder.
+    _prod_secret = os.environ.get("SECRET_KEY", "")
+    if not _prod_secret or _prod_secret == "dev-secret-key-change-in-production":
+        # In production the env var must be set before the process starts.
+        # We raise here only when FLASK_ENV=production; dev/test configs never
+        # reach this class.
+        import sys
+        if os.environ.get("FLASK_ENV", "").lower() == "production":
+            raise ValueError(
+                "SECRET_KEY environment variable must be set to a strong random value in production."
+            )
+    SECRET_KEY = _prod_secret or Config.SECRET_KEY
+    del _prod_secret
 
 
 # Map environment names to config classes

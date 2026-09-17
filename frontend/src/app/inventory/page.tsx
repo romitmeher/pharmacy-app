@@ -3,16 +3,19 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  Box,
+  Search,
+  X,
+  SlidersHorizontal,
+  ArrowRightLeft,
+  Package,
   Bookmark,
-  CheckCircle,
+  CheckCircle2,
   AlertTriangle,
-  AlertOctagon,
+  OctagonAlert,
   Clock,
-  Location,
-  AddCircle,
-} from "@duo-icons/react";
-import { Search, X, SlidersHorizontal, ArrowRightLeft } from "lucide-react";
+  MapPin,
+  PlusCircle,
+} from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
 import {
@@ -273,7 +276,7 @@ export default function InventoryPage() {
     if (diffDays < 0) {
       return (
         <span className="status-badge low">
-          <span className="badge-icon"><AlertOctagon size={12} /></span>
+          <span className="badge-icon"><OctagonAlert size={12} /></span>
           <span>Expired</span>
         </span>
       );
@@ -294,7 +297,7 @@ export default function InventoryPage() {
     }
     return (
       <span className="status-badge high">
-        <span className="badge-icon"><CheckCircle size={12} /></span>
+        <span className="badge-icon"><CheckCircle2 size={12} /></span>
         <span>{diffDays}d (Good)</span>
       </span>
     );
@@ -314,7 +317,7 @@ export default function InventoryPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <ThemeToggle />
           <button onClick={handleOpenInward} className="btn btn-primary">
-            <AddCircle size={16} />
+            <PlusCircle size={16} />
             <span>Inward Physical Batch</span>
           </button>
         </div>
@@ -337,7 +340,7 @@ export default function InventoryPage() {
           }}
         >
           <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
-            <Box size={18} />
+            <Package size={18} />
           </span>
           <div>
             <strong style={{ color: "var(--text-primary)" }}>
@@ -364,7 +367,7 @@ export default function InventoryPage() {
                 Total Physical Units
               </span>
               <span className="status-badge info">
-                <span className="badge-icon"><Box size={12} /></span>
+                <span className="badge-icon"><Package size={12} /></span>
                 <span>Stock</span>
               </span>
             </div>
@@ -382,7 +385,7 @@ export default function InventoryPage() {
                 Active Batches
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Monitored</span>
               </span>
             </div>
@@ -418,7 +421,7 @@ export default function InventoryPage() {
                 Physical Locations
               </span>
               <span className="status-badge info">
-                <span className="badge-icon"><Location size={12} /></span>
+                <span className="badge-icon"><MapPin size={12} /></span>
                 <span>Racks</span>
               </span>
             </div>
@@ -553,7 +556,7 @@ export default function InventoryPage() {
                   <td colSpan={7} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                       <span style={{ color: "var(--text-muted)" }}>
-                        <Box size={32} />
+                        <Package size={32} />
                       </span>
                       <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         No inventory batches found
@@ -564,7 +567,7 @@ export default function InventoryPage() {
                           : "Inward physical batches to start tracking stock across shelves."}
                       </div>
                       <button onClick={handleOpenInward} className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
-                        <AddCircle size={16} />
+                        <PlusCircle size={16} />
                         <span>Inward First Batch</span>
                       </button>
                     </div>
@@ -593,7 +596,7 @@ export default function InventoryPage() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                           <span style={{ color: "var(--brand-primary)" }}>
-                            <Box size={14} />
+                            <Package size={14} />
                           </span>
                           <span style={{ fontWeight: 700, color: "var(--text-primary)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
                             {batch.batch_number}
@@ -615,7 +618,7 @@ export default function InventoryPage() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                           <span style={{ color: "var(--text-muted)" }}>
-                            <Location size={14} />
+                            <MapPin size={14} />
                           </span>
                           <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
                             {locationName}
@@ -711,7 +714,7 @@ export default function InventoryPage() {
                     color: "var(--brand-primary)",
                   }}
                 >
-                  <Box size={15} />
+                  <Package size={15} />
                 </div>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>

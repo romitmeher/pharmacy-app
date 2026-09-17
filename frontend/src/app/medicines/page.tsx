@@ -3,15 +3,19 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
   Bookmark,
-  AddCircle,
-  CheckCircle,
+  PlusCircle,
+  CheckCircle2,
   AlertTriangle,
-  Box,
-  File,
-  Discount,
-} from "@duo-icons/react";
-import { Search, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+  Package,
+  FileText,
+  Percent,
+} from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
 import {
@@ -247,7 +251,7 @@ export default function MedicinesCatalogPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <ThemeToggle />
           <button onClick={handleOpenCreate} className="btn btn-primary">
-            <AddCircle size={16} />
+            <PlusCircle size={16} />
             <span>Register Medicine</span>
           </button>
         </div>
@@ -337,7 +341,7 @@ export default function MedicinesCatalogPage() {
                 Over-The-Counter (OTC)
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>General Sale</span>
               </span>
             </div>
@@ -355,7 +359,7 @@ export default function MedicinesCatalogPage() {
                 Active Formulations
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Active</span>
               </span>
             </div>
@@ -510,7 +514,7 @@ export default function MedicinesCatalogPage() {
                           : "Start building your pharmacy catalog by registering master medicine formulations."}
                       </div>
                       <button onClick={handleOpenCreate} className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
-                        <AddCircle size={16} />
+                        <PlusCircle size={16} />
                         <span>Register First Medicine</span>
                       </button>
                     </div>
@@ -598,7 +602,7 @@ export default function MedicinesCatalogPage() {
                         </span>
                       ) : (
                         <span className="status-badge high">
-                          <span className="badge-icon"><CheckCircle size={12} /></span>
+                          <span className="badge-icon"><CheckCircle2 size={12} /></span>
                           <span>OTC Safe</span>
                         </span>
                       )}
@@ -1097,7 +1101,7 @@ export default function MedicinesCatalogPage() {
                       </span>
                     ) : (
                       <span className="status-badge high">
-                        <span className="badge-icon"><CheckCircle size={12} /></span>
+                        <span className="badge-icon"><CheckCircle2 size={12} /></span>
                         <span>OTC Permitted</span>
                       </span>
                     )}
@@ -1163,7 +1167,7 @@ export default function MedicinesCatalogPage() {
                   </div>
                 </div>
                 <Link href="/inventory" className="btn btn-secondary" style={{ height: "30px", fontSize: "0.75rem" }}>
-                  <Box size={14} />
+                  <Package size={14} />
                   <span>View Batches</span>
                 </Link>
               </div>

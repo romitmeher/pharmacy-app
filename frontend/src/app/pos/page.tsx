@@ -4,16 +4,14 @@ import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
   ShoppingBag,
-  Box,
+  Package,
   Bookmark,
-  CheckCircle,
+  CheckCircle2,
   AlertTriangle,
-  File,
+  FileText,
   CreditCard,
   User,
-  Discount,
-} from "@duo-icons/react";
-import {
+  Percent,
   Search,
   Plus,
   Minus,
@@ -23,6 +21,8 @@ import {
   RotateCcw,
   X,
   History,
+  Camera,
+  Upload,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -31,10 +31,12 @@ import {
   getBatches,
   createSale,
   getSales,
+  recognizeMedicine,
   Medicine,
   BatchItem,
   CreateSalePayload,
   SaleReceipt,
+  RecognitionPipelineResponse,
 } from "@/lib/api";
 
 interface CartItem {
@@ -67,6 +69,43 @@ export default function POSTerminalPage() {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [salesHistory, setSalesHistory] = useState<SaleReceipt[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+
+  // Camera packaging recognition state (Phase 2 Vision-First POS)
+  const [showCameraModal, setShowCameraModal] = useState<boolean>(false);
+  const [cvRecognizing, setCvRecognizing] = useState<boolean>(false);
+  const [cvResult, setCvResult] = useState<RecognitionPipelineResponse | null>(null);
+  const [cvImagePreview, setCvImagePreview] = useState<string | null>(null);
+
+  const handleCvFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = (reader.result as string).split(",")[1];
+      setCvImagePreview(reader.result as string);
+      setCvRecognizing(true);
+      setCvResult(null);
+      try {
+        const res = await recognizeMedicine(base64);
+        setCvResult(res);
+      } catch (err: any) {
+        setErrorMessage(err?.message || "Failed to process packaging image.");
+      } finally {
+        setCvRecognizing(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddCvMatchedMedicine = (medId: number) => {
+    const med = medicines.find((m) => m.id === medId);
+    if (med) {
+      handleAddToCart(med);
+      setSuccessMessage(`Verified & Added ${med.brand_name} to cart via Camera Recognition.`);
+      setShowCameraModal(false);
+    }
+  };
 
   const [isSubmitting, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -291,6 +330,18 @@ export default function POSTerminalPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <ThemeToggle />
+          <button
+            onClick={() => {
+              setCvResult(null);
+              setCvImagePreview(null);
+              setShowCameraModal(true);
+            }}
+            className="btn btn-primary"
+            style={{ backgroundColor: "#1e6ee8" }}
+          >
+            <Camera size={15} />
+            <span>Scan Packaging (CV)</span>
+          </button>
           <button onClick={handleOpenHistory} className="btn btn-secondary">
             <History size={15} />
             <span>Recent Invoices</span>
@@ -406,7 +457,7 @@ export default function POSTerminalPage() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <CheckCircle size={16} />
+                <CheckCircle2 size={16} />
                 <span>{successMessage}</span>
               </div>
               {recentReceipt && (
@@ -477,7 +528,7 @@ export default function POSTerminalPage() {
                             </span>
                           ) : (
                             <span className="status-badge high">
-                              <span className="badge-icon"><CheckCircle size={11} /></span>
+                              <span className="badge-icon"><CheckCircle2 size={11} /></span>
                               <span>{totalStock} units</span>
                             </span>
                           )}
@@ -497,7 +548,7 @@ export default function POSTerminalPage() {
                             </span>
                           ) : (
                             <span className="status-badge high" title="General sale permitted">
-                              <span className="badge-icon"><CheckCircle size={11} /></span>
+                              <span className="badge-icon"><CheckCircle2 size={11} /></span>
                               <span>OTC</span>
                             </span>
                           )}
@@ -976,7 +1027,7 @@ export default function POSTerminalPage() {
                           <td style={{ fontWeight: 700 }}>₹{s.total_amount.toFixed(2)}</td>
                           <td>
                             <span className="status-badge high">
-                              <span className="badge-icon"><CheckCircle size={10} /></span>
+                              <span className="badge-icon"><CheckCircle2 size={10} /></span>
                               <span>{s.payment_status.toUpperCase()}</span>
                             </span>
                           </td>
@@ -990,6 +1041,184 @@ export default function POSTerminalPage() {
 
             <div className="modal-footer">
               <button onClick={() => setShowHistoryModal(false)} className="btn btn-secondary">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          Modal: Vision-First Camera Packaging Recognition (PRD Phase 2)
+          ===================================================================== */}
+      {showCameraModal && (
+        <div className="modal-backdrop" onClick={() => !cvRecognizing && setShowCameraModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "640px" }}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <div
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "var(--radius-sm)",
+                    backgroundColor: "#1e3a5f",
+                    border: "1px solid #1e6ee8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#87d1ff",
+                  }}
+                >
+                  <Camera size={15} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    Camera Packaging Recognition (CV + OCR)
+                  </h2>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                    PRD Phase 2: Live Computer Vision Packaging Identification with Human Verification
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowCameraModal(false)} className="btn-icon" disabled={cvRecognizing}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* File Upload / Camera Input */}
+              <div
+                style={{
+                  border: "2px dashed var(--border-default)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "1.5rem",
+                  textAlign: "center",
+                  backgroundColor: "var(--bg-surface-elevated)",
+                  cursor: "pointer",
+                }}
+                onClick={() => document.getElementById("cv-file-input")?.click()}
+              >
+                <input
+                  id="cv-file-input"
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleCvFileUpload}
+                />
+
+                {cvImagePreview ? (
+                  <img
+                    src={cvImagePreview}
+                    alt="Packaging preview"
+                    style={{ maxHeight: "180px", borderRadius: "var(--radius-sm)", margin: "0 auto", objectFit: "contain" }}
+                  />
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                    <Upload size={28} style={{ color: "var(--brand-primary)" }} />
+                    <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>
+                      Upload or Capture Packaging Image
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                      Click to choose image file or capture photo via connected POS webcam
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Status / OCR Pipeline Output */}
+              {cvRecognizing && (
+                <div style={{ textAlign: "center", padding: "1.5rem 0", color: "var(--brand-primary)", fontSize: "0.875rem" }}>
+                  Running OpenCV packaging detection & PaddleOCR text extraction...
+                </div>
+              )}
+
+              {cvResult && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+                  {/* Quality Check Indicator */}
+                  <div
+                    style={{
+                      padding: "0.625rem 0.875rem",
+                      borderRadius: "var(--radius-sm)",
+                      backgroundColor: cvResult.quality?.is_acceptable ? "rgba(125, 255, 149, 0.12)" : "rgba(255, 180, 80, 0.12)",
+                      border: `1px solid ${cvResult.quality?.is_acceptable ? "var(--status-high-border)" : "var(--status-med-border)"}`,
+                      fontSize: "0.75rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span>Image Quality Check: <strong>{cvResult.quality?.is_acceptable ? "Acceptable (Sharp)" : "Review Suggested"}</strong></span>
+                    <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                      Blur: {cvResult.quality?.blur_score?.toFixed(1) || "0"} | Glare: {cvResult.quality?.is_glare ? "Yes" : "No"}
+                    </span>
+                  </div>
+
+                  {/* Recognition Match Candidate */}
+                  {cvResult.match_result?.top_candidate ? (
+                    <div
+                      style={{
+                        padding: "1rem",
+                        borderRadius: "var(--radius-md)",
+                        backgroundColor: "var(--bg-card)",
+                        border: "1px solid var(--border-subtle)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.625rem",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                            {cvResult.match_result.top_candidate.name}
+                          </div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                            {cvResult.match_result.top_candidate.generic_name || "—"} • {cvResult.match_result.top_candidate.strength || ""}
+                          </div>
+                        </div>
+
+                        <span
+                          className={`status-badge ${
+                            cvResult.match_result.top_candidate.confidence_level === "HIGH" ? "high" : "med"
+                          }`}
+                        >
+                          {(cvResult.match_result.top_candidate.confidence_score * 100).toFixed(0)}% Confidence
+                        </span>
+                      </div>
+
+                      {/* Human Verification Notice */}
+                      <div
+                        style={{
+                          fontSize: "0.6875rem",
+                          color: "var(--status-med-text)",
+                          backgroundColor: "rgba(255, 180, 80, 0.08)",
+                          padding: "0.5rem",
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid var(--status-med-border)",
+                        }}
+                      >
+                        Human Verification Required: Pharmacist must confirm formulation match before adding to POS bill.
+                      </div>
+
+                      <button
+                        onClick={() => handleAddCvMatchedMedicine(cvResult.match_result!.top_candidate!.medicine_id)}
+                        className="btn btn-primary"
+                        style={{ height: "36px", marginTop: "0.25rem" }}
+                      >
+                        <Plus size={15} />
+                        <span>Verify & Add to Bill Cart</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "1rem", color: "var(--status-low-text)", fontSize: "0.8125rem" }}>
+                      Unable to confidently identify this medicine. Capture another image or search manually.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setShowCameraModal(false)} className="btn btn-secondary">
                 Close
               </button>
             </div>

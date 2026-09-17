@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, MoonStars } from "@duo-icons/react";
+import { Sun, Moon } from "lucide-react";
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -76,7 +76,7 @@ export default function ThemeToggle() {
             transition={{ type: "spring", stiffness: 350, damping: 20 }}
             style={{ display: "inline-flex", alignItems: "center", color: "#87d1ff" }}
           >
-            <MoonStars size={16} />
+            <Moon size={16} />
           </motion.div>
         ) : (
           <motion.div

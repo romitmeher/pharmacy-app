@@ -3,15 +3,13 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  Building,
-  CheckCircle,
+  Building2,
+  CheckCircle2,
   AlertTriangle,
-  AlertOctagon,
-  File,
+  OctagonAlert,
+  FileText,
   User,
-  AddCircle,
-} from "@duo-icons/react";
-import {
+  PlusCircle,
   Search,
   X,
   Edit2,
@@ -19,7 +17,6 @@ import {
   Phone,
   Mail,
   ShieldCheck,
-  FileText,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -176,7 +173,7 @@ export default function SuppliersPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <ThemeToggle />
           <button onClick={handleOpenCreate} className="btn btn-primary">
-            <AddCircle size={16} />
+            <PlusCircle size={16} />
             <span>Register Distributor</span>
           </button>
         </div>
@@ -199,7 +196,7 @@ export default function SuppliersPage() {
           }}
         >
           <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
-            <Building size={18} />
+            <Building2 size={18} />
           </span>
           <div>
             <strong style={{ color: "var(--text-primary)" }}>
@@ -226,7 +223,7 @@ export default function SuppliersPage() {
                 Total Distributors
               </span>
               <span className="status-badge info">
-                <span className="badge-icon"><Building size={12} /></span>
+                <span className="badge-icon"><Building2 size={12} /></span>
                 <span>Registry</span>
               </span>
             </div>
@@ -244,7 +241,7 @@ export default function SuppliersPage() {
                 Active Vendors
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Procuring</span>
               </span>
             </div>
@@ -262,7 +259,7 @@ export default function SuppliersPage() {
                 Drug License Verified
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Compliant</span>
               </span>
             </div>
@@ -280,7 +277,7 @@ export default function SuppliersPage() {
                 GSTIN Verified
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Tax Registered</span>
               </span>
             </div>
@@ -396,7 +393,7 @@ export default function SuppliersPage() {
                   <td colSpan={6} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                       <span style={{ color: "var(--text-muted)" }}>
-                        <Building size={32} />
+                        <Building2 size={32} />
                       </span>
                       <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         No suppliers found
@@ -405,7 +402,7 @@ export default function SuppliersPage() {
                         Register pharmaceutical distributors to manage purchase orders and inward shipments.
                       </div>
                       <button onClick={handleOpenCreate} className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
-                        <AddCircle size={16} />
+                        <PlusCircle size={16} />
                         <span>Register First Distributor</span>
                       </button>
                     </div>
@@ -468,12 +465,12 @@ export default function SuppliersPage() {
                     <td>
                       {sup.is_active !== false ? (
                         <span className="status-badge high">
-                          <span className="badge-icon"><CheckCircle size={10} /></span>
+                          <span className="badge-icon"><CheckCircle2 size={10} /></span>
                           <span>Active Partner</span>
                         </span>
                       ) : (
                         <span className="status-badge low">
-                          <span className="badge-icon"><AlertOctagon size={10} /></span>
+                          <span className="badge-icon"><OctagonAlert size={10} /></span>
                           <span>Inactive</span>
                         </span>
                       )}
@@ -523,7 +520,7 @@ export default function SuppliersPage() {
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--brand-primary)" }}>
-                  <Building size={18} />
+                  <Building2 size={18} />
                 </span>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>

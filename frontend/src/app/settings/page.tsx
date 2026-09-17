@@ -3,14 +3,6 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  Settings,
-  Building,
-  CheckCircle,
-  File,
-  Bookmark,
-  ShoppingBag,
-} from "@duo-icons/react";
-import {
   Save,
   RefreshCw,
   ShieldCheck,
@@ -26,6 +18,11 @@ import {
   X,
   Volume2,
   HardDrive,
+  Settings,
+  Building2,
+  CheckCircle2,
+  Bookmark,
+  ShoppingBag,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -294,7 +291,7 @@ export default function SettingsPage() {
         {/* Tab Navigation */}
         <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "0.75rem" }}>
           {[
-            { id: "store", label: "Pharmacy Profile & Licenses", icon: Building },
+            { id: "store", label: "Pharmacy Profile & Licenses", icon: Building2 },
             { id: "user", label: "User Account & Pharmacist", icon: User },
             { id: "pos", label: "POS Terminal & Hardware", icon: Printer },
             { id: "system", label: "Database & Cloud Sync", icon: Database },
@@ -685,7 +682,7 @@ export default function SettingsPage() {
                       <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>Database Engine</span>
                       <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>MySQL 8.0 (Aiven Cloud)</strong>
                       <span className="status-badge high" style={{ marginTop: "0.375rem" }}>
-                        <span className="badge-icon"><CheckCircle size={10} /></span>
+                        <span className="badge-icon"><CheckCircle2 size={10} /></span>
                         <span>Connected</span>
                       </span>
                     </div>

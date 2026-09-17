@@ -3,16 +3,6 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  Clock,
-  Bookmark,
-  Box,
-  CheckCircle,
-  AlertTriangle,
-  AlertOctagon,
-  File,
-  Location,
-} from "@duo-icons/react";
-import {
   Search,
   X,
   RefreshCw,
@@ -20,6 +10,14 @@ import {
   RotateCcw,
   ShieldAlert,
   Calendar,
+  Clock,
+  Bookmark,
+  Package,
+  CheckCircle2,
+  AlertTriangle,
+  OctagonAlert,
+  FileText,
+  MapPin,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -145,7 +143,7 @@ export default function ExpiryManagementPage() {
             <span>Refresh Audit</span>
           </button>
           <Link href="/inventory" className="btn btn-primary">
-            <Box size={15} />
+            <Package size={15} />
             <span>Inventory Lots</span>
           </Link>
         </div>
@@ -232,7 +230,7 @@ export default function ExpiryManagementPage() {
                 Expired Lots
               </span>
               <span className="status-badge low">
-                <span className="badge-icon"><AlertOctagon size={12} /></span>
+                <span className="badge-icon"><OctagonAlert size={12} /></span>
                 <span>Zero Sellable</span>
               </span>
             </div>
@@ -393,7 +391,7 @@ export default function ExpiryManagementPage() {
                   <td colSpan={7} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                       <span style={{ color: "var(--status-high-text)" }}>
-                        <CheckCircle size={32} />
+                        <CheckCircle2 size={32} />
                       </span>
                       <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         No batches matching selected expiry tier
@@ -438,7 +436,7 @@ export default function ExpiryManagementPage() {
                           <div>
                             {item.status === "expired" && (
                               <span className="status-badge low">
-                                <span className="badge-icon"><AlertOctagon size={11} /></span>
+                                <span className="badge-icon"><OctagonAlert size={11} /></span>
                                 <span>Expired ({Math.abs(item.days_until_expiry)}d ago)</span>
                               </span>
                             )}
@@ -456,7 +454,7 @@ export default function ExpiryManagementPage() {
                             )}
                             {item.status === "good" && (
                               <span className="status-badge high">
-                                <span className="badge-icon"><CheckCircle size={11} /></span>
+                                <span className="badge-icon"><CheckCircle2 size={11} /></span>
                                 <span>Healthy ({item.days_until_expiry}d left)</span>
                               </span>
                             )}
@@ -468,7 +466,7 @@ export default function ExpiryManagementPage() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                           <span style={{ color: "var(--text-muted)" }}>
-                            <Location size={14} />
+                            <MapPin size={14} />
                           </span>
                           <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
                             {item.location_name || "Unassigned"}

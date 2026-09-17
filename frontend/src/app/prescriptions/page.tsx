@@ -4,17 +4,15 @@ import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Clipboard,
+  ClipboardList,
   Bookmark,
-  CheckCircle,
+  CheckCircle2,
   AlertTriangle,
-  File,
+  FileText,
   ShoppingBag,
   User,
   Clock,
-  AddCircle,
-} from "@duo-icons/react";
-import {
+  PlusCircle,
   Search,
   X,
   Upload,
@@ -255,7 +253,7 @@ export default function PrescriptionsPage() {
             }}
             className="btn btn-primary"
           >
-            <AddCircle size={16} />
+            <PlusCircle size={16} />
             <span>Upload / Scan Rx</span>
           </button>
         </div>
@@ -278,7 +276,7 @@ export default function PrescriptionsPage() {
           }}
         >
           <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
-            <Clipboard size={18} />
+            <ClipboardList size={18} />
           </span>
           <div>
             <strong style={{ color: "var(--text-primary)" }}>
@@ -305,7 +303,7 @@ export default function PrescriptionsPage() {
                 Total Prescriptions
               </span>
               <span className="status-badge info">
-                <span className="badge-icon"><Clipboard size={12} /></span>
+                <span className="badge-icon"><ClipboardList size={12} /></span>
                 <span>Archive</span>
               </span>
             </div>
@@ -341,7 +339,7 @@ export default function PrescriptionsPage() {
                 Verified & Ready
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Verified</span>
               </span>
             </div>
@@ -359,7 +357,7 @@ export default function PrescriptionsPage() {
                 Dispensed
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Completed</span>
               </span>
             </div>
@@ -477,7 +475,7 @@ export default function PrescriptionsPage() {
                   <td colSpan={6} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                       <span style={{ color: "var(--text-muted)" }}>
-                        <Clipboard size={32} />
+                        <ClipboardList size={32} />
                       </span>
                       <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         No prescriptions found
@@ -495,7 +493,7 @@ export default function PrescriptionsPage() {
                         className="btn btn-primary"
                         style={{ marginTop: "0.5rem" }}
                       >
-                        <AddCircle size={16} />
+                        <PlusCircle size={16} />
                         <span>Upload First Prescription</span>
                       </button>
                     </div>
@@ -562,13 +560,13 @@ export default function PrescriptionsPage() {
                         )}
                         {isVerified && (
                           <span className="status-badge high">
-                            <span className="badge-icon"><CheckCircle size={11} /></span>
+                            <span className="badge-icon"><CheckCircle2 size={11} /></span>
                             <span>Verified Safe</span>
                           </span>
                         )}
                         {isDispensed && (
                           <span className="status-badge high">
-                            <span className="badge-icon"><CheckCircle size={11} /></span>
+                            <span className="badge-icon"><CheckCircle2 size={11} /></span>
                             <span>Dispensed #{rx.sale_invoice_number || rx.sale_id}</span>
                           </span>
                         )}
@@ -632,7 +630,7 @@ export default function PrescriptionsPage() {
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--brand-primary)" }}>
-                  <Clipboard size={18} />
+                  <ClipboardList size={18} />
                 </span>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
@@ -807,7 +805,7 @@ export default function PrescriptionsPage() {
                             )}
                           </div>
                           <span className="status-badge high">
-                            <span className="badge-icon"><CheckCircle size={10} /></span>
+                            <span className="badge-icon"><CheckCircle2 size={10} /></span>
                             <span>Qty: {it.quantity_prescribed}</span>
                           </span>
                         </div>
@@ -839,7 +837,7 @@ export default function PrescriptionsPage() {
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--status-high-text)" }}>
-                  <CheckCircle size={18} />
+                  <CheckCircle2 size={18} />
                 </span>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
@@ -956,7 +954,7 @@ export default function PrescriptionsPage() {
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--brand-primary)" }}>
-                  <Clipboard size={18} />
+                  <ClipboardList size={18} />
                 </span>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
@@ -1000,7 +998,7 @@ export default function PrescriptionsPage() {
                   <div style={{ color: "var(--text-muted)" }}>Status</div>
                   <div style={{ marginTop: "4px" }}>
                     <span className={`status-badge ${selectedRx.status === "verified" || selectedRx.status === "dispensed" ? "high" : "med"}`}>
-                      <span className="badge-icon"><CheckCircle size={10} /></span>
+                      <span className="badge-icon"><CheckCircle2 size={10} /></span>
                       <span>{selectedRx.status.toUpperCase()}</span>
                     </span>
                   </div>

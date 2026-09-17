@@ -3,17 +3,6 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  File,
-  Building,
-  Box,
-  CheckCircle,
-  AlertTriangle,
-  AlertOctagon,
-  Clock,
-  Location,
-  AddCircle,
-} from "@duo-icons/react";
-import {
   Search,
   X,
   Eye,
@@ -22,6 +11,18 @@ import {
   PackageCheck,
   Calendar,
   Layers,
+  FileText,
+  Building2,
+  Package,
+  CheckCircle2,
+  AlertTriangle,
+  OctagonAlert,
+  Clock,
+  MapPin,
+  PlusCircle,
+  Upload,
+  Scan,
+  ShieldAlert,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -31,6 +32,9 @@ import {
   createPurchaseDraft,
   acceptPurchaseInvoice,
   cancelPurchaseInvoice,
+  scanDistributorInvoice,
+  verifyPhysicalDelivery,
+  confirmDelivery,
   getSuppliers,
   getMedicines,
   getLocations,
@@ -39,6 +43,8 @@ import {
   Medicine,
   PhysicalLocation,
   CreatePurchaseDraftPayload,
+  DeliveryDiscrepancyReport,
+  ActualScanPayload,
 } from "@/lib/api";
 
 export default function PurchasesPage() {
@@ -62,6 +68,62 @@ export default function PurchasesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoiceRecord | null>(null);
   const [showAcceptModal, setShowAcceptModal] = useState<boolean>(false);
   const [acceptLocationId, setAcceptLocationId] = useState<number>(0);
+
+  // Distributor OCR Scan State (PRD Rule 11)
+  const [showOcrModal, setShowOcrModal] = useState<boolean>(false);
+  const [ocrParsing, setOcrParsing] = useState<boolean>(false);
+  const [rawOcrInputText, setRawOcrInputText] = useState<string>("");
+
+  // Physical Delivery Verification Matrix State (PRD Rule 12)
+  const [showVerifyDeliveryModal, setShowVerifyDeliveryModal] = useState<boolean>(false);
+  const [discrepancyReport, setDiscrepancyReport] = useState<DeliveryDiscrepancyReport | null>(null);
+  const [verifyingDelivery, setVerifyingDelivery] = useState<boolean>(false);
+
+  const handleScanOcrInvoice = async () => {
+    if (!rawOcrInputText.trim()) {
+      setActionError("Please paste raw invoice OCR text or upload invoice document.");
+      return;
+    }
+    setOcrParsing(true);
+    setActionError(null);
+    try {
+      const res = await scanDistributorInvoice(rawOcrInputText.trim());
+      setActionSuccess(`Distributor Draft Invoice ${res.data.invoice_number} created via OCR!`);
+      setShowOcrModal(false);
+      setRawOcrInputText("");
+      loadData();
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to parse distributor invoice OCR.");
+    } finally {
+      setOcrParsing(false);
+    }
+  };
+
+  const handleRunDeliveryVerification = async (inv: PurchaseInvoiceRecord) => {
+    setSelectedInvoice(inv);
+    setVerifyingDelivery(true);
+    setDiscrepancyReport(null);
+    setShowVerifyDeliveryModal(true);
+
+    try {
+      // Build actual scan items from invoice lines as expected baseline for comparison
+      const actualScans: ActualScanPayload[] = (inv.items || []).map((it) => ({
+        medicine_name: it.medicine_name || it.raw_medicine_name || "",
+        batch_number: it.batch_number,
+        expiry_date: it.expiry_date,
+        actual_quantity: it.quantity, // Default to matched, user can adjust in matrix
+        mrp: it.mrp || undefined,
+        medicine_id: it.medicine_id,
+      }));
+
+      const res = await verifyPhysicalDelivery(inv.id, actualScans);
+      setDiscrepancyReport(res.report);
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to verify delivery matrix.");
+    } finally {
+      setVerifyingDelivery(false);
+    }
+  };
 
   // New Draft State
   const [draftSupplierId, setDraftSupplierId] = useState<number>(0);
@@ -297,8 +359,16 @@ export default function PurchasesPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <ThemeToggle />
+          <button
+            onClick={() => setShowOcrModal(true)}
+            className="btn btn-secondary"
+            style={{ backgroundColor: "var(--bg-surface-elevated)" }}
+          >
+            <Scan size={16} />
+            <span>Scan Distributor Invoice (OCR)</span>
+          </button>
           <button onClick={handleOpenCreate} className="btn btn-primary">
-            <AddCircle size={16} />
+            <PlusCircle size={16} />
             <span>New Purchase Draft</span>
           </button>
         </div>
@@ -321,7 +391,7 @@ export default function PurchasesPage() {
           }}
         >
           <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
-            <File size={18} />
+            <FileText size={18} />
           </span>
           <div>
             <strong style={{ color: "var(--text-primary)" }}>
@@ -348,7 +418,7 @@ export default function PurchasesPage() {
                 Total Invoices
               </span>
               <span className="status-badge info">
-                <span className="badge-icon"><File size={12} /></span>
+                <span className="badge-icon"><FileText size={12} /></span>
                 <span>Ledger</span>
               </span>
             </div>
@@ -384,7 +454,7 @@ export default function PurchasesPage() {
                 Accepted & Stocked
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Booked</span>
               </span>
             </div>
@@ -402,7 +472,7 @@ export default function PurchasesPage() {
                 Inward Inventory Value
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle size={12} /></span>
+                <span className="badge-icon"><CheckCircle2 size={12} /></span>
                 <span>Cost</span>
               </span>
             </div>
@@ -534,7 +604,7 @@ export default function PurchasesPage() {
                   <td colSpan={6} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                       <span style={{ color: "var(--text-muted)" }}>
-                        <File size={32} />
+                        <FileText size={32} />
                       </span>
                       <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         No purchase invoices found
@@ -543,7 +613,7 @@ export default function PurchasesPage() {
                         Record your first wholesale invoice draft to begin inward stock verification.
                       </div>
                       <button onClick={handleOpenCreate} className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
-                        <AddCircle size={16} />
+                        <PlusCircle size={16} />
                         <span>Create First Purchase Draft</span>
                       </button>
                     </div>
@@ -573,7 +643,7 @@ export default function PurchasesPage() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                           <span style={{ color: "var(--text-muted)" }}>
-                            <Building size={14} />
+                            <Building2 size={14} />
                           </span>
                           <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
                             {inv.supplier_name || `Supplier #${inv.supplier_id}`}
@@ -605,13 +675,13 @@ export default function PurchasesPage() {
                         )}
                         {isAccepted && (
                           <span className="status-badge high">
-                            <span className="badge-icon"><CheckCircle size={11} /></span>
+                            <span className="badge-icon"><CheckCircle2 size={11} /></span>
                             <span>Stock Booked</span>
                           </span>
                         )}
                         {isCancelled && (
                           <span className="status-badge low">
-                            <span className="badge-icon"><AlertOctagon size={11} /></span>
+                            <span className="badge-icon"><OctagonAlert size={11} /></span>
                             <span>Cancelled</span>
                           </span>
                         )}
@@ -633,12 +703,21 @@ export default function PurchasesPage() {
                           {isDraft && (
                             <>
                               <button
+                                onClick={() => handleRunDeliveryVerification(inv)}
+                                className="btn btn-secondary"
+                                style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                                title="Run physical delivery discrepancy check"
+                              >
+                                <ShieldAlert size={13} />
+                                <span>Verify Delivery (AI)</span>
+                              </button>
+                              <button
                                 onClick={() => handleOpenAccept(inv)}
                                 className="btn btn-primary"
                                 style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
                               >
                                 <PackageCheck size={13} />
-                                <span>Verify Inward</span>
+                                <span>Book Stock</span>
                               </button>
                               <button
                                 onClick={() => handleCancelInvoice(inv.id)}
@@ -670,7 +749,7 @@ export default function PurchasesPage() {
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--brand-primary)" }}>
-                  <File size={18} />
+                  <FileText size={18} />
                 </span>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
@@ -1022,7 +1101,7 @@ export default function PurchasesPage() {
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--brand-primary)" }}>
-                  <File size={18} />
+                  <FileText size={18} />
                 </span>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
@@ -1092,6 +1171,211 @@ export default function PurchasesPage() {
             <div className="modal-footer">
               <button onClick={() => setSelectedInvoice(null)} className="btn btn-secondary">
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          Modal: Distributor Invoice OCR Scan (PRD Phase 3 & Rule 11)
+          ===================================================================== */}
+      {showOcrModal && (
+        <div className="modal-backdrop" onClick={() => !ocrParsing && setShowOcrModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "600px" }}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ color: "var(--brand-primary)" }}>
+                  <Scan size={18} />
+                </span>
+                <div>
+                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    Distributor Invoice OCR Parsing
+                  </h2>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                    PRD Rule 11: Converts unstructured wholesale invoice OCR into a reviewable Purchase Draft
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowOcrModal(false)} className="btn-icon" disabled={ocrParsing}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="form-label">Paste Wholesale Invoice OCR Text / Table *</label>
+                <textarea
+                  rows={8}
+                  placeholder={`Paste distributor invoice OCR text e.g.:
+DISTRIBUTOR: MEDLIFE WHOLESALE PVT LTD
+INVOICE NO: MW-9841
+DATE: 2026-09-15
+LINE 1: Paracetamol 500mg | BATCH: B-102 | EXP: 2027-11-30 | QTY: 100 | RATE: 12.50 | MRP: 22.00
+LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 45.00 | MRP: 78.00`}
+                  value={rawOcrInputText}
+                  onChange={(e) => setRawOcrInputText(e.target.value)}
+                  className="form-textarea"
+                  style={{ fontFamily: "monospace", fontSize: "0.75rem" }}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: "0.625rem 0.875rem",
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "rgba(30, 110, 232, 0.08)",
+                  border: "1px solid var(--brand-border)",
+                  fontSize: "0.6875rem",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <strong>Human-in-the-Loop Protocol:</strong> Scanning creates a DRAFT purchase invoice. Physical stock will NOT be added to inventory until verified upon delivery.
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setShowOcrModal(false)} className="btn btn-secondary" disabled={ocrParsing}>
+                Cancel
+              </button>
+              <button onClick={handleScanOcrInvoice} className="btn btn-primary" disabled={ocrParsing || !rawOcrInputText.trim()}>
+                {ocrParsing ? "Parsing Table..." : "Extract Purchase Draft"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          Modal: Physical Delivery Verification Discrepancy Matrix (PRD Rule 12)
+          ===================================================================== */}
+      {showVerifyDeliveryModal && selectedInvoice && (
+        <div className="modal-backdrop" onClick={() => !verifyingDelivery && setShowVerifyDeliveryModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "780px" }}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ color: "var(--status-med-text)" }}>
+                  <ShieldAlert size={18} />
+                </span>
+                <div>
+                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    Physical Delivery Discrepancy Matrix
+                  </h2>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                    PRD Rule 12: Compares Invoiced Items vs Physical Camera Scans before inventory booking
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowVerifyDeliveryModal(false)} className="btn-icon">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {verifyingDelivery ? (
+                <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                  Analyzing physical delivery scans against invoice expected quantities...
+                </div>
+              ) : discrepancyReport ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {/* Summary Bar */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: "0.75rem",
+                      padding: "0.75rem",
+                      backgroundColor: "var(--bg-surface-elevated)",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    <div>
+                      <div style={{ color: "var(--text-muted)" }}>Expected Items</div>
+                      <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                        {discrepancyReport.total_expected_items} ({discrepancyReport.total_expected_units} units)
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ color: "var(--text-muted)" }}>Actual Scanned</div>
+                      <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                        {discrepancyReport.total_actual_items} ({discrepancyReport.total_actual_units} units)
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ color: "var(--text-muted)" }}>Matched Count</div>
+                      <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--status-high-text)" }}>
+                        {discrepancyReport.matched_items_count} lines
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ color: "var(--text-muted)" }}>Discrepancies</div>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: "0.9375rem",
+                          color: discrepancyReport.discrepancy_count > 0 ? "var(--status-low-text)" : "var(--status-high-text)",
+                        }}
+                      >
+                        {discrepancyReport.discrepancy_count} flags
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Discrepancy Lines Matrix */}
+                  <div className="table-container">
+                    <table className="data-table" style={{ fontSize: "0.75rem" }}>
+                      <thead>
+                        <tr>
+                          <th>Item Name</th>
+                          <th>Status Badge</th>
+                          <th>Invoiced Qty</th>
+                          <th>Actual Scanned</th>
+                          <th>Batch (Exp vs Act)</th>
+                          <th style={{ textAlign: "right" }}>Diff</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {discrepancyReport.lines.map((line, idx) => {
+                          const isMatched = line.status === "MATCHED";
+                          return (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 700 }}>{line.medicine_name}</td>
+                              <td>
+                                <span className={`status-badge ${isMatched ? "high" : "low"}`}>
+                                  {line.status}
+                                </span>
+                              </td>
+                              <td>{line.expected_quantity}</td>
+                              <td style={{ fontWeight: 700 }}>{line.actual_quantity}</td>
+                              <td style={{ fontFamily: "monospace" }}>
+                                {line.expected_batch} {line.actual_batch !== line.expected_batch ? `-> ${line.actual_batch}` : ""}
+                              </td>
+                              <td style={{ textAlign: "right", fontWeight: 700, color: line.quantity_difference !== 0 ? "var(--status-low-text)" : "var(--status-high-text)" }}>
+                                {line.quantity_difference > 0 ? `+${line.quantity_difference}` : line.quantity_difference}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="modal-footer">
+              <button onClick={() => setShowVerifyDeliveryModal(false)} className="btn btn-secondary">
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setShowVerifyDeliveryModal(false);
+                  handleOpenAccept(selectedInvoice);
+                }}
+                className="btn btn-primary"
+              >
+                Proceed to Inward Stock Booking
               </button>
             </div>
           </div>

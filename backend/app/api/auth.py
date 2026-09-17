@@ -76,7 +76,7 @@ def update_current_user():
 @login_required
 def get_current_store():
     """Return the authenticated user's pharmacy store details."""
-    store = Store.query.get(g.current_user.store_id)
+    store = db.session.get(Store, g.current_user.store_id)
     if not store:
         raise NotFoundError("Store not found.")
     return jsonify({
@@ -90,7 +90,7 @@ def get_current_store():
 @role_required(UserRole.OWNER, UserRole.MANAGER)
 def update_current_store():
     """Update active pharmacy store profile and regulatory credentials."""
-    store = Store.query.get(g.current_user.store_id)
+    store = db.session.get(Store, g.current_user.store_id)
     if not store:
         raise NotFoundError("Store not found.")
 

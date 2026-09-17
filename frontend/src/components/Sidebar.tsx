@@ -2,20 +2,23 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  Dashboard,
+  LayoutDashboard,
   ShoppingBag,
-  Clipboard,
-  Box,
+  ClipboardList,
+  Package,
   Bookmark,
-  File,
-  Building,
+  FileText,
+  Building2,
   Clock,
-  Location,
-  CheckCircle,
+  MapPin,
+  CheckCircle2,
   Settings,
-} from "@duo-icons/react";
+  LogOut,
+  RotateCcw,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface NavItem {
   label: string;
@@ -32,47 +35,81 @@ const navSections: NavSection[] = [
   {
     title: "Overview",
     items: [
-      { label: "Dashboard", href: "/", icon: Dashboard },
+      { label: "Dashboard", href: "/", icon: LayoutDashboard },
     ],
   },
   {
     title: "Counter & Dispensing",
     items: [
       { label: "POS Billing", href: "/pos", icon: ShoppingBag },
-      { label: "Prescriptions", href: "/prescriptions", icon: Clipboard },
+      { label: "Prescriptions", href: "/prescriptions", icon: ClipboardList },
+      { label: "Sales Returns", href: "/returns", icon: RotateCcw },
     ],
   },
   {
     title: "Catalog & Stock",
     items: [
-      { label: "Inventory & Batches", href: "/inventory", icon: Box },
+      { label: "Inventory & Batches", href: "/inventory", icon: Package },
       { label: "Medicines Catalog", href: "/medicines", icon: Bookmark },
       { label: "Expiry Management", href: "/expiry", icon: Clock },
-      { label: "Shelves & Storage", href: "/shelves", icon: Location },
+      { label: "Shelves & Storage", href: "/shelves", icon: MapPin },
     ],
   },
   {
     title: "Procurement",
     items: [
-      { label: "Purchases & Invoices", href: "/purchases", icon: File },
-      { label: "Suppliers", href: "/suppliers", icon: Building },
+      { label: "Purchases & Invoices", href: "/purchases", icon: FileText },
+      { label: "Suppliers", href: "/suppliers", icon: Building2 },
     ],
   },
   {
     title: "Governance",
     items: [
-      { label: "Audit Trail", href: "/audit", icon: CheckCircle },
+      { label: "Audit Trail", href: "/audit", icon: CheckCircle2 },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
 ];
 
+/** Map backend role enum values to human-readable labels. */
+function formatRole(role: string): string {
+  const map: Record<string, string> = {
+    owner: "Owner",
+    manager: "Manager",
+    pharmacist: "Pharmacist",
+    cashier: "Cashier",
+    inventory_staff: "Inventory Staff",
+  };
+  return map[role?.toLowerCase()] ?? role;
+}
+
+/** Get the initials from a full name (up to 2 characters). */
+function getInitials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .slice(0, 2)
+    .join("");
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    router.replace("/login");
+  };
+
+  const displayName = user?.full_name ?? "Staff";
+  const displayRole = user?.role ? formatRole(user.role) : "Terminal";
+  const initials = getInitials(displayName);
 
   return (
     <aside className="sidebar">
-      {/* Brand Header — Exact 64px matching top page-header */}
+      {/* Brand Header */}
       <div
         style={{
           height: "var(--header-height)",
@@ -100,7 +137,7 @@ export default function Sidebar() {
             color: "var(--brand-primary)",
           }}
         >
-          <Box size={16} />
+          <Package size={16} />
         </div>
         <div>
           <div
@@ -120,7 +157,7 @@ export default function Sidebar() {
               marginTop: "2px",
             }}
           >
-            Pharmacy OS • Store #1
+            Pharmacy OS • Store #{user?.store_id ?? "—"}
           </div>
         </div>
       </div>
@@ -168,9 +205,8 @@ export default function Sidebar() {
       {/* Footer / User Session */}
       <div
         style={{
-          height: "56px",
           minHeight: "56px",
-          padding: "0 1.25rem",
+          padding: "0.625rem 1.25rem",
           borderTop: "1px solid var(--border-subtle)",
           display: "flex",
           alignItems: "center",
@@ -181,42 +217,91 @@ export default function Sidebar() {
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", minWidth: 0 }}>
+          {/* Avatar */}
           <div
             style={{
               width: "28px",
               height: "28px",
               borderRadius: "50%",
-              backgroundColor: "#252525",
-              border: "1px solid #393939",
+              backgroundColor: "#1e3a5f",
+              border: "1px solid #1e6ee8",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "0.75rem",
+              fontSize: "0.6875rem",
               fontWeight: 700,
-              color: "#ffffff",
+              color: "#87d1ff",
+              flexShrink: 0,
             }}
           >
-            P
+            {initials}
           </div>
-          <div>
-            <div style={{ color: "var(--text-primary)", fontWeight: 700, lineHeight: 1.2 }}>
-              Pharmacist
+          {/* Name + Role */}
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                color: "var(--text-primary)",
+                fontWeight: 700,
+                lineHeight: 1.2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "130px",
+              }}
+            >
+              {displayName}
             </div>
             <div style={{ color: "var(--text-muted)", fontSize: "0.6875rem" }}>
-              Terminal Active
+              {displayRole}
             </div>
           </div>
         </div>
-        <div
-          style={{
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            backgroundColor: "var(--status-high-text)",
-          }}
-          title="Online"
-        />
+
+        {/* Online dot + Logout */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+          <div
+            style={{
+              width: "7px",
+              height: "7px",
+              borderRadius: "50%",
+              backgroundColor: "var(--status-high-text)",
+            }}
+            title="Online"
+          />
+          <button
+            id="sidebar-logout-btn"
+            onClick={handleLogout}
+            title="Sign out"
+            style={{
+              width: "26px",
+              height: "26px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "var(--radius-sm)",
+              background: "transparent",
+              border: "1px solid transparent",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              transition: "background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease",
+            }}
+            onMouseEnter={(e) => {
+              const btn = e.currentTarget;
+              btn.style.backgroundColor = "rgba(255,80,80,0.1)";
+              btn.style.color = "#ff8080";
+              btn.style.borderColor = "rgba(255,80,80,0.2)";
+            }}
+            onMouseLeave={(e) => {
+              const btn = e.currentTarget;
+              btn.style.backgroundColor = "transparent";
+              btn.style.color = "var(--text-muted)";
+              btn.style.borderColor = "transparent";
+            }}
+          >
+            <LogOut size={13} />
+          </button>
+        </div>
       </div>
     </aside>
   );

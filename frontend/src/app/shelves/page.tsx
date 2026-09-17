@@ -3,15 +3,6 @@
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import {
-  Location,
-  Box,
-  CheckCircle,
-  AlertTriangle,
-  Bookmark,
-  File,
-  Building,
-} from "@duo-icons/react";
-import {
   Search,
   Plus,
   RefreshCw,
@@ -27,6 +18,12 @@ import {
   AlertCircle,
   MapPin,
   Flame,
+  Package,
+  CheckCircle2,
+  AlertTriangle,
+  Bookmark,
+  FileText,
+  Building2,
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
@@ -410,7 +407,7 @@ export default function ShelvesPage() {
                 Storage Locations
               </span>
               <span className="status-badge info">
-                <span className="badge-icon"><Location size={12} /></span>
+                <span className="badge-icon"><MapPin size={12} /></span>
                 <span>Active</span>
               </span>
             </div>
@@ -429,7 +426,7 @@ export default function ShelvesPage() {
                 Total Stock Occupied
               </span>
               <span className="status-badge high">
-                <span className="badge-icon"><Box size={12} /></span>
+                <span className="badge-icon"><Package size={12} /></span>
                 <span>Logged</span>
               </span>
             </div>
@@ -493,7 +490,7 @@ export default function ShelvesPage() {
         {/* Tab Navigation */}
         <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "0.75rem" }}>
           {[
-            { id: "planogram", label: "Physical Planogram & Shelves", icon: Location },
+            { id: "planogram", label: "Physical Planogram & Shelves", icon: MapPin },
             { id: "locator", label: "Fast Dispense Locator", icon: Navigation },
             { id: "cycle_count", label: "Cycle Count & Stock Audit", icon: ClipboardCheck },
             { id: "compliance", label: "Climate Safety", icon: ShieldCheck },
@@ -560,7 +557,7 @@ export default function ShelvesPage() {
             ) : filteredShelves.length === 0 ? (
               <div className="card" style={{ padding: "4rem", textAlign: "center" }}>
                 <div style={{ width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "var(--bg-surface-elevated)", margin: "0 auto 0.75rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
-                  <Location size={22} />
+                  <MapPin size={22} />
                 </div>
                 <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
                   No Storage Shelves Found
@@ -787,7 +784,7 @@ export default function ShelvesPage() {
                         <div>
                           {pick.is_fefo_priority && (
                             <span className="status-badge high" style={{ marginBottom: "0.375rem" }}>
-                              <span className="badge-icon"><CheckCircle size={10} /></span>
+                              <span className="badge-icon"><CheckCircle2 size={10} /></span>
                               <span>FEFO Priority 1st Pick</span>
                             </span>
                           )}
@@ -966,7 +963,7 @@ export default function ShelvesPage() {
           <div className="modal-content" style={{ maxWidth: "480px" }}>
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <Location size={18} />
+                <MapPin size={18} />
                 <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   {editingLocation ? "Edit Storage Location" : "New Physical Storage Location"}
                 </h2>
