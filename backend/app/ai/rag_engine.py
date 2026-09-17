@@ -8,6 +8,7 @@ Strict compliance with SmartPharm PRD Rule 19:
 - When information is missing, clearly communicates that data was not found.
 """
 
+import os
 from dataclasses import dataclass, field
 import datetime
 from decimal import Decimal
@@ -15,6 +16,7 @@ import enum
 import logging
 import re
 from typing import Any, Dict, List, Optional
+
 
 from app.extensions import db
 from app.models.medicine import Medicine, MedicineAlias
@@ -459,6 +461,29 @@ class PharmacyRAGEngine:
                     + ", ".join(matched_names)
                     + "."
                 )
+
+                # Optional Google Gemini LLM synthesis if API key is provided
+                gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+                if gemini_key:
+                    try:
+                        from google import genai
+                        client = genai.Client(api_key=gemini_key)
+                        prompt = (
+                            f"You are SmartPharm AI Copilot. Synthesize a helpful, professional 2-sentence response for a pharmacist.\n"
+                            f"Pharmacist Question: {query}\n"
+                            f"Database Grounded Facts: {', '.join(matched_names)}\n"
+                            f"Rules: Do NOT fabricate quantities, prices, or advice beyond these grounded facts."
+                        )
+                        res = client.models.generate_content(
+                            model="gemini-flash-latest",
+                            contents=prompt,
+                        )
+
+                        if res and hasattr(res, "text") and res.text:
+                            answer = res.text.strip()
+                    except Exception as e:
+                        logger.warning(f"Gemini API synthesis fallback to database text: {e}")
+
                 return CopilotResponse(
                     intent=CopilotIntent.GENERAL_PHARMA,
                     answer=answer,
@@ -485,3 +510,4 @@ class PharmacyRAGEngine:
 
 
 default_rag_engine = PharmacyRAGEngine()
+

@@ -66,8 +66,12 @@ class Config:
     PGVECTOR_URL = os.environ.get("PGVECTOR_URL", "")
     PGVECTOR_SSL_CA = os.environ.get("PGVECTOR_SSL_CA", "VETca.pem")
 
+    # AI / LLM Configuration (Google Gemini 2.5 Flash / Pro)
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
     # CORS
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+
 
 
 
