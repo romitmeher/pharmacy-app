@@ -1786,6 +1786,758 @@ export async function deactivateMedicine(id: number): Promise<{ message: string 
 }
 
 /* ==========================================================================
+   Phase 1: Batches, Physical Inventory & Locations Client Contracts & Functions
+   Strict compliance with Cardinal Principle: MEDICINE != BATCH != INVENTORY
+   ========================================================================== */
+
+export interface PhysicalLocation {
+  id: number;
+  store_id: number;
+  name: string;
+  location_type?: string | null;
+  description?: string | null;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  inventory_items?: Array<{
+    inventory_id: number;
+    batch_id: number;
+    batch_number: string;
+    medicine_id: number;
+    medicine_name: string;
+    expiry_date: string;
+    quantity_available: number;
+    quantity_reserved: number;
+  }>;
+  total_stock_count?: number;
+}
+
+export interface InventoryItem {
+  id: number;
+  batch_id: number;
+  store_id: number;
+  location_id: number;
+  location_name: string;
+  quantity_available: number;
+  quantity_reserved: number;
+  last_counted_at?: string | null;
+}
+
+export interface BatchItem {
+  id: number;
+  medicine_id: number;
+  store_id: number;
+  batch_number: string;
+  expiry_date: string;
+  manufacturing_date?: string | null;
+  purchase_price?: number | null;
+  mrp?: number | null;
+  quantity_received?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  medicine?: {
+    id: number;
+    brand_name: string;
+    generic_name?: string | null;
+    strength?: string | null;
+  };
+  inventory?: InventoryItem[];
+  total_available: number;
+  total_reserved: number;
+}
+
+export interface CreateBatchPayload {
+  medicine_id: number;
+  batch_number: string;
+  expiry_date: string;
+  manufacturing_date?: string;
+  purchase_price?: number;
+  mrp?: number;
+  quantity?: number;
+  initial_quantity?: number;
+  location_id?: number;
+}
+
+export interface AdjustStockPayload {
+  inventory_id: number;
+  new_quantity: number;
+  reason: string;
+}
+
+export interface TransferStockPayload {
+  batch_id: number;
+  source_location_id?: number;
+  target_location_id: number;
+  quantity: number;
+}
+
+/**
+ * Fetch all batches for store with optional filters
+ */
+export async function getBatches(params?: {
+  medicine_id?: number;
+  has_stock?: boolean;
+}): Promise<{ count: number; batches: BatchItem[] }> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.medicine_id) query.set("medicine_id", String(params.medicine_id));
+  if (params?.has_stock !== undefined) query.set("has_stock", String(params.has_stock));
+
+  const res = await fetch(`${API_BASE_URL}/api/batches?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch batches.");
+  }
+  return json;
+}
+
+/**
+ * Get detailed single batch
+ */
+export async function getBatch(batchId: number): Promise<{ batch: BatchItem }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/batches/${batchId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to fetch batch ${batchId}.`);
+  }
+  return json;
+}
+
+/**
+ * Create a new physical batch with initial stock allocation
+ */
+export async function createBatch(
+  payload: CreateBatchPayload
+): Promise<{ message: string; batch: BatchItem }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/batches`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to create batch.");
+  }
+  return json;
+}
+
+/**
+ * Audit-logged stock adjustment (PRD Rule 7 & 22)
+ */
+export async function adjustStock(
+  payload: AdjustStockPayload
+): Promise<{ message: string; inventory: InventoryItem }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/inventory/adjust`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to adjust stock.");
+  }
+  return json;
+}
+
+/**
+ * Transfer stock between storage locations
+ */
+export async function transferStock(
+  payload: TransferStockPayload
+): Promise<{ message: string; [key: string]: any }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/inventory/transfer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to transfer stock.");
+  }
+  return json;
+}
+
+/**
+ * Fetch storage locations for dropdowns and shelves
+ */
+export async function getLocations(
+  isActive?: boolean
+): Promise<{ count: number; locations: PhysicalLocation[] }> {
+  const token = getAuthToken();
+  const query = isActive !== undefined ? `?is_active=${isActive}` : "";
+  const res = await fetch(`${API_BASE_URL}/api/locations${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch locations.");
+  }
+  return json;
+}
+
+/* ==========================================================================
+   Phase 1: Sales & POS Billing Client Contracts & Functions
+   Strict compliance with FEFO batch resolution and PRD Rule 8 & 14
+   ========================================================================== */
+
+export interface POSCustomerPayload {
+  name: string;
+  phone?: string;
+  doctor_name?: string;
+}
+
+export interface POSPaymentPayload {
+  payment_method: "cash" | "upi" | "card" | "credit";
+  amount: number;
+  transaction_reference?: string;
+}
+
+export interface CreateSalePayload {
+  customer?: POSCustomerPayload;
+  items: Array<{
+    medicine_id: number;
+    quantity: number;
+    batch_id?: number;
+    discount_percentage?: number;
+  }>;
+  payments?: POSPaymentPayload[];
+  discount_amount?: number;
+  notes?: string;
+}
+
+export interface SaleReceiptItem {
+  id: number;
+  medicine_id: number;
+  brand_name: string;
+  generic_name?: string | null;
+  strength?: string | null;
+  hsn_code?: string | null;
+  batch_id?: number | null;
+  batch_number?: string | null;
+  expiry_date?: string | null;
+  quantity: number;
+  unit_price: number;
+  discount_percentage: number;
+  tax_percentage: number;
+  total_price: number;
+}
+
+export interface SaleReceipt {
+  id: number;
+  store_id: number;
+  invoice_number: string;
+  sale_date: string;
+  biller_user_id?: number;
+  biller_name?: string | null;
+  customer?: {
+    id: number;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    doctor_name?: string | null;
+  } | null;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  total_amount: number;
+  payment_status: "paid" | "partial" | "unpaid" | "refunded";
+  notes?: string | null;
+  store?: {
+    name: string;
+    phone?: string | null;
+    address?: string | null;
+    gstin?: string | null;
+    drug_license_number?: string | null;
+  };
+  items?: SaleReceiptItem[];
+  payments?: Array<{
+    id: number;
+    payment_method: string;
+    amount: number;
+    transaction_reference?: string | null;
+    payment_date?: string;
+  }>;
+}
+
+export interface MedicineInventorySummary {
+  medicine_id: number;
+  brand_name: string;
+  generic_name?: string | null;
+  total_available: number;
+  total_reserved: number;
+  batches: Array<{
+    batch_id: number;
+    batch_number: string;
+    expiry_date: string;
+    mrp: number;
+    quantity_available: number;
+    location_name?: string;
+    status: string;
+  }>;
+}
+
+/**
+ * Execute POS Sale Checkout with atomic FEFO stock deduction
+ */
+export async function createSale(
+  payload: CreateSalePayload
+): Promise<{ message: string; sale: SaleReceipt }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/sales`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to process sale.");
+  }
+  return json;
+}
+
+/**
+ * Fetch paginated sales history
+ */
+export async function getSales(params?: {
+  page?: number;
+  per_page?: number;
+  start_date?: string;
+  end_date?: string;
+  payment_status?: string;
+  customer_id?: number;
+}): Promise<{ items: SaleReceipt[]; total: number; page: number; per_page: number; pages: number }> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.per_page) query.set("per_page", String(params.per_page));
+  if (params?.start_date) query.set("start_date", params.start_date);
+  if (params?.end_date) query.set("end_date", params.end_date);
+  if (params?.payment_status) query.set("payment_status", params.payment_status);
+  if (params?.customer_id) query.set("customer_id", String(params.customer_id));
+
+  const res = await fetch(`${API_BASE_URL}/api/sales?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch sales history.");
+  }
+  return json;
+}
+
+/**
+ * Get detailed sale receipt by ID
+ */
+export async function getSale(saleId: number): Promise<{ sale: SaleReceipt }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/sales/${saleId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to fetch sale receipt ${saleId}.`);
+  }
+  return json;
+}
+
+/**
+ * Get FEFO batch summary for medicine in POS
+ */
+export async function getMedicineInventorySummary(
+  medicineId: number
+): Promise<MedicineInventorySummary> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/inventory/summary/${medicineId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to fetch inventory summary for medicine ${medicineId}.`);
+  }
+  return json;
+}
+
+/**
+ * Refund a sale and restore stock to batches
+ */
+export async function refundSale(
+  saleId: number,
+  reason: string
+): Promise<{ message: string; sale: SaleReceipt }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/sales/${saleId}/refund`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to refund sale ${saleId}.`);
+  }
+  return json;
+}
+
+/* ==========================================================================
+   Phase 1: Purchases & Distributor Invoices Client Contracts & Functions
+   Strict compliance with PRD Rule 8 & 11: Draft creation does NOT mutate inventory
+   ========================================================================== */
+
+export interface PurchaseInvoiceItem {
+  id: number;
+  medicine_id: number;
+  medicine_name?: string | null;
+  raw_medicine_name?: string | null;
+  batch_number: string;
+  expiry_date: string;
+  manufacturing_date?: string | null;
+  quantity: number;
+  received_quantity?: number;
+  purchase_rate: number;
+  mrp?: number | null;
+  discount_percentage?: number;
+  tax_percentage?: number;
+  total_amount: number;
+  batch_id?: number | null;
+  is_verified?: boolean;
+}
+
+export interface PurchaseInvoiceRecord {
+  id: number;
+  store_id: number;
+  supplier_id: number;
+  supplier_name?: string | null;
+  invoice_number: string;
+  invoice_date: string;
+  subtotal: number;
+  discount_amount: number;
+  tax_amount: number;
+  total_amount: number;
+  status: "draft" | "accepted" | "partial_accepted" | "cancelled";
+  verified_by_user_id?: number | null;
+  verified_at?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  items?: PurchaseInvoiceItem[];
+}
+
+export interface CreatePurchaseDraftPayload {
+  supplier_id: number;
+  invoice_number: string;
+  invoice_date?: string;
+  items: Array<{
+    medicine_id?: number;
+    raw_medicine_name?: string;
+    batch_number: string;
+    expiry_date: string;
+    manufacturing_date?: string;
+    quantity: number;
+    purchase_rate: number;
+    mrp?: number;
+    discount_percentage?: number;
+    tax_percentage?: number;
+  }>;
+  notes?: string;
+}
+
+export interface AcceptPurchasePayload {
+  location_id?: number;
+  received_items?: Array<{
+    item_id?: number;
+    received_quantity: number;
+    batch_number?: string;
+    expiry_date?: string;
+  }>;
+}
+
+export interface SupplierRecord {
+  id: number;
+  store_id: number;
+  name: string;
+  contact_person?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  gstin?: string | null;
+  drug_license_number?: string | null;
+  payment_terms_days?: number | null;
+  is_active?: boolean;
+}
+
+/**
+ * List paginated purchase invoices
+ */
+export async function getPurchases(params?: {
+  page?: number;
+  per_page?: number;
+  status?: string;
+  supplier_id?: number;
+  start_date?: string;
+  end_date?: string;
+}): Promise<{ items: PurchaseInvoiceRecord[]; total: number; page: number; per_page: number; pages: number }> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.per_page) query.set("per_page", String(params.per_page));
+  if (params?.status) query.set("status", params.status);
+  if (params?.supplier_id) query.set("supplier_id", String(params.supplier_id));
+  if (params?.start_date) query.set("start_date", params.start_date);
+  if (params?.end_date) query.set("end_date", params.end_date);
+
+  const res = await fetch(`${API_BASE_URL}/api/purchases?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch purchase invoices.");
+  }
+  return json;
+}
+
+/**
+ * Get detailed purchase invoice by ID
+ */
+export async function getPurchase(invoiceId: number): Promise<{ invoice: PurchaseInvoiceRecord }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/purchases/${invoiceId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to fetch purchase invoice ${invoiceId}.`);
+  }
+  return json;
+}
+
+/**
+ * Create a new purchase invoice draft (PRD Rule 8: does NOT mutate inventory)
+ */
+export async function createPurchaseDraft(
+  payload: CreatePurchaseDraftPayload
+): Promise<{ message: string; invoice: PurchaseInvoiceRecord }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/purchases`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to create purchase invoice draft.");
+  }
+  return json;
+}
+
+/**
+ * Accept purchase invoice after human review, booking batches into inventory (PRD Rule 11)
+ */
+export async function acceptPurchaseInvoice(
+  invoiceId: number,
+  payload?: AcceptPurchasePayload
+): Promise<{ message: string; invoice: PurchaseInvoiceRecord }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/purchases/${invoiceId}/accept`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload || {}),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to accept purchase invoice ${invoiceId}.`);
+  }
+  return json;
+}
+
+/**
+ * Cancel a draft purchase invoice
+ */
+export async function cancelPurchaseInvoice(
+  invoiceId: number,
+  reason?: string
+): Promise<{ message: string; invoice: PurchaseInvoiceRecord }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/purchases/${invoiceId}/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to cancel purchase invoice ${invoiceId}.`);
+  }
+  return json;
+}
+
+/**
+ * Fetch suppliers for the store
+ */
+export async function getSuppliers(params?: {
+  is_active?: boolean;
+  search?: string;
+}): Promise<{ count: number; suppliers: SupplierRecord[] }> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.is_active !== undefined) query.set("is_active", String(params.is_active));
+  if (params?.search) query.set("search", params.search);
+
+  const res = await fetch(`${API_BASE_URL}/api/suppliers?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch suppliers.");
+  }
+  return json;
+}
+
+/**
+ * Create a new supplier
+ */
+export async function createSupplier(
+  payload: Partial<SupplierRecord>
+): Promise<{ message: string; supplier: SupplierRecord }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/suppliers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to create supplier.");
+  }
+  return json;
+}
+
+/**
+ * Update supplier profile
+ */
+export async function updateSupplier(
+  supplierId: number,
+  payload: Partial<SupplierRecord>
+): Promise<{ message: string; supplier: SupplierRecord }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/suppliers/${supplierId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to update supplier ${supplierId}.`);
+  }
+  return json;
+}
+
+/**
+ * Deactivate / delete supplier
+ */
+export async function deleteSupplier(
+  supplierId: number
+): Promise<{ message: string }> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/suppliers/${supplierId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to delete supplier ${supplierId}.`);
+  }
+  return json;
+}
+
+/* ==========================================================================
+   Phase 1: Expiry Management Client Contracts & Functions (PRD Rule 15)
+   ========================================================================== */
+
+export interface ExpiryReportItem {
+  batch_id: number;
+  batch_number: string;
+  medicine_id: number;
+  brand_name?: string | null;
+  generic_name?: string | null;
+  location_id?: number | null;
+  location_name?: string | null;
+  expiry_date: string;
+  days_until_expiry: number;
+  status: "expired" | "critical" | "warning" | "good";
+  quantity_available: number;
+  mrp?: number | null;
+}
+
+export interface ExpiryReportResponse {
+  summary: {
+    expired: number;
+    critical: number;
+    warning: number;
+    good: number;
+  };
+  count: number;
+  items: ExpiryReportItem[];
+}
+
+/**
+ * Fetch regulatory expiry audit report grouped into urgency tiers (PRD Rule 15)
+ */
+export async function getExpiryReport(params?: {
+  status?: string;
+  days?: number;
+}): Promise<ExpiryReportResponse> {
+  const token = getAuthToken();
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.days) query.set("days", String(params.days));
+
+  const res = await fetch(`${API_BASE_URL}/api/inventory/expiry?${query.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch expiry report.");
+  }
+  return json;
+}
+
+/* ==========================================================================
    PRD Rule 7 & 22: Centralized Audit Logging Client Contracts & Functions
    ========================================================================== */
 
@@ -2376,5 +3128,412 @@ export async function getExpenseDetail(expId: number): Promise<ExpenseRecord> {
   }
   return json.data;
 }
+
+// -------------------------------------------------------------
+// Shelf & Storage Locations Intelligence (PRD Phase 6 & Rule 22)
+// -------------------------------------------------------------
+
+
+
+export interface PlanogramStoredItem {
+  inventory_id: number;
+  batch_id: number;
+  medicine_id: number;
+  brand_name: string;
+  strength: string | null;
+  dosage_form: string | null;
+  batch_number: string;
+  expiry_date: string;
+  quantity_available: number;
+  days_to_expiry: number;
+  is_expired: boolean;
+}
+
+export interface PlanogramShelf {
+  location_id: number;
+  name: string;
+  description: string | null;
+  location_type: string;
+  climate_zone: "AMBIENT" | "COLD_CHAIN_FRIDGE" | "SECURE_DRAWER" | "COUNTER_DISPENSE";
+  aisle: string;
+  rack_number: string;
+  shelf_level: number;
+  bin_code: string;
+  coordinate_code: string;
+  capacity_units: number;
+  current_occupied_units: number;
+  utilization_pct: number;
+  items_count?: number;
+  items: PlanogramStoredItem[];
+}
+
+export interface StorePlanogramSummary {
+  store_id: number;
+  summary: {
+    total_locations: number;
+    total_capacity_units: number;
+    total_occupied_units: number;
+    store_utilization_pct: number;
+  };
+  shelves: PlanogramShelf[];
+}
+
+export interface DispensePickLocation {
+  location_id: number;
+  location_name: string;
+  location_type: string;
+  coordinate_code: string;
+  climate_zone: string;
+  directional_guide: string;
+  batch_number: string;
+  expiry_date: string;
+  quantity_available: number;
+  is_fefo_priority: boolean;
+  medicine_id: number;
+  brand_name: string;
+  strength: string | null;
+}
+
+export interface StorageComplianceAlert {
+  alert_id?: string;
+  medicine_id?: number;
+  brand_name?: string;
+  location_id?: number;
+  location_name?: string;
+  severity: "CRITICAL_VIOLATION" | "WARNING" | "OPTIMIZATION_TIP";
+  title: string;
+  message: string;
+  remedy_instruction?: string;
+}
+
+export interface StorageComplianceData {
+  alerts: StorageComplianceAlert[];
+  summary: {
+    total_alerts: number;
+    critical_violations: number;
+    warnings: number;
+    optimization_tips: number;
+  };
+}
+
+export interface ShelfCycleCountItemReport {
+  medicine_id: number;
+  brand_name: string;
+  batch_number: string;
+  expected_units: number;
+  scanned_units: number;
+  variance_units: number;
+  variance_state: "MATCHED" | "DEFICIT" | "SURPLUS" | "UNEXPECTED_ON_SHELF" | "MISSING_FROM_SHELF";
+  unit_cost: number;
+  financial_impact: number;
+  is_reconciled: boolean;
+}
+
+export interface ShelfAuditReport {
+  location_id: number;
+  location_name: string;
+  audit_date: string;
+  audited_by_user_id: number;
+  total_items_audited: number;
+  matched_items_count: number;
+  discrepancies_count: number;
+  net_variance_units: number;
+  net_financial_variance: number;
+  is_committed: boolean;
+  notes: string | null;
+  items: ShelfCycleCountItemReport[];
+}
+
+/**
+ * Fetch all storage locations for the active pharmacy store
+ */
+export async function getStorageLocations(
+  isActive: boolean | "all" = true
+): Promise<PhysicalLocation[]> {
+  const token = getAuthToken();
+  const url = `${API_BASE_URL}/api/locations?is_active=${isActive}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch storage locations.");
+  }
+  return json.locations || [];
+}
+
+/**
+ * Fetch details of a single storage location including active inventory
+ */
+export async function getLocationDetails(
+  locationId: number,
+  includeInventory = true
+): Promise<PhysicalLocation> {
+  const token = getAuthToken();
+  const url = `${API_BASE_URL}/api/locations/${locationId}?include_inventory=${includeInventory}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to fetch location #${locationId}.`);
+  }
+  return json.location;
+}
+
+/**
+ * Create a new physical storage location
+ */
+export async function createStorageLocation(payload: {
+  name: string;
+  location_type: string;
+  description?: string;
+}): Promise<PhysicalLocation> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/locations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to create storage location.");
+  }
+  return json.location;
+}
+
+/**
+ * Update an existing storage location
+ */
+export async function updateStorageLocation(
+  locationId: number,
+  payload: {
+    name?: string;
+    location_type?: string;
+    description?: string;
+    is_active?: boolean;
+  }
+): Promise<PhysicalLocation> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/locations/${locationId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to update storage location.");
+  }
+  return json.location;
+}
+
+/**
+ * Deactivate a storage location (checks if active stock is assigned)
+ */
+export async function deleteStorageLocation(locationId: number): Promise<void> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/locations/${locationId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to deactivate storage location.");
+  }
+}
+
+/**
+ * Fetch full 2D physical planogram layout
+ */
+export async function getStorePlanogram(): Promise<StorePlanogramSummary> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/shelf/layout`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch store planogram.");
+  }
+  return json.data;
+}
+
+/**
+ * Fast Dispense Locator: find exact physical coordinates and FEFO guide for a medicine
+ */
+export async function locateMedicineDispense(medicineId: number): Promise<{
+  medicine_id: number;
+  brand_name: string;
+  pick_locations: DispensePickLocation[];
+  total_available_locations: number;
+}> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/shelf/locate/${medicineId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || `Failed to locate medicine #${medicineId}.`);
+  }
+  return json.data;
+}
+
+/**
+ * Storage Climate & Cold-Chain Compliance Audit
+ */
+export async function getStorageCompliance(): Promise<StorageComplianceData> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/shelf/compliance-alerts`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch compliance alerts.");
+  }
+  return json.data;
+}
+
+/**
+ * Conduct Shelf Cycle Count & Variance Reconciliation (PRD Rule 22)
+ */
+export async function conductShelfCycleCount(payload: {
+  location_id: number;
+  scanned_items: Array<{
+    medicine_id: number;
+    batch_number: string;
+    scanned_quantity: number;
+  }>;
+  apply_adjustments?: boolean;
+  notes?: string;
+}): Promise<ShelfAuditReport> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/shelf/audit-count`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to conduct shelf cycle count.");
+  }
+  return json.data;
+}
+
+// -------------------------------------------------------------
+// Store & User Settings (PRD Phase 1 & 6)
+// -------------------------------------------------------------
+
+export interface StoreProfile {
+  id: number;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  gstin: string | null;
+  drug_license_number: string | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserProfile {
+  id: number;
+  store_id: number;
+  email: string;
+  username: string;
+  full_name: string;
+  role: string;
+  phone: string | null;
+  is_active: boolean;
+}
+
+/**
+ * Fetch authenticated pharmacy store profile
+ */
+export async function getStoreProfile(): Promise<StoreProfile> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/auth/store`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch store profile.");
+  }
+  return json.store;
+}
+
+/**
+ * Update authenticated pharmacy store profile and statutory licenses
+ */
+export async function updateStoreProfile(
+  payload: Partial<StoreProfile>
+): Promise<StoreProfile> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/auth/store`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to update store profile.");
+  }
+  return json.store;
+}
+
+/**
+ * Fetch current authenticated staff user profile
+ */
+export async function getCurrentUserProfile(): Promise<UserProfile> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to fetch user profile.");
+  }
+  return json.user;
+}
+
+/**
+ * Update current staff user profile and password
+ */
+export async function updateCurrentUserProfile(payload: {
+  full_name?: string;
+  phone?: string;
+  password?: string;
+}): Promise<UserProfile> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(json.message || "Failed to update user profile.");
+  }
+  return json.user;
+}
+
+
+
+
+
 
 

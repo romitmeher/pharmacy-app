@@ -12,9 +12,9 @@ from flask import Blueprint, request, jsonify, g
 from app.extensions import db
 from app.models.store import Store
 from app.models.user import User, UserRole
-from app.middleware.auth import login_required
+from app.middleware.auth import login_required, role_required
 from app.services.auth_service import authenticate_user, create_access_token
-from app.utils.errors import ValidationError, ConflictError
+from app.utils.errors import ValidationError, ConflictError, NotFoundError
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -22,20 +22,7 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """Authenticate a user and return a JWT access token.
-
-    Request body:
-        {
-            "email": "user@pharmacy.com",
-            "password": "password123"
-        }
-
-    Returns:
-        {
-            "token": "<jwt_token>",
-            "user": { id, email, username, full_name, role, store_id }
-        }
-    """
+    """Authenticate a user and return a JWT access token."""
     data = request.get_json(silent=True)
     if not data:
         raise ValidationError("Request body must be JSON.")
@@ -55,12 +42,77 @@ def login():
 @auth_bp.route("/me", methods=["GET"])
 @login_required
 def get_current_user():
-    """Return the authenticated user's profile.
-
-    Requires: Authorization: Bearer <token>
-    """
+    """Return the authenticated user's profile."""
     return jsonify({
         "user": _serialize_user(g.current_user),
+    }), 200
+
+
+@auth_bp.route("/me", methods=["PUT"])
+@login_required
+def update_current_user():
+    """Update current user profile and credentials."""
+    user = g.current_user
+    data = request.get_json(silent=True) or {}
+
+    if "full_name" in data and data["full_name"].strip():
+        user.full_name = data["full_name"].strip()
+    if "phone" in data:
+        user.phone = data["phone"].strip() or None
+    if "password" in data and data["password"]:
+        if len(data["password"]) < 8:
+            raise ValidationError("Password must be at least 8 characters.")
+        user.set_password(data["password"])
+
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "message": "User profile updated successfully.",
+        "user": _serialize_user(user),
+    }), 200
+
+
+@auth_bp.route("/store", methods=["GET"])
+@login_required
+def get_current_store():
+    """Return the authenticated user's pharmacy store details."""
+    store = Store.query.get(g.current_user.store_id)
+    if not store:
+        raise NotFoundError("Store not found.")
+    return jsonify({
+        "success": True,
+        "store": _serialize_store(store),
+    }), 200
+
+
+@auth_bp.route("/store", methods=["PUT"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def update_current_store():
+    """Update active pharmacy store profile and regulatory credentials."""
+    store = Store.query.get(g.current_user.store_id)
+    if not store:
+        raise NotFoundError("Store not found.")
+
+    data = request.get_json(silent=True) or {}
+    if "name" in data and data["name"].strip():
+        store.name = data["name"].strip()
+    if "address" in data:
+        store.address = data["address"].strip() or None
+    if "phone" in data:
+        store.phone = data["phone"].strip() or None
+    if "email" in data:
+        store.email = data["email"].strip() or None
+    if "gstin" in data:
+        store.gstin = data["gstin"].strip().upper() or None
+    if "drug_license_number" in data:
+        store.drug_license_number = data["drug_license_number"].strip() or None
+
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "message": "Store profile updated successfully.",
+        "store": _serialize_store(store),
     }), 200
 
 
@@ -169,3 +221,20 @@ def _serialize_user(user):
         "phone": user.phone,
         "is_active": user.is_active,
     }
+
+
+def _serialize_store(store):
+    """Serialize a Store object for API responses."""
+    return {
+        "id": store.id,
+        "name": store.name,
+        "address": store.address,
+        "phone": store.phone,
+        "email": store.email,
+        "gstin": store.gstin,
+        "drug_license_number": store.drug_license_number,
+        "is_active": store.is_active,
+        "created_at": store.created_at.isoformat() if store.created_at else None,
+        "updated_at": store.updated_at.isoformat() if store.updated_at else None,
+    }
+
