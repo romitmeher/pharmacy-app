@@ -79,18 +79,30 @@ class MatchResult:
         }
 
 
+import re
+
 def _string_similarity(str1: Optional[str], str2: Optional[str]) -> float:
-    """Compute normalized SequenceMatcher ratio between two strings."""
+    """Compute normalized token-sort SequenceMatcher ratio between two strings."""
     if not str1 or not str2:
         return 0.0
     s1 = str1.strip().lower()
     s2 = str2.strip().lower()
     if s1 == s2:
         return 1.0
-    # Quick containment boost
-    if s1 in s2 or s2 in s1:
-        return 0.90
-    return difflib.SequenceMatcher(None, s1, s2).ratio()
+
+    # Token sort ratio (handles word order differences and punctuation variations)
+    t1 = " ".join(sorted(re.findall(r"\w+", s1)))
+    t2 = " ".join(sorted(re.findall(r"\w+", s2)))
+    if t1 and t2 and t1 == t2:
+        return 0.98
+
+    # Containment check
+    if s1 in s2 or s2 in s1 or (t1 and t1 in t2) or (t2 and t2 in t1):
+        return 0.92
+
+    ratio_raw = difflib.SequenceMatcher(None, s1, s2).ratio()
+    ratio_tok = difflib.SequenceMatcher(None, t1, t2).ratio() if t1 and t2 else 0.0
+    return max(ratio_raw, ratio_tok)
 
 
 class MedicineMatcher:

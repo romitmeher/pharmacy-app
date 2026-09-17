@@ -18,7 +18,10 @@ ultralytics>=8.0
 paddlepaddle>=3.0
 paddleocr>=2.8
 
-# Machine Learning (Phase 5)
+# Machine Learning & AI Vector Database (Phase 4 & 5)
 scikit-learn>=1.4.0
+psycopg2-binary>=2.9.0
+pgvector>=0.5.0
+
 
 

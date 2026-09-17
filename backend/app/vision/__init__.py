@@ -144,8 +144,38 @@ def recognize_medicine_image(
     # Step 4: Entity Extraction
     extracted = default_entity_extractor.extract(ocr_res)
 
-    # Step 5: Database Matching
+    # Step 5: Stage 1 Database Fuzzy Matching
     match_result = default_medicine_matcher.match(extracted, store_id=store_id)
+
+    # Step 6: Stage 2 Visual Embedding Similarity Search & Weighted Fusion
+    from app.vision.visual_indexer import default_visual_indexer
+    visual_matches = default_visual_indexer.search_similar(roi_img, top_k=5)
+
+    if visual_matches and match_result and match_result.top_candidate:
+        top_vis = visual_matches[0]
+        vis_score_pts = top_vis.similarity_score * 100.0
+
+        # Weighted fusion: 65% Stage 1 OCR Matcher + 35% Stage 2 Visual Embedding
+        orig_score = match_result.top_candidate.confidence_score
+        fused_score = min(100.0, round(0.65 * orig_score + 0.35 * vis_score_pts, 1))
+
+        match_result.top_candidate.score_breakdown["stage2_visual_score"] = round(vis_score_pts * 0.35, 1)
+        match_result.top_candidate.confidence_score = fused_score
+
+        if fused_score >= default_medicine_matcher.HIGH_CONFIDENCE_THRESHOLD:
+            match_result.top_candidate.confidence_level = "HIGH"
+        elif fused_score >= default_medicine_matcher.LOW_CONFIDENCE_THRESHOLD:
+            match_result.top_candidate.confidence_level = "MEDIUM"
+        else:
+            match_result.top_candidate.confidence_level = "LOW"
+
+        # Recheck low_confidence status
+        match_result.low_confidence = fused_score < default_medicine_matcher.LOW_CONFIDENCE_THRESHOLD
+        match_result.warning_message = (
+            default_medicine_matcher.PRD_LOW_CONFIDENCE_WARNING
+            if match_result.low_confidence
+            else None
+        )
 
     return VisionRecognitionPipelineResult(
         success=True,

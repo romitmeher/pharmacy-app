@@ -1,5 +1,28 @@
+# Environment & SSL Keys
 backend/ca.pem
 *.pem
-backend/env
 .env
 .env.*
+backend/venv/
+backend/env/
+
+# Large Datasets & Model Binaries
+data/
+*.pt
+*.bin
+*.onnx
+
+# Python & Flask Build Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.log
+
+# Node.js & Next.js Build Output
+node_modules/
+.next/
+out/
+build/
+dist/

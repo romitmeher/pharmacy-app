@@ -62,8 +62,13 @@ class Config:
             }
         }
 
+    # Vector Database (Aiven PostgreSQL with pgvector)
+    PGVECTOR_URL = os.environ.get("PGVECTOR_URL", "")
+    PGVECTOR_SSL_CA = os.environ.get("PGVECTOR_SSL_CA", "VETca.pem")
+
     # CORS
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+
 
 
 class DevelopmentConfig(Config):

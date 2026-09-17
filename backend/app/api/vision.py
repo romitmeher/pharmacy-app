@@ -172,3 +172,116 @@ def verify_recognition():
         "message": "Medicine verified successfully by pharmacist.",
         "data": verified_item,
     }), 200
+
+
+@vision_bp.route("/seed-abdm-dataset", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def seed_abdm_dataset():
+    """
+    Admin endpoint to trigger dataset ingestion from data/ directory
+    (ABDM Drug Registry v3 + Indian Medicine Datasets).
+    """
+    import os
+    from app.vision.dataset_loader import load_dataset_directory_into_db
+
+    current_user = getattr(g, "current_user", None)
+    store_id = current_user.store_id if current_user and getattr(current_user, "store_id", None) else 1
+
+    data_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "data")
+    )
+
+    try:
+        results = load_dataset_directory_into_db(data_dir, store_id=store_id)
+        return jsonify({
+            "status": "success",
+            "message": f"ABDM & Indian Medicine dataset loaded successfully for store #{store_id}.",
+            "data": results,
+        }), 200
+    except Exception as e:
+        logger.error(f"Error seeding dataset: {e}")
+        return jsonify({"status": "error", "message": f"Dataset ingestion failed: {str(e)}"}), 500
+
+
+@vision_bp.route("/handwriting-datasets", methods=["GET"])
+@login_required
+def list_handwriting_datasets():
+    """List available doctor prescription handwriting datasets on local disk."""
+    from app.vision.handwriting_evaluator import default_handwriting_evaluator
+    datasets = default_handwriting_evaluator.discover_datasets()
+    return jsonify({
+        "status": "success",
+        "data": datasets,
+    }), 200
+
+
+@vision_bp.route("/evaluate-handwriting", methods=["POST"])
+@login_required
+def evaluate_handwriting():
+    """
+    Run OCR benchmark evaluation over doctor handwritten prescription dataset.
+    Calculates Character Error Rate (CER), string similarity, and database catalog resolution rate.
+    """
+    data = request.get_json(silent=True) or {}
+    dataset_name = data.get("dataset_name", "RxHandBD_BDHandwritten_Merged")
+    max_samples = data.get("max_samples", 50)
+    split = data.get("split", "train")
+
+    from app.vision.handwriting_evaluator import default_handwriting_evaluator
+    eval_results = default_handwriting_evaluator.evaluate_dataset_samples(
+        dataset_name=dataset_name,
+        max_samples=max_samples,
+        split=split,
+    )
+
+    return jsonify({
+        "status": "success",
+        "data": eval_results,
+    }), 200
+
+
+@vision_bp.route("/index-prescription-images", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def index_prescription_images():
+    """
+    Trigger vector indexing of doctor handwritten prescription training images
+    into Aiven PostgreSQL pgvector cloud store (medicine_image_vector_embeddings).
+    """
+    data = request.get_json(silent=True) or {}
+    max_images = data.get("max_images", 5000)
+    batch_size = data.get("batch_size", 200)
+
+    from app.vision.image_vector_indexer import default_image_vector_indexer
+    result = default_image_vector_indexer.index_all_prescription_images(
+        max_images=max_images,
+        batch_size=batch_size,
+    )
+    return jsonify(result), 200
+
+
+@vision_bp.route("/search-image-vector", methods=["POST"])
+@login_required
+def search_image_vector():
+    """
+    Query input image (upload or base64) against prescription training image visual vectors
+    stored in Aiven PostgreSQL pgvector. Returns top-k visual similarity matches.
+    """
+    image_bytes, err = _extract_image_bytes_from_request()
+    if err or not image_bytes:
+        return jsonify({"status": "error", "message": err or "No image provided"}), 400
+
+    top_k = request.args.get("top_k", 5, type=int)
+
+    from app.vision.image_vector_indexer import default_image_vector_indexer
+    matches = default_image_vector_indexer.search_similar_images(image_bytes, top_k=top_k)
+
+    return jsonify({
+        "status": "success",
+        "top_k": top_k,
+        "matches": matches,
+    }), 200
+
+
+

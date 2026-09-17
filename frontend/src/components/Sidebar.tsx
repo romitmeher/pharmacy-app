@@ -93,13 +93,19 @@ function getInitials(name: string): string {
     .join("");
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
+    onClose?.();
     router.replace("/login");
   };
 
@@ -108,7 +114,7 @@ export default function Sidebar() {
   const initials = getInitials(displayName);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "mobile-open" : ""}`}>
       {/* Brand Header */}
       <div
         style={{
@@ -188,6 +194,7 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => onClose?.()}
                     className={`sidebar-link ${isActive ? "active" : ""}`}
                   >
                     <span className="sidebar-icon">

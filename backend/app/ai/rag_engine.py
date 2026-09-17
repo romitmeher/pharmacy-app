@@ -172,8 +172,14 @@ class PharmacyRAGEngine:
                 .filter(Medicine.store_id == store_id, MedicineAlias.alias_name.ilike(f"%{keyword}%"))
                 .first()
             )
-            if alias_match and alias_match.medicine:
-                medicines = [alias_match.medicine]
+        if not medicines:
+            # Stage 2 Vector Database Semantic Search Fallback
+            from app.ai.vector_store import default_vector_store
+            vec_results = default_vector_store.search_semantic_knowledge(keyword, store_id=store_id, top_k=3)
+            if vec_results and vec_results[0].similarity_score > 0.15:
+                v_med = db.session.get(Medicine, vec_results[0].medicine_id)
+                if v_med:
+                    medicines = [v_med]
 
         if not medicines:
             return CopilotResponse(
@@ -429,6 +435,38 @@ class PharmacyRAGEngine:
         )
 
     def _handle_general_or_unknown(self, query: str, store_id: int) -> CopilotResponse:
+        from app.ai.vector_store import default_vector_store
+        vec_results = default_vector_store.search_semantic_knowledge(query, store_id=store_id, top_k=3)
+
+        facts: List[GroundedFact] = []
+        if vec_results and vec_results[0].similarity_score > 0.15:
+            matched_names = []
+            for vr in vec_results:
+                if vr.similarity_score > 0.15:
+                    matched_names.append(f"{vr.brand_name} ({vr.generic_name})")
+                    facts.append(
+                        GroundedFact(
+                            category="VECTOR_SEMANTIC_MATCH",
+                            record_id=vr.medicine_id,
+                            summary=f"Vector Search Match: {vr.brand_name} (Similarity: {vr.similarity_score:.2f})",
+                            details=vr.to_dict(),
+                        )
+                    )
+
+            if matched_names:
+                answer = (
+                    f"Vector Database Search for '{query}': Found {len(matched_names)} semantically relevant catalog medicine(s): "
+                    + ", ".join(matched_names)
+                    + "."
+                )
+                return CopilotResponse(
+                    intent=CopilotIntent.GENERAL_PHARMA,
+                    answer=answer,
+                    grounded_facts=facts,
+                    is_data_available=True,
+                    suggested_actions=[f"Check stock for {vec_results[0].brand_name}", "View catalog"],
+                )
+
         return CopilotResponse(
             intent=CopilotIntent.GENERAL_PHARMA,
             answer=(
