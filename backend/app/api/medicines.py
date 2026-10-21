@@ -15,6 +15,45 @@ from app.utils.errors import ValidationError
 medicines_bp = Blueprint("medicines", __name__, url_prefix="/api/medicines")
 
 
+@medicines_bp.route("/barcode-image", methods=["POST"])
+@login_required
+def decode_barcode_image():
+    import base64
+    import cv2
+    from app.vision import decode_image_bytes
+    from app.services.barcode_service import decode_barcode_pixels
+    data = request.get_json(silent=True) or {}
+    encoded = data.get("image_base64", "")
+    if not isinstance(encoded, str) or len(encoded) > 12 * 1024 * 1024:
+        raise ValidationError("Use a barcode photo smaller than 8 MB.")
+    try:
+        image = decode_image_bytes(base64.b64decode(encoded.split(",")[-1], validate=True))
+    except Exception:
+        raise ValidationError("Invalid barcode image.")
+    height, width = image.shape[:2]
+    if max(height, width) > 1800:
+        image = cv2.resize(image, None, fx=1800/max(height, width), fy=1800/max(height, width))
+    return jsonify({"barcode": decode_barcode_pixels(image)}), 200
+
+
+@medicines_bp.route("/barcode", methods=["GET"])
+@login_required
+def barcode_lookup():
+    from app.services.barcode_service import lookup
+    med = lookup(g.current_store_id, request.args.get("code", ""))
+    return jsonify({"medicine": medicine_service.serialize_medicine(med)}), 200
+
+
+@medicines_bp.route("/<int:medicine_id>/barcodes", methods=["POST", "DELETE"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER, UserRole.PHARMACIST)
+def link_barcode(medicine_id):
+    from app.services.barcode_service import link
+    data = request.get_json(silent=True) or {}
+    med = link(g.current_store_id, medicine_id, data.get("barcode"), request.method == "DELETE")
+    return jsonify({"medicine": medicine_service.serialize_medicine(med)}), 200
+
+
 @medicines_bp.route("", methods=["POST"])
 @login_required
 @role_required(UserRole.OWNER, UserRole.MANAGER, UserRole.PHARMACIST)

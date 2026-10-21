@@ -1,19 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useTransition, useMemo, useCallback } from "react";
+import '../operations.css';
+import { Button, Field, StatCard, Skeleton, EmptyState } from '@/components/ui/primitives';
+import dynamic from 'next/dynamic';
+const Drawer = dynamic(() => import('@/components/ui/Drawer').then(module => module.Drawer), { ssr: false });
+import { DataTable } from '@/components/ui/DataTable';
+import { DensityToggle } from '@/components/ui/DensityToggle';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
-  Search,
   X,
   SlidersHorizontal,
   ArrowRightLeft,
   Package,
-  Bookmark,
   CheckCircle2,
   AlertTriangle,
   OctagonAlert,
   Clock,
-  MapPin,
   PlusCircle,
 } from "lucide-react";
 
@@ -44,6 +47,12 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [locationFilter, setLocationFilter] = useState<string>("");
   const [stockFilter, setStockFilter] = useState<string>("all");
+  const [expiryReference, setExpiryReference] = useState(() => Date.now());
+  const [expiryFilter, setExpiryFilter] = useState("all");
+  const [detailBatch, setDetailBatch] = useState<BatchItem | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [catalogQuery, setCatalogQuery] = useState('');
+  useEffect(() => { const timer = window.setTimeout(() => setCatalogQuery(searchQuery), 150); return () => window.clearTimeout(timer); }, [searchQuery]);
 
   // Modals state
   const [showInwardModal, setShowInwardModal] = useState<boolean>(false);
@@ -75,6 +84,7 @@ export default function InventoryPage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const loadData = async () => {
+    setExpiryReference(Date.now());
     setLoading(true);
     setError(null);
     try {
@@ -99,8 +109,8 @@ export default function InventoryPage() {
   }, []);
 
   // Filtered Batches
-  const filteredBatches = batches.filter((b) => {
-    const q = searchQuery.toLowerCase().trim();
+  const filteredBatches = useMemo(() => batches.filter((b) => {
+    const q = catalogQuery.toLowerCase().trim();
     const brandName = b.medicine?.brand_name?.toLowerCase() || "";
     const genericName = b.medicine?.generic_name?.toLowerCase() || "";
     const batchNo = b.batch_number.toLowerCase();
@@ -112,14 +122,18 @@ export default function InventoryPage() {
         ? true
         : stockFilter === "in_stock"
         ? b.total_available > 0
+        : stockFilter === 'low_stock'
+        ? b.total_available > 0 && b.total_available <= 10
         : b.total_available === 0;
 
     const matchesLocation =
       !locationFilter ||
       (b.inventory || []).some((inv) => String(inv.location_id) === locationFilter);
 
-    return matchesSearch && matchesStock && matchesLocation;
-  });
+    const expiryDays = Math.ceil((new Date(b.expiry_date).getTime() - expiryReference) / 86400000);
+    const matchesExpiry = expiryFilter === 'all' || (expiryFilter === 'expired' ? expiryDays < 0 : expiryDays >= 0 && expiryDays <= Number(expiryFilter));
+    return matchesSearch && matchesStock && matchesLocation && matchesExpiry;
+  }), [batches, catalogQuery, stockFilter, locationFilter, expiryFilter, expiryReference]);
 
   // Metrics
   const totalAvailableUnits = batches.reduce((sum, b) => sum + (b.total_available || 0), 0);
@@ -182,7 +196,7 @@ export default function InventoryPage() {
   };
 
   // Handle Stock Adjustment (Audit Logged)
-  const handleOpenAdjust = (batch: BatchItem) => {
+  const handleOpenAdjust = useCallback((batch: BatchItem) => {
     const inv = (batch.inventory || [])[0];
     if (!inv) return;
     setActionError(null);
@@ -194,7 +208,7 @@ export default function InventoryPage() {
     });
     setAdjustQuantity(inv.quantity_available);
     setAdjustReason("");
-  };
+  }, []);
 
   const handleSubmitAdjust = (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,13 +239,13 @@ export default function InventoryPage() {
   };
 
   // Handle Inter-Location Transfer
-  const handleOpenTransfer = (batch: BatchItem) => {
+  const handleOpenTransfer = useCallback((batch: BatchItem) => {
     setActionError(null);
     setActionSuccess(null);
     setTransferBatch(batch);
     setTransferQuantity(1);
     setTransferTargetLocationId(locations[0]?.id || 0);
-  };
+  }, [locations]);
 
   const handleSubmitTransfer = (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,8 +282,8 @@ export default function InventoryPage() {
   };
 
   // Helper for expiry pill status
-  const getExpiryStatusBadge = (expiryStr: string) => {
-    const today = new Date();
+  const getExpiryStatusBadge = useCallback((expiryStr: string) => {
+    const today = new Date(expiryReference);
     const expiry = new Date(expiryStr);
     const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -301,397 +315,32 @@ export default function InventoryPage() {
         <span>{diffDays}d (Good)</span>
       </span>
     );
-  };
+  }, [expiryReference]);
 
+  const columns = useMemo<ColumnDef<BatchItem, unknown>[]>(() => [
+    { id: 'medicine', accessorFn: batch => batch.medicine?.brand_name || '', header: 'Medicine & Formulation', cell: ({ row }) => <div className="ops-cell"><button className="ops-text-button" onClick={() => setDetailBatch(row.original)}>{row.original.medicine?.brand_name || `Medicine #${row.original.medicine_id}`}</button><span>{row.original.medicine?.generic_name || '—'} {row.original.medicine?.strength ? `• ${row.original.medicine.strength}` : ''}</span></div> },
+    { accessorKey: 'batch_number', header: 'Batch Number', cell: ({ row }) => <span className="ops-number">{row.original.batch_number}</span> },
+    { accessorKey: 'expiry_date', header: 'Expiry Date & Status', cell: ({ row }) => <div className="ops-cell"><span className="ops-number">{row.original.expiry_date}</span>{getExpiryStatusBadge(row.original.expiry_date)}</div> },
+    { id: 'shelf', accessorFn: batch => batch.inventory?.[0]?.location_name || 'Unassigned Shelf', header: 'Storage Shelf', cell: ({ getValue }) => String(getValue()) },
+    { accessorKey: 'total_available', header: 'Available Units', cell: ({ row }) => <div className="ops-cell"><strong className="ops-number">{row.original.total_available} units</strong>{row.original.total_reserved > 0 && <span className="ops-warning">({row.original.total_reserved} reserved in cart)</span>}</div> },
+    { accessorKey: 'mrp', header: 'MRP / Purchase Cost', cell: ({ row }) => <div className="ops-cell"><span className="ops-number">MRP: ₹{Number(row.original.mrp ?? 0).toFixed(2)}</span>{row.original.purchase_price != null && <span className="ops-number">Cost: ₹{Number(row.original.purchase_price).toFixed(2)}</span>}</div> },
+    { id: 'actions', header: 'Inventory Operations', enableSorting: false, cell: ({ row }) => <div className="ops-actions"><Button variant="secondary" onClick={() => handleOpenTransfer(row.original)} disabled={row.original.total_available <= 0} title="Move units between shelves"><ArrowRightLeft size={14} />Transfer</Button><Button variant="secondary" onClick={() => handleOpenAdjust(row.original)} title="Adjust quantity with audit reason"><SlidersHorizontal size={14} />Adjust</Button></div> },
+  ], [getExpiryStatusBadge, handleOpenAdjust, handleOpenTransfer]);
+  const filterControls = <><div className="ui-field"><label htmlFor={filtersOpen ? 'sheet-stock-filter' : 'stock-filter'}>Stock status</label><select id={filtersOpen ? 'sheet-stock-filter' : 'stock-filter'} className="ui-select" value={stockFilter} onChange={e => setStockFilter(e.target.value)}><option value="all">All Batches</option><option value="in_stock">In Stock Only</option><option value="low_stock">Low Stock (≤ 10)</option><option value="depleted">Depleted / Zero</option></select></div><div className="ui-field"><label htmlFor={filtersOpen ? 'sheet-location-filter' : 'location-filter'}>Storage shelf</label><select id={filtersOpen ? 'sheet-location-filter' : 'location-filter'} className="ui-select" value={locationFilter} onChange={e => setLocationFilter(e.target.value)}><option value="">All Storage Shelves</option>{locations.map(location => <option key={location.id} value={String(location.id)}>{location.name}</option>)}</select></div><div className="ui-field"><label htmlFor={filtersOpen ? 'sheet-expiry-filter' : 'expiry-filter'}>Expiry</label><select id={filtersOpen ? 'sheet-expiry-filter' : 'expiry-filter'} className="ui-select" value={expiryFilter} onChange={e => setExpiryFilter(e.target.value)}><option value="all">All Expiry Dates</option><option value="expired">Expired</option><option value="30">Expiring in 30 Days</option><option value="90">Expiring in 90 Days</option></select></div></>;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {/* Header — Aligned 64px height */}
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Inventory & Batches</h1>
-          <p className="page-subtitle">
-            Physical Lot Tracking • FEFO Allocation • Storage Verification • Store #1
-          </p>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <ThemeToggle />
-          <button onClick={handleOpenInward} className="btn btn-primary">
-            <PlusCircle size={16} />
-            <span>Inward Physical Batch</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-        {/* Cardinal Hierarchy Notice */}
-        <div
-          style={{
-            padding: "0.75rem 1.25rem",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border-default)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.4,
-          }}
-        >
-          <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
-            <Package size={18} />
-          </span>
-          <div>
-            <strong style={{ color: "var(--text-primary)" }}>
-              Cardinal Principle (MEDICINE != BATCH != INVENTORY):
-            </strong>{" "}
-            <span style={{ color: "var(--text-secondary)" }}>
-              Batches hold manufacturer dates, cost, and regulatory expiry. Inventory represents the physical units
-              occupying specific pharmacy shelves, racks, and drawers.
-            </span>
-          </div>
-        </div>
-
-        {/* Metrics Overview Row */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "1rem",
-          }}
-        >
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
-                Total Physical Units
-              </span>
-              <span className="status-badge info">
-                <span className="badge-icon"><Package size={12} /></span>
-                <span>Stock</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {totalAvailableUnits}
-            </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-              Available units across all storage locations
-            </div>
-          </div>
-
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
-                Active Batches
-              </span>
-              <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle2 size={12} /></span>
-                <span>Monitored</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {activeBatchesCount}
-            </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-              Batches with active sellable stock
-            </div>
-          </div>
-
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
-                Stocked Formulations
-              </span>
-              <span className="status-badge info">
-                <span className="badge-icon"><Bookmark size={12} /></span>
-                <span>Molecules</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {distinctMedicinesStocked}
-            </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-              Distinct medicine identities in stock
-            </div>
-          </div>
-
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
-                Physical Locations
-              </span>
-              <span className="status-badge info">
-                <span className="badge-icon"><MapPin size={12} /></span>
-                <span>Racks</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
-              {locations.length}
-            </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-              Configured store storage zones
-            </div>
-          </div>
-        </div>
-
-        {/* Search, Filter Bar */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", flex: 1, minWidth: "280px" }}>
-            {/* Search */}
-            <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
-              <Search
-                size={16}
-                style={{
-                  position: "absolute",
-                  left: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-muted)",
-                }}
-              />
-              <input
-                type="text"
-                placeholder="Search batch number, brand, or generic..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="form-input"
-                style={{ paddingLeft: "2.25rem" }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            {/* Stock status filter */}
-            <select
-              value={stockFilter}
-              onChange={(e) => setStockFilter(e.target.value)}
-              className="form-select"
-              style={{ width: "160px" }}
-            >
-              <option value="all">All Batches</option>
-              <option value="in_stock">In Stock Only</option>
-              <option value="depleted">Depleted / Zero</option>
-            </select>
-
-            {/* Location filter */}
-            <select
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              className="form-select"
-              style={{ width: "180px" }}
-            >
-              <option value="">All Storage Shelves</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={String(loc.id)}>
-                  {loc.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-            Showing <strong>{filteredBatches.length}</strong> of <strong>{batches.length}</strong> batches
-          </div>
-        </div>
-
-        {/* Batches Data Table */}
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Medicine & Formulation</th>
-                <th>Batch Number</th>
-                <th>Expiry Date & Status</th>
-                <th>Storage Shelf</th>
-                <th>Available Units</th>
-                <th>MRP / Purchase Cost</th>
-                <th style={{ textAlign: "right" }}>Inventory Operations</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-                      Loading physical inventory batches...
-                    </div>
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--status-low-text)", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-                      {error}
-                    </div>
-                    <button onClick={loadData} className="btn btn-secondary">
-                      Retry
-                    </button>
-                  </td>
-                </tr>
-              ) : filteredBatches.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-                      <span style={{ color: "var(--text-muted)" }}>
-                        <Package size={32} />
-                      </span>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                        No inventory batches found
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", maxWidth: "340px" }}>
-                        {searchQuery
-                          ? `No batches matching "${searchQuery}".`
-                          : "Inward physical batches to start tracking stock across shelves."}
-                      </div>
-                      <button onClick={handleOpenInward} className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
-                        <PlusCircle size={16} />
-                        <span>Inward First Batch</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredBatches.map((batch) => {
-                  const locationName =
-                    (batch.inventory || [])[0]?.location_name || "Unassigned Shelf";
-
-                  return (
-                    <tr key={batch.id}>
-                      {/* Medicine details */}
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.875rem" }}>
-                            {batch.medicine?.brand_name || `Medicine #${batch.medicine_id}`}
-                          </span>
-                          <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
-                            {batch.medicine?.generic_name || "—"} {batch.medicine?.strength ? `• ${batch.medicine.strength}` : ""}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Batch Number */}
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                          <span style={{ color: "var(--brand-primary)" }}>
-                            <Package size={14} />
-                          </span>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                            {batch.batch_number}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Expiry Date & Status */}
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                            {batch.expiry_date}
-                          </span>
-                          <div>{getExpiryStatusBadge(batch.expiry_date)}</div>
-                        </div>
-                      </td>
-
-                      {/* Storage Shelf */}
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                          <span style={{ color: "var(--text-muted)" }}>
-                            <MapPin size={14} />
-                          </span>
-                          <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
-                            {locationName}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Available Units */}
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>
-                          <span
-                            style={{
-                              fontSize: "0.9375rem",
-                              fontWeight: 700,
-                              color: batch.total_available > 0 ? "var(--text-primary)" : "var(--status-low-text)",
-                            }}
-                          >
-                            {batch.total_available} units
-                          </span>
-                          {batch.total_reserved > 0 && (
-                            <span style={{ fontSize: "0.6875rem", color: "var(--status-med-text)" }}>
-                              ({batch.total_reserved} reserved in cart)
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Pricing */}
-                      <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                            MRP: ₹{batch.mrp !== null && batch.mrp !== undefined ? Number(batch.mrp).toFixed(2) : "0.00"}
-                          </span>
-                          {batch.purchase_price !== null && batch.purchase_price !== undefined && (
-                            <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-                              Cost: ₹{Number(batch.purchase_price).toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Operations */}
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: "0.5rem", alignItems: "center" }}>
-                          <button
-                            onClick={() => handleOpenTransfer(batch)}
-                            className="btn btn-secondary"
-                            style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
-                            title="Move units between shelves"
-                            disabled={batch.total_available <= 0}
-                          >
-                            <ArrowRightLeft size={13} />
-                            <span>Transfer</span>
-                          </button>
-                          <button
-                            onClick={() => handleOpenAdjust(batch)}
-                            className="btn btn-secondary"
-                            style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
-                            title="Adjust quantity with audit reason"
-                          >
-                            <SlidersHorizontal size={13} />
-                            <span>Adjust</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+    <div className="ops-page inventory-page">
+      <header className="page-header ops-header"><div><p className="ops-eyebrow">CATALOG & STOCK</p><h1 className="page-title">Inventory & Batches</h1><p className="page-subtitle">Physical Lot Tracking • FEFO Allocation • Storage Verification • Store #1</p></div><div className="ops-actions"><ThemeToggle /><Button onClick={handleOpenInward}><PlusCircle size={16} />Inward Physical Batch</Button></div></header>
+      <div className="page-body ops-body">
+        <div className="ops-stats"><StatCard label="Total Physical Units" value={loading ? '…' : totalAvailableUnits} detail="Available units across all storage locations" /><StatCard label="Active Batches" value={loading ? '…' : activeBatchesCount} detail="Batches with active sellable stock" /><StatCard label="Stocked Formulations" value={loading ? '…' : distinctMedicinesStocked} detail="Distinct medicine identities in stock" /><StatCard label="Physical Locations" value={loading ? '…' : locations.length} detail="Configured store storage zones" /></div>
+        <section className="ui-card ops-inventory-section" aria-label="Batch inventory">
+          <div className="ops-toolbar"><div className="ops-search"><Field label="Search stock" type="search" placeholder="Batch number, brand or generic…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div><div className="ops-desktop-filters">{!filtersOpen && filterControls}</div><div className="ops-mobile-filter-button"><Button variant="secondary" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={16} />Filters</Button></div><DensityToggle /></div>
+          <div className="ops-section-heading"><h2>Physical batches</h2><span role="status">Showing {filteredBatches.length} of {batches.length} batches</span></div>
+          {loading ? <Skeleton label="Loading physical inventory batches" rows={5} /> : error ? <div role="alert"><EmptyState title="Inventory could not load" description={error} action={<Button variant="secondary" onClick={loadData}>Retry</Button>} /></div> : filteredBatches.length === 0 ? <EmptyState title="No inventory batches found" description={searchQuery ? `No batches matching "${searchQuery}".` : 'Inward physical batches to start tracking stock across shelves.'} action={<Button onClick={handleOpenInward}>Inward First Batch</Button>} /> : <DataTable label="Physical batches" data={filteredBatches} columns={columns} getRowId={batch => String(batch.id)} />}
+          <p className="ui-hint ops-footnote">Batches hold manufacturer dates, cost, and regulatory expiry. Inventory represents the physical units occupying specific pharmacy shelves, racks, and drawers.</p>
+        </section>
       </div>
+      {filtersOpen && <Drawer open={filtersOpen} onOpenChange={setFiltersOpen} title="Inventory filters" description="Filter the loaded batches by stock, expiry and storage shelf."><div className="ops-form-stack">{filtersOpen && filterControls}</div></Drawer>}
+      {detailBatch && <Drawer open={!!detailBatch} onOpenChange={open => { if (!open) setDetailBatch(null); }} title={detailBatch?.medicine?.brand_name || 'Batch detail'} description="Manufacturer batch details and current physical storage.">{detailBatch && <div className="ops-form-stack"><dl className="ops-detail-list"><div><dt>Batch Number</dt><dd className="ops-number">{detailBatch.batch_number}</dd></div><div><dt>Generic name</dt><dd>{detailBatch.medicine?.generic_name || '—'} {detailBatch.medicine?.strength || ''}</dd></div><div><dt>Expiry Date</dt><dd>{detailBatch.expiry_date} {getExpiryStatusBadge(detailBatch.expiry_date)}</dd></div><div><dt>Available Units</dt><dd className="ops-number">{detailBatch.total_available}</dd></div><div><dt>Reserved Units</dt><dd className="ops-number">{detailBatch.total_reserved}</dd></div><div><dt>MRP</dt><dd className="ops-number">₹{Number(detailBatch.mrp ?? 0).toFixed(2)}</dd></div>{detailBatch.purchase_price != null && <div><dt>Purchase Cost</dt><dd className="ops-number">₹{Number(detailBatch.purchase_price).toFixed(2)}</dd></div>}</dl><h3>Storage shelves</h3>{detailBatch.inventory?.length ? detailBatch.inventory.map(inv => <div className="ops-storage-row" key={inv.id}><span>{inv.location_name || 'Unassigned Shelf'}</span><strong className="ops-number">{inv.quantity_available} units</strong></div>) : <p>No physical storage assigned.</p>}<div className="ops-actions"><Button variant="secondary" onClick={() => { handleOpenTransfer(detailBatch); setDetailBatch(null); }} disabled={detailBatch.total_available <= 0}>Transfer</Button><Button variant="secondary" onClick={() => { handleOpenAdjust(detailBatch); setDetailBatch(null); }}>Adjust</Button></div></div>}</Drawer>}
 
       {/* =====================================================================
           Modal: Inward Physical Batch
@@ -706,8 +355,8 @@ export default function InventoryPage() {
                     width: "28px",
                     height: "28px",
                     borderRadius: "var(--radius-sm)",
-                    backgroundColor: "#252525",
-                    border: "1px solid #393939",
+                    backgroundColor: "var(--bg-surface-elevated)",
+                    border: "1px solid var(--border-default)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -900,8 +549,8 @@ export default function InventoryPage() {
                     width: "28px",
                     height: "28px",
                     borderRadius: "var(--radius-sm)",
-                    backgroundColor: "#252525",
-                    border: "1px solid #393939",
+                    backgroundColor: "var(--bg-surface-elevated)",
+                    border: "1px solid var(--border-default)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -982,6 +631,7 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="form-group">
+                  <p className="ops-adjust-notice">Recording this adjustment replaces the physical count for batch {adjustItem.batch.batch_number} from {adjustItem.currentQty} to {adjustQuantity} units. The reason will be saved in the audit trail.</p>
                   <label className="form-label">New Physical Unit Count *</label>
                   <input
                     type="number"
@@ -1035,8 +685,8 @@ export default function InventoryPage() {
                     width: "28px",
                     height: "28px",
                     borderRadius: "var(--radius-sm)",
-                    backgroundColor: "#252525",
-                    border: "1px solid #393939",
+                    backgroundColor: "var(--bg-surface-elevated)",
+                    border: "1px solid var(--border-default)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

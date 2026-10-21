@@ -1,4 +1,5 @@
 "use client";
+import "./presentation.css";
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
@@ -25,6 +26,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 
+import { EffectsSetting } from "@/components/ui/EffectsSetting";
+import { DensityToggle } from "@/components/ui/DensityToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 import { clearCachedPack } from "@/lib/offlineQueue";
@@ -237,13 +240,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="settings-1">
       {/* Header — 64px height seam matching sidebar */}
       <header className="page-header">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="settings-2">
             <h1 className="page-title">Store & System Settings</h1>
-            <span className="status-badge high" style={{ fontSize: "0.6875rem", padding: "0.1rem 0.45rem" }}>
+            <span  className="status-badge high settings-3">
               Store #1 Active
             </span>
           </div>
@@ -252,14 +255,14 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="settings-4">
           <ThemeToggle />
           <button
             onClick={loadData}
             disabled={refreshing}
-            className="btn btn-secondary"
-            style={{ padding: "0 0.625rem" }}
-            title="Refresh settings"
+            
+            className="btn btn-secondary settings-5"
+            title="Refresh settings" aria-label="Refresh"
           >
             <RefreshCw size={14} style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} />
           </button>
@@ -267,7 +270,7 @@ export default function SettingsPage() {
       </header>
 
       {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div  className="page-body settings-6">
         {/* Status Toast */}
         {statusMessage && (
           <div
@@ -285,14 +288,15 @@ export default function SettingsPage() {
             }}
           >
             <span>{statusMessage.text}</span>
-            <button onClick={() => setStatusMessage(null)} className="btn-icon" style={{ width: "24px", height: "24px" }}>
+            <button onClick={() => setStatusMessage(null)}  className="btn-icon settings-7" aria-label="Close dialog">
               <X size={14} />
             </button>
           </div>
         )}
 
+        <section className="card" aria-label="Display preferences"><h2 className="card-title">Display preferences</h2><div className="display-preferences"><DensityToggle /><EffectsSetting /></div></section>
         {/* Tab Navigation */}
-        <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "0.75rem" }}>
+        <div className="settings-8">
           {[
             { id: "store", label: "Pharmacy Profile & Licenses", icon: Building2 },
             { id: "user", label: "User Account & Pharmacist", icon: User },
@@ -317,81 +321,81 @@ export default function SettingsPage() {
 
         {/* Loading placeholder */}
         {loading ? (
-          <div style={{ padding: "4rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+          <div className="settings-10">
             Loading store settings and configurations...
           </div>
         ) : (
           <>
             {/* Tab 1: Pharmacy Store & Statutory Compliance */}
             {activeTab === "store" && (
-              <form onSubmit={handleSaveStore} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              <form onSubmit={handleSaveStore} className="settings-11">
                 {/* Store Profile Card */}
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                <div  className="card settings-12">
                   <div>
-                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div className="settings-13">
                       Physical Pharmacy Identification
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="settings-14">
                       Appears on customer POS tax invoices, purchase orders, and statutory dispatch notes
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+                  <div className="settings-15">
                     <div className="form-group">
-                      <label className="form-label">Pharmacy Business Name *</label>
+                      <label className="form-label" htmlFor="settings-field-1">Pharmacy Business Name *</label>
                       <input
                         type="text"
                         required
                         className="form-input"
                         placeholder="e.g. SmartPharm Central Pharmacy"
                         value={storeName}
-                        onChange={(e) => setStoreName(e.target.value)}
+                        onChange={(e) => setStoreName(e.target.value)} id="settings-field-1"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Official Store Contact Phone</label>
+                      <label className="form-label" htmlFor="settings-field-2">Official Store Contact Phone</label>
                       <input
                         type="text"
                         className="form-input"
                         placeholder="e.g. 080-23456789 or 9876543210"
                         value={storePhone}
-                        onChange={(e) => setStorePhone(e.target.value)}
+                        onChange={(e) => setStorePhone(e.target.value)} id="settings-field-2"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Official Billing Email</label>
+                      <label className="form-label" htmlFor="settings-field-3">Official Billing Email</label>
                       <input
                         type="email"
                         className="form-input"
                         placeholder="e.g. billing@smartpharm.in"
                         value={storeEmail}
-                        onChange={(e) => setStoreEmail(e.target.value)}
+                        onChange={(e) => setStoreEmail(e.target.value)} id="settings-field-3"
                       />
                     </div>
 
-                    <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                      <label className="form-label">Registered Physical Address</label>
+                    <div  className="form-group settings-16">
+                      <label className="form-label" htmlFor="settings-field-4">Registered Physical Address</label>
                       <textarea
                         rows={2}
                         className="form-textarea"
                         placeholder="e.g. Plot 42, Health City, Bengaluru, Karnataka 560029"
                         value={storeAddress}
-                        onChange={(e) => setStoreAddress(e.target.value)}
+                        onChange={(e) => setStoreAddress(e.target.value)} id="settings-field-4"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Statutory Regulatory Licenses Card */}
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div  className="card settings-17">
+                  <div className="settings-18">
                     <div>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                      <div className="settings-19">
                         Statutory Indian Pharmacy Licenses & GST
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                      <div className="settings-20">
                         Mandated by Drugs & Cosmetics Act 1940 and Central Board of Indirect Taxes (CBIC)
                       </div>
                     </div>
@@ -401,9 +405,9 @@ export default function SettingsPage() {
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+                  <div className="settings-21">
                     <div className="form-group">
-                      <label className="form-label">
+                      <label className="form-label" htmlFor="settings-field-5">
                         Retail Drug License Numbers (Form 20B & 21B)
                       </label>
                       <input
@@ -411,27 +415,27 @@ export default function SettingsPage() {
                         className="form-input"
                         placeholder="e.g. KA-BLR-20B-129482 / 21B-129483"
                         value={storeDrugLicense}
-                        onChange={(e) => setStoreDrugLicense(e.target.value)}
+                        onChange={(e) => setStoreDrugLicense(e.target.value)} id="settings-field-5"
                       />
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                      <span className="settings-22">
                         Required to legally sell Schedule C, C1, and H medications in India.
                       </span>
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">
+                      <label className="form-label" htmlFor="settings-field-6">
                         15-Character Indian GSTIN
                       </label>
                       <input
                         type="text"
                         maxLength={15}
-                        className="form-input"
+                        
                         placeholder="e.g. 29AABCS1429B1Z8"
                         value={storeGstin}
                         onChange={(e) => setStoreGstin(e.target.value.toUpperCase())}
-                        style={{ fontFamily: "monospace", letterSpacing: "0.05em" }}
+                        className="form-input settings-23" id="settings-field-6"
                       />
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                      <span className="settings-24">
                         2 state digits + 10 PAN chars + 1 entity + Z + 1 checksum char.
                       </span>
                     </div>
@@ -439,8 +443,8 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Save button */}
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button type="submit" disabled={storeSaving} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div className="settings-25">
+                  <button type="submit" disabled={storeSaving}  className="btn btn-primary settings-26">
                     <Save size={14} />
                     <span>{storeSaving ? "Saving..." : "Save Store Settings"}</span>
                   </button>
@@ -450,103 +454,103 @@ export default function SettingsPage() {
 
             {/* Tab 2: User Account & Pharmacist Credentials */}
             {activeTab === "user" && (
-              <form onSubmit={handleSaveUser} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <form onSubmit={handleSaveUser} className="settings-27">
+                <div  className="card settings-28">
                   <div>
-                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div className="settings-29">
                       Registered Pharmacist Profile
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="settings-30">
                       Pharmacist credentials linked to clinical dispensing sign-offs and regulatory audit trails
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
+                  <div className="settings-31">
                     <div className="form-group">
-                      <label className="form-label">Registered Pharmacist Full Name *</label>
+                      <label className="form-label" htmlFor="settings-field-7">Registered Pharmacist Full Name *</label>
                       <input
                         type="text"
                         required
                         className="form-input"
                         value={userFullName}
-                        onChange={(e) => setUserFullName(e.target.value)}
+                        onChange={(e) => setUserFullName(e.target.value)} id="settings-field-7"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Login Username</label>
+                      <label className="form-label" htmlFor="settings-field-8">Login Username</label>
                       <input
                         type="text"
                         disabled
-                        className="form-input"
+                        
                         value={userProfile?.username || ""}
-                        style={{ opacity: 0.6, cursor: "not-allowed" }}
+                        className="form-input settings-32" id="settings-field-8"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Staff Role & Governance Level</label>
+                      <label className="form-label" htmlFor="settings-field-9">Staff Role & Governance Level</label>
                       <input
                         type="text"
                         disabled
-                        className="form-input"
+                        
                         value={(userProfile?.role || "owner").toUpperCase()}
-                        style={{ opacity: 0.6, cursor: "not-allowed", textTransform: "uppercase", fontWeight: 700 }}
+                        className="form-input settings-33" id="settings-field-9"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Contact Phone</label>
+                      <label className="form-label" htmlFor="settings-field-10">Contact Phone</label>
                       <input
                         type="text"
                         className="form-input"
                         placeholder="e.g. 9876543210"
                         value={userPhone}
-                        onChange={(e) => setUserPhone(e.target.value)}
+                        onChange={(e) => setUserPhone(e.target.value)} id="settings-field-10"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Password Change Card */}
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                <div  className="card settings-34">
                   <div>
-                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div className="settings-35">
                       Change Security Password
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="settings-36">
                       Leave blank if you do not wish to update your login credentials
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
+                  <div className="settings-37">
                     <div className="form-group">
-                      <label className="form-label">New Password (Min. 8 characters)</label>
+                      <label className="form-label" htmlFor="settings-field-11">New Password (Min. 8 characters)</label>
                       <input
                         type="password"
                         className="form-input"
                         placeholder="••••••••"
                         value={userPassword}
-                        onChange={(e) => setUserPassword(e.target.value)}
+                        onChange={(e) => setUserPassword(e.target.value)} id="settings-field-11"
                       />
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Confirm New Password</label>
+                      <label className="form-label" htmlFor="settings-field-12">Confirm New Password</label>
                       <input
                         type="password"
                         className="form-input"
                         placeholder="••••••••"
                         value={userConfirmPassword}
-                        onChange={(e) => setUserConfirmPassword(e.target.value)}
+                        onChange={(e) => setUserConfirmPassword(e.target.value)} id="settings-field-12"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Save button */}
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button type="submit" disabled={userSaving} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div className="settings-38">
+                  <button type="submit" disabled={userSaving}  className="btn btn-primary settings-39">
                     <Save size={14} />
                     <span>{userSaving ? "Saving..." : "Save Account Settings"}</span>
                   </button>
@@ -556,110 +560,110 @@ export default function SettingsPage() {
 
             {/* Tab 3: POS Terminal & Billing Preferences */}
             {activeTab === "pos" && (
-              <form onSubmit={handleSavePosPreferences} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <form onSubmit={handleSavePosPreferences} className="settings-40">
+                <div  className="card settings-41">
                   <div>
-                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div className="settings-42">
                       Point-of-Sale Terminal & Printer Preferences
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="settings-43">
                       Settings apply directly to the counter terminal workstation
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.25rem" }}>
+                  <div className="settings-44">
                     {/* Invoice format */}
                     <div className="form-group">
-                      <label className="form-label">Default Invoice Print Format</label>
+                      <label className="form-label" htmlFor="settings-field-13">Default Invoice Print Format</label>
                       <select
                         className="form-select"
                         value={receiptSize}
-                        onChange={(e) => setReceiptSize(e.target.value as "thermal_80mm" | "a4")}
+                        onChange={(e) => setReceiptSize(e.target.value as "thermal_80mm" | "a4")} id="settings-field-13"
                       >
                         <option value="thermal_80mm">3-inch (80mm) Thermal Roll Receipt</option>
                         <option value="a4">Standard A4 Laser Tax Invoice (Full Sheet)</option>
                       </select>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                      <span className="settings-45">
                         ESC/POS thermal roll is optimized for fast dispensing speed.
                       </span>
                     </div>
 
                     {/* Auto-print toggle */}
-                    <div className="form-group" style={{ justifyContent: "center" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    <div  className="form-group settings-46">
+                      <label className="settings-47">
                         <input
                           type="checkbox"
                           checked={autoPrintReceipt}
                           onChange={(e) => setAutoPrintReceipt(e.target.checked)}
-                          style={{ width: "16px", height: "16px" }}
+                          className="settings-48"
                         />
-                        <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 700 }}>
+                        <span className="settings-49">
                           Auto-Trigger Print Dialog on Bill Settlement
                         </span>
                       </label>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px", marginLeft: "1.5rem" }}>
+                      <span className="settings-50">
                         Opens print preview immediately when cash/UPI transaction completes.
                       </span>
                     </div>
 
                     {/* Schedule H warning */}
-                    <div className="form-group" style={{ justifyContent: "center" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    <div  className="form-group settings-51">
+                      <label className="settings-52">
                         <input
                           type="checkbox"
                           checked={requireScheduleHDoctor}
                           onChange={(e) => setRequireScheduleHDoctor(e.target.checked)}
-                          style={{ width: "16px", height: "16px" }}
+                          className="settings-53"
                         />
-                        <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 700 }}>
+                        <span className="settings-54">
                           Strict Schedule H Doctor Name Verification
                         </span>
                       </label>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px", marginLeft: "1.5rem" }}>
+                      <span className="settings-55">
                         Blocks bill completion unless Prescribing Doctor is entered for Schedule H drugs.
                       </span>
                     </div>
 
                     {/* Barcode Audio Beep */}
-                    <div className="form-group" style={{ justifyContent: "center" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    <div  className="form-group settings-56">
+                      <label className="settings-57">
                         <input
                           type="checkbox"
                           checked={barcodeAudioBeep}
                           onChange={(e) => setBarcodeAudioBeep(e.target.checked)}
-                          style={{ width: "16px", height: "16px" }}
+                          className="settings-58"
                         />
-                        <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 700 }}>
+                        <span className="settings-59">
                           Sound Feedback on Barcode Scan
                         </span>
                       </label>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px", marginLeft: "1.5rem" }}>
+                      <span className="settings-60">
                         Emits a high-frequency audio click when camera or USB barcode reader scans a lot.
                       </span>
                     </div>
 
                     {/* Tax breakdown */}
-                    <div className="form-group" style={{ justifyContent: "center" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    <div  className="form-group settings-61">
+                      <label className="settings-62">
                         <input
                           type="checkbox"
                           checked={showGstBreakdown}
                           onChange={(e) => setShowGstBreakdown(e.target.checked)}
-                          style={{ width: "16px", height: "16px" }}
+                          className="settings-63"
                         />
-                        <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 700 }}>
+                        <span className="settings-64">
                           Itemized CGST / SGST Breakdown on Bill
                         </span>
                       </label>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px", marginLeft: "1.5rem" }}>
+                      <span className="settings-65">
                         Prints explicit 2.5%, 6%, or 9% state/central GST lines on customer receipt.
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button type="submit" className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div className="settings-66">
+                  <button type="submit"  className="btn btn-primary settings-67">
                     <Save size={14} />
                     <span>Save POS Preferences</span>
                   </button>
@@ -669,40 +673,40 @@ export default function SettingsPage() {
 
             {/* Tab 4: Database & Cloud Sync */}
             {activeTab === "system" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <div className="settings-68">
+                <div  className="card settings-69">
                   <div>
-                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div className="settings-70">
                       Cloud Database & Local Sync Engine
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="settings-71">
                       Aiven Managed MySQL Connection & Local SQLite Offline Storage Health
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-                    <div style={{ padding: "0.75rem", borderRadius: "var(--radius-sm)", backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>Database Engine</span>
-                      <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>MySQL 8.0 (Aiven Cloud)</strong>
-                      <span className="status-badge high" style={{ marginTop: "0.375rem" }}>
+                  <div className="settings-72">
+                    <div className="settings-73">
+                      <span className="settings-74">Database Engine</span>
+                      <strong className="settings-75">MySQL 8.0 (Aiven Cloud)</strong>
+                      <span  className="status-badge high settings-76">
                         <span className="badge-icon"><CheckCircle2 size={10} /></span>
                         <span>Connected</span>
                       </span>
                     </div>
 
-                    <div style={{ padding: "0.75rem", borderRadius: "var(--radius-sm)", backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>Offline Cache Mode</span>
-                      <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>Active Hybrid Engine</strong>
-                      <span className="status-badge info" style={{ marginTop: "0.375rem" }}>
+                    <div className="settings-77">
+                      <span className="settings-78">Offline Cache Mode</span>
+                      <strong className="settings-79">Active Hybrid Engine</strong>
+                      <span  className="status-badge info settings-80">
                         <span className="badge-icon"><HardDrive size={10} /></span>
                         <span>IndexedDB Ready</span>
                       </span>
                     </div>
 
-                    <div style={{ padding: "0.75rem", borderRadius: "var(--radius-sm)", backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>Security & Encryption</span>
-                      <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>HMAC-SHA256 JWT</strong>
-                      <span className="status-badge high" style={{ marginTop: "0.375rem" }}>
+                    <div className="settings-81">
+                      <span className="settings-82">Security & Encryption</span>
+                      <strong className="settings-83">HMAC-SHA256 JWT</strong>
+                      <span  className="status-badge high settings-84">
                         <span className="badge-icon"><ShieldCheck size={10} /></span>
                         <span>Enforced</span>
                       </span>
@@ -711,12 +715,12 @@ export default function SettingsPage() {
                 </div>
 
                 {/* System Maintenance Actions */}
-                <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                <div  className="card settings-85">
                   <div>
-                    <strong style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>
+                    <strong className="settings-86">
                       Clear Local Browser Cache
                     </strong>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="settings-87">
                       Refreshes the medicine catalog. Saved bills and your login are preserved.
                     </div>
                   </div>

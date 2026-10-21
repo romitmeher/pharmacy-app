@@ -1,4 +1,6 @@
 "use client";
+import "./presentation.css";
+import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
@@ -234,7 +236,7 @@ export default function PrescriptionsPage() {
   const dispensedCount = prescriptions.filter((p) => p.status === "dispensed").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="prescriptions-1">
       {/* Header — Aligned 64px height */}
       <header className="page-header">
         <div>
@@ -244,7 +246,7 @@ export default function PrescriptionsPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="prescriptions-2">
           <ThemeToggle />
           <button
             onClick={() => {
@@ -260,29 +262,19 @@ export default function PrescriptionsPage() {
       </header>
 
       {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div  className="page-body prescriptions-3">
         {/* Human-in-the-Loop Notice */}
         <div
-          style={{
-            padding: "0.75rem 1.25rem",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border-default)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.4,
-          }}
+          className="prescriptions-4"
         >
-          <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
+          <span className="prescriptions-5">
             <ClipboardList size={18} />
           </span>
           <div>
-            <strong style={{ color: "var(--text-primary)" }}>
+            <strong className="prescriptions-6">
               Human-in-the-Loop Mandate (PRD Rule 9 & 21):
             </strong>{" "}
-            <span style={{ color: "var(--text-secondary)" }}>
+            <span className="prescriptions-7">
               AI drafts prescription readings; all dispensing of Schedule H / H1 formulations legally requires licensed
               pharmacist verification and signature before physical release.
             </span>
@@ -291,15 +283,11 @@ export default function PrescriptionsPage() {
 
         {/* Metrics Overview Row */}
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "1rem",
-          }}
+          className="prescriptions-8"
         >
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card prescriptions-9">
+            <div className="prescriptions-10">
+              <span className="prescriptions-11">
                 Total Prescriptions
               </span>
               <span className="status-badge info">
@@ -307,17 +295,17 @@ export default function PrescriptionsPage() {
                 <span>Archive</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="prescriptions-12">
               {totalCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="prescriptions-13">
               Archived clinical doctor orders
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card prescriptions-14">
+            <div className="prescriptions-15">
+              <span className="prescriptions-16">
                 Pending Review
               </span>
               <span className="status-badge med">
@@ -325,17 +313,17 @@ export default function PrescriptionsPage() {
                 <span>Action Needed</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="prescriptions-17">
               {pendingCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="prescriptions-18">
               Requires pharmacist clinical sign-off
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card prescriptions-19">
+            <div className="prescriptions-20">
+              <span className="prescriptions-21">
                 Verified & Ready
               </span>
               <span className="status-badge high">
@@ -343,17 +331,17 @@ export default function PrescriptionsPage() {
                 <span>Verified</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="prescriptions-22">
               {verifiedCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="prescriptions-23">
               Ready for POS billing & dispensing
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card prescriptions-24">
+            <div className="prescriptions-25">
+              <span className="prescriptions-26">
                 Dispensed
               </span>
               <span className="status-badge high">
@@ -361,10 +349,10 @@ export default function PrescriptionsPage() {
                 <span>Completed</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="prescriptions-27">
               {dispensedCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="prescriptions-28">
               Linked to completed POS sales
             </div>
           </div>
@@ -372,47 +360,26 @@ export default function PrescriptionsPage() {
 
         {/* Toolbar */}
         <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+          className="prescriptions-29"
         >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", flex: 1, minWidth: "280px" }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
+          <div className="prescriptions-30">
+            <div className="prescriptions-31">
               <Search
                 size={16}
-                style={{
-                  position: "absolute",
-                  left: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-muted)",
-                }}
+                className="prescriptions-32"
               />
               <input
                 type="text"
                 placeholder="Search by patient name, doctor, or Rx #..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="form-input"
-                style={{ paddingLeft: "2.25rem" }}
+                
+                className="form-input prescriptions-33"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
+                  className="prescriptions-34" aria-label="Close dialog"
                 >
                   <X size={14} />
                 </button>
@@ -422,8 +389,8 @@ export default function PrescriptionsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="form-select"
-              style={{ width: "180px" }}
+              
+              className="form-select prescriptions-35"
             >
               <option value="">All Statuses</option>
               <option value="pending_verification">Pending Verification</option>
@@ -432,7 +399,7 @@ export default function PrescriptionsPage() {
             </select>
           </div>
 
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+          <div className="prescriptions-36">
             Showing <strong>{prescriptions.length}</strong> of <strong>{totalCount}</strong> records
           </div>
         </div>
@@ -447,22 +414,22 @@ export default function PrescriptionsPage() {
                 <th>Doctor & Registration</th>
                 <th>Prescribed Items</th>
                 <th>Clinical Status</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
+                <th className="prescriptions-37">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <VirtualTableBody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
+                  <td colSpan={6} className="prescriptions-38">
+                    <div className="prescriptions-39">
                       Loading clinical prescriptions archive...
                     </div>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--status-low-text)", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  <td colSpan={6} className="prescriptions-40">
+                    <div className="prescriptions-41">
                       {error}
                     </div>
                     <button onClick={fetchPrescriptionsList} className="btn btn-secondary">
@@ -472,15 +439,15 @@ export default function PrescriptionsPage() {
                 </tr>
               ) : prescriptions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-                      <span style={{ color: "var(--text-muted)" }}>
+                  <td colSpan={6} className="prescriptions-42">
+                    <div className="prescriptions-43">
+                      <span className="prescriptions-44">
                         <ClipboardList size={32} />
                       </span>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                      <div className="prescriptions-45">
                         No prescriptions found
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", maxWidth: "360px" }}>
+                      <div className="prescriptions-46">
                         {searchQuery
                           ? `No prescriptions match "${searchQuery}".`
                           : "Upload a doctor prescription photo or paste digital text to start verification."}
@@ -490,8 +457,8 @@ export default function PrescriptionsPage() {
                           resetUploadForm();
                           setShowUploadModal(true);
                         }}
-                        className="btn btn-primary"
-                        style={{ marginTop: "0.5rem" }}
+                        
+                        className="btn btn-primary prescriptions-47"
                       >
                         <PlusCircle size={16} />
                         <span>Upload First Prescription</span>
@@ -509,11 +476,11 @@ export default function PrescriptionsPage() {
                     <tr key={rx.id}>
                       {/* Rx Identifier & Date */}
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                        <div className="prescriptions-48">
+                          <span className="prescriptions-49">
                             {rx.prescription_number}
                           </span>
-                          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                          <span className="prescriptions-50">
                             {rx.created_at ? new Date(rx.created_at).toLocaleDateString("en-IN") : "—"}
                           </span>
                         </div>
@@ -521,11 +488,11 @@ export default function PrescriptionsPage() {
 
                       {/* Patient Details */}
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
+                        <div className="prescriptions-51">
+                          <span className="prescriptions-52">
                             {rx.patient_name}
                           </span>
-                          <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
+                          <span className="prescriptions-53">
                             {rx.patient_age ? `${rx.patient_age}y` : ""} {rx.patient_gender ? `• ${rx.patient_gender}` : ""}
                           </span>
                         </div>
@@ -533,11 +500,11 @@ export default function PrescriptionsPage() {
 
                       {/* Doctor & Reg # */}
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                          <span style={{ color: "var(--text-primary)", fontSize: "0.8125rem" }}>
+                        <div className="prescriptions-54">
+                          <span className="prescriptions-55">
                             {rx.doctor_name ? `Dr. ${rx.doctor_name}` : "—"}
                           </span>
-                          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                          <span className="prescriptions-56">
                             {rx.doctor_reg_number ? `Reg: ${rx.doctor_reg_number}` : "Reg: N/A"}
                           </span>
                         </div>
@@ -545,7 +512,7 @@ export default function PrescriptionsPage() {
 
                       {/* Prescribed Items Count */}
                       <td>
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                        <span className="prescriptions-57">
                           {(rx.items || []).length} items prescribed
                         </span>
                       </td>
@@ -573,12 +540,12 @@ export default function PrescriptionsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: "0.5rem", alignItems: "center" }}>
+                      <td className="prescriptions-58">
+                        <div className="prescriptions-59">
                           <button
                             onClick={() => handleViewDetail(rx)}
-                            className="btn btn-secondary"
-                            style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                            
+                            className="btn btn-secondary prescriptions-60"
                             title="View Full Prescription Details"
                           >
                             <Eye size={13} />
@@ -592,8 +559,8 @@ export default function PrescriptionsPage() {
                                 setVerifyNotes("");
                                 setShowVerifyModal(true);
                               }}
-                              className="btn btn-primary"
-                              style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                              
+                              className="btn btn-primary prescriptions-61"
                             >
                               <Check size={13} />
                               <span>Verify</span>
@@ -603,8 +570,8 @@ export default function PrescriptionsPage() {
                           {isVerified && (
                             <Link
                               href="/pos"
-                              className="btn btn-primary"
-                              style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                              
+                              className="btn btn-primary prescriptions-62"
                             >
                               <ShoppingBag size={13} />
                               <span>Dispense</span>
@@ -616,7 +583,7 @@ export default function PrescriptionsPage() {
                   );
                 })
               )}
-            </tbody>
+            </VirtualTableBody>
           </table>
         </div>
       </div>
@@ -626,86 +593,72 @@ export default function PrescriptionsPage() {
           ===================================================================== */}
       {showUploadModal && (
         <div className="modal-backdrop" onClick={() => !isSubmitting && setShowUploadModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "680px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content prescriptions-63">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--brand-primary)" }}>
+              <div className="prescriptions-64">
+                <span className="prescriptions-65">
                   <ClipboardList size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="prescriptions-66">
                     Capture & Digitize Prescription
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="prescriptions-67">
                     AI extraction with pharmacist clinical verification
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowUploadModal(false)} className="btn-icon" disabled={isSubmitting}>
+              <button onClick={() => setShowUploadModal(false)} className="btn-icon" disabled={isSubmitting} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSavePrescription} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <form onSubmit={handleSavePrescription} className="prescriptions-68">
               <div className="modal-body">
                 {actionError && (
                   <div
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "rgba(255, 128, 128, 0.12)",
-                      border: "1px solid var(--status-low-border)",
-                      color: "var(--status-low-text)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="prescriptions-69"
                   >
                     {actionError}
                   </div>
                 )}
                 {actionSuccess && (
                   <div
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "rgba(125, 255, 149, 0.12)",
-                      border: "1px solid var(--status-high-border)",
-                      color: "var(--status-high-text)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="prescriptions-70"
                   >
                     {actionSuccess}
                   </div>
                 )}
 
                 {/* Patient Information */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 120px", gap: "0.75rem" }}>
+                <div className="prescriptions-71">
                   <div className="form-group">
-                    <label className="form-label">Patient Name *</label>
+                    <label className="form-label" htmlFor="prescriptions-field-1">Patient Name *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Ramesh Sharma"
                       value={patientName}
                       onChange={(e) => setPatientName(e.target.value)}
-                      className="form-input"
+                      className="form-input" id="prescriptions-field-1"
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Age</label>
+                    <label className="form-label" htmlFor="prescriptions-field-2">Age</label>
                     <input
                       type="number"
                       placeholder="45"
                       value={patientAge}
                       onChange={(e) => setPatientAge(e.target.value)}
-                      className="form-input"
+                      className="form-input" id="prescriptions-field-2"
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Gender</label>
+                    <label className="form-label" htmlFor="prescriptions-field-3">Gender</label>
                     <select
                       value={patientGender}
                       onChange={(e) => setPatientGender(e.target.value)}
-                      className="form-select"
+                      className="form-select" id="prescriptions-field-3"
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -715,55 +668,55 @@ export default function PrescriptionsPage() {
                 </div>
 
                 {/* Doctor Details */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div className="prescriptions-72">
                   <div className="form-group">
-                    <label className="form-label">Doctor Name</label>
+                    <label className="form-label" htmlFor="prescriptions-field-4">Doctor Name</label>
                     <input
                       type="text"
                       placeholder="e.g. Dr. V. K. Gupta"
                       value={doctorName}
                       onChange={(e) => setDoctorName(e.target.value)}
-                      className="form-input"
+                      className="form-input" id="prescriptions-field-4"
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Doctor Medical Reg # (MCI/SMC)</label>
+                    <label className="form-label" htmlFor="prescriptions-field-5">Doctor Medical Reg # (MCI/SMC)</label>
                     <input
                       type="text"
                       placeholder="e.g. MCI-29481"
                       value={doctorRegNo}
                       onChange={(e) => setDoctorRegNo(e.target.value)}
-                      className="form-input"
+                      className="form-input" id="prescriptions-field-5"
                     />
                   </div>
                 </div>
 
                 {/* Input Mode: OCR / Text entry */}
                 <div className="form-group">
-                  <label className="form-label">Doctor Prescription Content (Paste Text or Upload Photo)</label>
+                  <label className="form-label" htmlFor="prescriptions-field-6">Doctor Prescription Content (Paste Text or Upload Photo)</label>
                   <textarea
                     rows={3}
                     placeholder="e.g. Rx: Tab Augmentin 625 Duo 1 tab BD x 5 days, Tab Paracetamol 650 TDS..."
                     value={rawText}
                     onChange={(e) => setRawText(e.target.value)}
-                    className="form-textarea"
+                    className="form-textarea" id="prescriptions-field-6"
                   />
                 </div>
 
                 {/* Image upload selector & AI run button */}
-                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                <div className="prescriptions-73">
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    style={{ fontSize: "0.75rem" }}
+                    className="prescriptions-74"
                   />
                   <button
                     type="button"
                     onClick={handleRunAIScan}
                     disabled={isScanningAI}
-                    className="btn btn-secondary"
-                    style={{ height: "32px", fontSize: "0.75rem" }}
+                    
+                    className="btn btn-secondary prescriptions-75"
                   >
                     <Sparkles size={14} />
                     <span>{isScanningAI ? "Extracting..." : "Scan with AI OCR"}</span>
@@ -772,34 +725,20 @@ export default function PrescriptionsPage() {
 
                 {/* Extracted Line Items List */}
                 {scannedItems.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <div className="prescriptions-76">
                     <label className="form-label">Extracted Clinical Formulations ({scannedItems.length})</label>
                     <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "0.35rem",
-                        maxHeight: "150px",
-                        overflowY: "auto",
-                      }}
+                      className="prescriptions-77"
                     >
                       {scannedItems.map((it, idx) => (
                         <div
                           key={idx}
-                          style={{
-                            padding: "0.5rem 0.75rem",
-                            borderRadius: "var(--radius-sm)",
-                            backgroundColor: "var(--bg-surface-elevated)",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            fontSize: "0.75rem",
-                          }}
+                          className="prescriptions-78"
                         >
                           <div>
-                            <strong style={{ color: "var(--text-primary)" }}>{it.extracted_name}</strong>
+                            <strong className="prescriptions-79">{it.extracted_name}</strong>
                             {it.dosage_instructions && (
-                              <span style={{ color: "var(--text-muted)", marginLeft: "0.5rem" }}>
+                              <span className="prescriptions-80">
                                 ({it.dosage_instructions})
                               </span>
                             )}
@@ -833,22 +772,22 @@ export default function PrescriptionsPage() {
           ===================================================================== */}
       {showVerifyModal && selectedRx && (
         <div className="modal-backdrop" onClick={() => !isSubmitting && setShowVerifyModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content prescriptions-81">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--status-high-text)" }}>
+              <div className="prescriptions-82">
+                <span className="prescriptions-83">
                   <CheckCircle2 size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="prescriptions-84">
                     Pharmacist Clinical Verification
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="prescriptions-85">
                     Prescription #{selectedRx.prescription_number} • Schedule H Compliance
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowVerifyModal(false)} className="btn-icon" disabled={isSubmitting}>
+              <button onClick={() => setShowVerifyModal(false)} className="btn-icon" disabled={isSubmitting} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
@@ -856,77 +795,47 @@ export default function PrescriptionsPage() {
             <div className="modal-body">
               {actionError && (
                 <div
-                  style={{
-                    padding: "0.75rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "rgba(255, 128, 128, 0.12)",
-                    border: "1px solid var(--status-low-border)",
-                    color: "var(--status-low-text)",
-                    fontSize: "0.75rem",
-                  }}
+                  className="prescriptions-86"
                 >
                   {actionError}
                 </div>
               )}
               {actionSuccess && (
                 <div
-                  style={{
-                    padding: "0.75rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "rgba(125, 255, 149, 0.12)",
-                    border: "1px solid var(--status-high-border)",
-                    color: "var(--status-high-text)",
-                    fontSize: "0.75rem",
-                  }}
+                  className="prescriptions-87"
                 >
                   {actionSuccess}
                 </div>
               )}
 
               <div
-                style={{
-                  padding: "0.875rem",
-                  backgroundColor: "var(--bg-surface-elevated)",
-                  borderRadius: "var(--radius-sm)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.35rem",
-                  fontSize: "0.8125rem",
-                }}
+                className="prescriptions-88"
               >
                 <div>
-                  <span style={{ color: "var(--text-muted)" }}>Patient: </span>
-                  <strong style={{ color: "var(--text-primary)" }}>{selectedRx.patient_name}</strong>
+                  <span className="prescriptions-89">Patient: </span>
+                  <strong className="prescriptions-90">{selectedRx.patient_name}</strong>
                   {selectedRx.patient_age && ` (${selectedRx.patient_age}y ${selectedRx.patient_gender || ""})`}
                 </div>
                 <div>
-                  <span style={{ color: "var(--text-muted)" }}>Prescribing Doctor: </span>
-                  <strong style={{ color: "var(--text-primary)" }}>{selectedRx.doctor_name || "Doctor Unspecified"}</strong>
+                  <span className="prescriptions-91">Prescribing Doctor: </span>
+                  <strong className="prescriptions-92">{selectedRx.doctor_name || "Doctor Unspecified"}</strong>
                   {selectedRx.doctor_reg_number && ` (Reg: ${selectedRx.doctor_reg_number})`}
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Pharmacist Clinical Notes & Verification Observations</label>
+                <label className="form-label" htmlFor="prescriptions-field-7">Pharmacist Clinical Notes & Verification Observations</label>
                 <textarea
                   rows={3}
                   placeholder="e.g. Dosage verified with patient, no contraindications with current medications."
                   value={verifyNotes}
                   onChange={(e) => setVerifyNotes(e.target.value)}
-                  className="form-textarea"
+                  className="form-textarea" id="prescriptions-field-7"
                 />
               </div>
 
               <div
-                style={{
-                  padding: "0.75rem",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "rgba(30, 110, 232, 0.08)",
-                  border: "1px solid var(--brand-border)",
-                  fontSize: "0.6875rem",
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.4,
-                }}
+                className="prescriptions-93"
               >
                 By signing off, I certify as a Registered Pharmacist under the Pharmacy Act 1948 that this prescription
                 has been clinically evaluated and is safe for dispensing.
@@ -950,53 +859,45 @@ export default function PrescriptionsPage() {
           ===================================================================== */}
       {selectedRx && !showVerifyModal && (
         <div className="modal-backdrop" onClick={() => setSelectedRx(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "580px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content prescriptions-94">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--brand-primary)" }}>
+              <div className="prescriptions-95">
+                <span className="prescriptions-96">
                   <ClipboardList size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="prescriptions-97">
                     Prescription #{selectedRx.prescription_number}
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="prescriptions-98">
                     Archived on {selectedRx.created_at ? new Date(selectedRx.created_at).toLocaleString("en-IN") : "—"}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedRx(null)} className="btn-icon">
+              <button onClick={() => setSelectedRx(null)} className="btn-icon" aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ gap: "1rem" }}>
+            <div  className="modal-body prescriptions-99">
               <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "0.75rem",
-                  padding: "0.875rem",
-                  backgroundColor: "var(--bg-surface-elevated)",
-                  borderRadius: "var(--radius-sm)",
-                  fontSize: "0.75rem",
-                }}
+                className="prescriptions-100"
               >
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Patient</div>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
+                  <div className="prescriptions-101">Patient</div>
+                  <div className="prescriptions-102">
                     {selectedRx.patient_name} ({selectedRx.patient_age ? `${selectedRx.patient_age}y` : "—"})
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Doctor</div>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
+                  <div className="prescriptions-103">Doctor</div>
+                  <div className="prescriptions-104">
                     {selectedRx.doctor_name || "—"} ({selectedRx.doctor_reg_number || "N/A"})
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Status</div>
-                  <div style={{ marginTop: "4px" }}>
+                  <div className="prescriptions-105">Status</div>
+                  <div className="prescriptions-106">
                     <span className={`status-badge ${selectedRx.status === "verified" || selectedRx.status === "dispensed" ? "high" : "med"}`}>
                       <span className="badge-icon"><CheckCircle2 size={10} /></span>
                       <span>{selectedRx.status.toUpperCase()}</span>
@@ -1004,8 +905,8 @@ export default function PrescriptionsPage() {
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Verified By</div>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
+                  <div className="prescriptions-107">Verified By</div>
+                  <div className="prescriptions-108">
                     {selectedRx.verified_by_name || "Pending Pharmacist"}
                   </div>
                 </div>
@@ -1013,32 +914,24 @@ export default function PrescriptionsPage() {
 
               {/* Items */}
               <div>
-                <label className="form-label" style={{ marginBottom: "0.5rem", display: "block" }}>
+                <label  className="form-label prescriptions-109">
                   Prescribed Line Items
                 </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+                <div className="prescriptions-110">
                   {(selectedRx.items || []).map((it, idx) => (
                     <div
                       key={idx}
-                      style={{
-                        padding: "0.5rem 0.75rem",
-                        borderRadius: "var(--radius-sm)",
-                        backgroundColor: "var(--bg-surface-elevated)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: "0.75rem",
-                      }}
+                      className="prescriptions-111"
                     >
                       <div>
-                        <strong style={{ color: "var(--text-primary)" }}>{it.extracted_name}</strong>
+                        <strong className="prescriptions-112">{it.extracted_name}</strong>
                         {it.dosage_instructions && (
-                          <span style={{ color: "var(--text-muted)", marginLeft: "0.5rem" }}>
+                          <span className="prescriptions-113">
                             ({it.dosage_instructions})
                           </span>
                         )}
                       </div>
-                      <span style={{ fontWeight: 700, color: "var(--text-secondary)" }}>
+                      <span className="prescriptions-114">
                         Qty: {it.quantity_prescribed}
                       </span>
                     </div>
@@ -1049,12 +942,12 @@ export default function PrescriptionsPage() {
 
             <div className="modal-footer">
               {selectedRx.status === "verified" && (
-                <Link href="/pos" className="btn btn-primary" style={{ height: "34px" }}>
+                <Link href="/pos"  className="btn btn-primary prescriptions-115">
                   <ShoppingBag size={14} />
                   <span>Dispense in POS</span>
                 </Link>
               )}
-              <button onClick={() => setSelectedRx(null)} className="btn btn-secondary" style={{ height: "34px" }}>
+              <button onClick={() => setSelectedRx(null)}  className="btn btn-secondary prescriptions-116">
                 Close
               </button>
             </div>

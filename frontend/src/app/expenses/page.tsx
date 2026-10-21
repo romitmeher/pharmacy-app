@@ -1,4 +1,6 @@
 "use client";
+import "./presentation.css";
+import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Wallet, RefreshCw, Plus, X } from "lucide-react";
@@ -98,52 +100,52 @@ export default function ExpensesPage() {
     }
   }
 
-  if (!allowed) return <div className="page-body"><h1 className="page-title">Expenses & Profit</h1><p style={{ marginTop: "1rem" }}>Owners and managers can view financial reports and record expenses.</p></div>;
+  if (!allowed) return <div className="page-body"><h1 className="page-title">Expenses & Profit</h1><p className="expenses-1">Owners and managers can view financial reports and record expenses.</p></div>;
 
   return <div>
     <header className="page-header">
       <div><h1 className="page-title">Expenses & Profit</h1><p className="page-subtitle">Operating costs and store profit & loss</p></div>
       <ThemeToggle />
     </header>
-    <div className="page-body" style={{ display: "grid", gap: "1.25rem" }}>
-      {success && <p role="status" style={{ color: "var(--status-high-text)" }}>{success}</p>}
+    <div  className="page-body expenses-2">
+      {success && <p role="status" className="expenses-3">{success}</p>}
       <section className="card" aria-label="Report filters">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "end" }}>
+        <div className="expenses-4">
           <label className="form-group"><span className="form-label">From date</span><input type="date" className="form-input" value={startDate} onChange={(e) => updateFilter("start", e.target.value)} /></label>
           <label className="form-group"><span className="form-label">To date</span><input type="date" className="form-input" value={endDate} onChange={(e) => updateFilter("end", e.target.value)} /></label>
           <label className="form-group"><span className="form-label">Expense category</span><select className="form-select" value={category} onChange={(e) => updateFilter("category", e.target.value)}><option value="">All categories</option>{categories.map(([key, title]) => <option key={key} value={key}>{title}</option>)}</select></label>
           <button className="btn btn-secondary" disabled={loading || invalidDates} onClick={() => { setLoading(true); setRefresh((value) => value + 1); }}><RefreshCw size={15} />Refresh</button>
           <button className="btn btn-primary" onClick={() => { setForm((value) => ({ ...value, expense_date: value.expense_date || today() })); setFormError(null); setShowForm(true); }}><Plus size={16} />Record expense</button>
         </div>
-        {invalidDates && <p role="alert" style={{ marginTop: "0.75rem", color: "var(--status-low-text)" }}>From date must be on or before the to date.</p>}
-        <p style={{ color: "var(--text-secondary)", marginTop: "0.75rem", fontSize: "0.8125rem" }}>Dates apply to both reports. Category filters expense history only. Leave dates empty for all time.</p>
+        {invalidDates && <p role="alert" className="expenses-5">From date must be on or before the to date.</p>}
+        <p className="expenses-6">Dates apply to both reports. Category filters expense history only. Leave dates empty for all time.</p>
       </section>
-      {error && <div role="alert" className="card" style={{ color: "var(--status-low-text)" }}>{error}<button className="btn btn-secondary" style={{ marginLeft: "1rem" }} onClick={() => { setLoading(true); setRefresh((value) => value + 1); }}>Retry</button></div>}
+      {error && <div role="alert"  className="card expenses-7">{error}<button  className="btn btn-secondary expenses-8" onClick={() => { setLoading(true); setRefresh((value) => value + 1); }}>Retry</button></div>}
       {loading && !invalidDates && <p role="status">Loading financial reports…</p>}
       {!loading && !error && !invalidDates && pnl && <>
-        <section aria-label="Profit and loss" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+        <section aria-label="Profit and loss" className="expenses-9">
           {[
             ["Net revenue", pnl.revenue.net_revenue], ["Cost of goods sold", pnl.cogs.total_cogs],
             ["Gross profit", pnl.cogs.gross_profit], ["Operating expenses", pnl.operating_expenses.total_expenses],
             ["Net operating profit", pnl.net_performance.net_operating_profit],
-          ].map(([title, value]) => <div className="card" key={title}><h2 className="card-title">{title}</h2><p style={{ fontSize: "1.375rem", fontWeight: 700 }}>{money(Number(value))}</p></div>)}
+          ].map(([title, value]) => <div className="card" key={title}><h2 className="card-title">{title}</h2><p className="expenses-10">{money(Number(value))}</p></div>)}
         </section>
         <section className="card">
-          <h2 className="card-title"><Wallet size={16} style={{ verticalAlign: "middle", marginRight: "0.5rem" }} />Profit & loss detail</h2>
-          <dl style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "0.6rem", maxWidth: "650px" }}>
+          <h2 className="card-title"><Wallet size={16} className="expenses-11" />Profit & loss detail</h2>
+          <dl className="expenses-12">
             <dt>Gross sales ({pnl.revenue.total_bills} bills)</dt><dd>{money(pnl.revenue.gross_sales)}</dd>
             <dt>Discounts</dt><dd>− {money(pnl.revenue.discounts)}</dd>
             <dt>Customer refunds</dt><dd>− {money(pnl.revenue.refunds)}</dd>
             <dt>Gross margin</dt><dd>{pnl.cogs.gross_margin_percentage.toFixed(2)}%</dd>
             <dt>Net operating margin</dt><dd>{pnl.net_performance.net_margin_percentage.toFixed(2)}%</dd>
           </dl>
-          <h3 className="card-title" style={{ marginTop: "1.25rem" }}>Operating expense breakdown</h3>
-          <dl style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "0.6rem", maxWidth: "650px" }}>{categories.map(([key, title]) => <div key={key} style={{ display: "contents" }}><dt>{title}</dt><dd>{money(pnl.operating_expenses.by_category[key] ?? 0)}</dd></div>)}</dl>
+          <h3  className="card-title expenses-13">Operating expense breakdown</h3>
+          <dl className="expenses-14">{categories.map(([key, title]) => <div key={key} className="expenses-15"><dt>{title}</dt><dd>{money(pnl.operating_expenses.by_category[key] ?? 0)}</dd></div>)}</dl>
         </section>
         <section className="card">
           <h2 className="card-title">Expense history ({total})</h2>
-          {items.length === 0 ? <p>No expenses match these filters. Record an expense to get started.</p> : <div className="table-container"><table className="data-table"><thead><tr><th>Date / reference</th><th>Category</th><th>Recipient</th><th>Payment</th><th>Amount</th><th>Receipt / notes</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{item.expense_date}<br /><small>{item.expense_number}</small></td><td>{label(item.category)}</td><td>{item.vendor_recipient || "—"}</td><td>{label(item.payment_method)}</td><td>{money(item.amount)}</td><td>{item.receipt_reference || "—"}{item.notes && <p style={{ marginTop: "0.25rem", maxWidth: "300px", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{item.notes}</p>}</td></tr>)}</tbody></table></div>}
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginTop: "1rem" }}>
+          {items.length === 0 ? <p>No expenses match these filters. Record an expense to get started.</p> : <div className="table-container"><table className="data-table"><thead><tr><th>Date / reference</th><th>Category</th><th>Recipient</th><th>Payment</th><th>Amount</th><th>Receipt / notes</th></tr></thead><VirtualTableBody>{items.map((item) => <tr key={item.id}><td>{item.expense_date}<br /><small>{item.expense_number}</small></td><td>{label(item.category)}</td><td>{item.vendor_recipient || "—"}</td><td>{label(item.payment_method)}</td><td>{money(item.amount)}</td><td>{item.receipt_reference || "—"}{item.notes && <p className="expenses-16">{item.notes}</p>}</td></tr>)}</VirtualTableBody></table></div>}
+          <div className="expenses-17">
             <button className="btn btn-secondary" disabled={page <= 1} onClick={() => { setLoading(true); setPage((value) => value - 1); }}>Previous</button>
             <span>Page {page} of {pages}</span>
             <button className="btn btn-secondary" disabled={page >= pages} onClick={() => { setLoading(true); setPage((value) => value + 1); }}>Next</button>
@@ -151,10 +153,10 @@ export default function ExpensesPage() {
         </section>
       </>}
       {showForm && <section className="card" aria-labelledby="expense-form-title">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h2 id="expense-form-title" className="card-title">Record operating expense</h2><button type="button" className="btn btn-secondary" disabled={saving} aria-label="Close expense form" onClick={() => setShowForm(false)}><X size={16} /></button></div>
-        {formError && <p role="alert" style={{ color: "var(--status-low-text)", marginBottom: "1rem" }}>{formError}</p>}
-        <form onSubmit={submitExpense} style={{ display: "grid", gap: "1rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+        <div className="expenses-18"><h2 id="expense-form-title" className="card-title">Record operating expense</h2><button type="button" className="btn btn-secondary" disabled={saving} aria-label="Close expense form" onClick={() => setShowForm(false)}><X size={16} /></button></div>
+        {formError && <p role="alert" className="expenses-19">{formError}</p>}
+        <form onSubmit={submitExpense} className="expenses-20">
+          <div className="expenses-21">
             <label className="form-group"><span className="form-label">Category</span><select className="form-select" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{categories.map(([key, title]) => <option key={key} value={key}>{title}</option>)}</select></label>
             <label className="form-group"><span className="form-label">Amount (₹)</span><input className="form-input" type="number" required min="0.01" max="99999999.99" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></label>
             <label className="form-group"><span className="form-label">Expense date</span><input className="form-input" type="date" required value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} /></label>
@@ -163,8 +165,8 @@ export default function ExpensesPage() {
             <label className="form-group"><span className="form-label">Receipt reference</span><input className="form-input" maxLength={100} value={form.receipt_reference} onChange={(e) => setForm({ ...form, receipt_reference: e.target.value })} /></label>
           </div>
           <label className="form-group"><span className="form-label">Notes</span><textarea className="form-textarea" rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></label>
-          <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>Recorded expenses are included in your store’s profit report and audit trail.</p>
-          <button className="btn btn-primary" disabled={saving} type="submit" style={{ justifySelf: "start" }}>{saving ? "Recording…" : "Record expense"}</button>
+          <p className="expenses-22">Recorded expenses are included in your store’s profit report and audit trail.</p>
+          <button  disabled={saving} type="submit" className="btn btn-primary expenses-23">{saving ? "Recording…" : "Record expense"}</button>
         </form>
       </section>}
     </div>

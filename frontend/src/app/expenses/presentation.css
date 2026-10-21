@@ -1,0 +1,25 @@
+.expenses-1 { margin-top: var(--view-value-5); }
+.expenses-2 { display: grid; gap: var(--view-value-36); }
+.expenses-3 { color: var(--status-high-text); }
+.expenses-4 { display: flex; flex-wrap: wrap; gap: var(--view-value-5); align-items: end; }
+.expenses-5 { margin-top: var(--view-value-1); color: var(--status-low-text); }
+.expenses-6 { color: var(--text-secondary); margin-top: var(--view-value-1); font-size: var(--view-value-33); }
+.expenses-7 { color: var(--status-low-text); }
+.expenses-8 { margin-left: var(--view-value-5); }
+.expenses-9 { display: grid; grid-template-columns: var(--view-value-4); gap: var(--view-value-5); }
+@media (max-width: 768px) { .expenses-9 { grid-template-columns: minmax(0, 1fr); } }
+.expenses-10 { font-size: var(--view-value-72); font-weight: 700; }
+.expenses-11 { vertical-align: var(--view-value-73); margin-right: var(--view-value-6); }
+.expenses-12 { display: grid; grid-template-columns: var(--view-value-74); gap: var(--view-value-75); max-width: var(--view-value-76); }
+.expenses-13 { margin-top: var(--view-value-36); }
+.expenses-14 { display: grid; grid-template-columns: var(--view-value-74); gap: var(--view-value-75); max-width: var(--view-value-76); }
+.expenses-15 { display: contents; }
+.expenses-16 { margin-top: var(--view-value-19); max-width: var(--view-value-77); white-space: pre-wrap; overflow-wrap: anywhere; }
+.expenses-17 { display: flex; align-items: center; gap: var(--view-value-5); margin-top: var(--view-value-5); }
+.expenses-18 { display: flex; justify-content: space-between; align-items: center; }
+.expenses-19 { color: var(--status-low-text); margin-bottom: var(--view-value-5); }
+.expenses-20 { display: grid; gap: var(--view-value-5); }
+.expenses-21 { display: grid; grid-template-columns: var(--view-value-78); gap: var(--view-value-5); }
+@media (max-width: 768px) { .expenses-21 { grid-template-columns: minmax(0, 1fr); } }
+.expenses-22 { font-size: var(--view-value-33); color: var(--text-secondary); }
+.expenses-23 { justify-self: var(--view-value-79); }

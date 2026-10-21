@@ -15,6 +15,7 @@ from decimal import Decimal
 
 from app.extensions import db
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from app.models.store import Store
 from app.models.medicine import Medicine
 from app.models.batch import Batch
@@ -64,7 +65,7 @@ def generate_offline_pack(store_id: int, in_stock_only: bool = False) -> dict:
                        .where(Batch.store_id == store_id, Inventory.store_id == store_id,
                               Batch.expiry_date >= today, Inventory.quantity_available > 0))
         medicine_query = medicine_query.filter(Medicine.id.in_(stocked_ids))
-    medicines = medicine_query.order_by(Medicine.brand_name.asc()).all()
+    medicines = medicine_query.options(joinedload(Medicine.aliases)).order_by(Medicine.brand_name.asc()).all()
 
     # 3. Fetch active inventory & batches
     # Filter batches with expiry >= today
@@ -120,6 +121,7 @@ def generate_offline_pack(store_id: int, in_stock_only: bool = False) -> dict:
         packed_medicines.append({
             "id": med.id,
             "brand_name": med.brand_name,
+            "barcodes": [a.alias_name for a in med.aliases if a.alias_type == "barcode"],
             "generic_name": med.generic_name or "",
             "manufacturer": med.manufacturer or "",
             "strength": med.strength or "",

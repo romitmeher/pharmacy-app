@@ -1,14 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState, useEffect, useTransition, useCallback, useRef } from "react";
+import './pos.css';
+import { Button, Field, StatusBadge, EmptyState, Skeleton } from '@/components/ui/primitives';
+import { filterPOSMedicines, stockByMedicine as buildStockMap } from "@/lib/posCatalog";
+import POSCatalog from '@/components/POSCatalog';
+import { findBarcodeMedicine } from "@/lib/barcode";
+import { defaultPosPreferences, readPosPreferences, barcodeBeep } from "@/lib/posPreferences";
+import React, { useState, useEffect, useTransition, useCallback, useRef, useMemo } from "react";
 import {
-  ShoppingBag,
   CheckCircle2,
   AlertTriangle,
-  Search,
   Plus,
-  Minus,
   Trash2,
   Printer,
   Receipt,
@@ -33,6 +36,7 @@ import {
   getSale,
   getSales,
   recognizeMedicine,
+  decodeBarcodePhoto,
   Medicine,
   BatchItem,
   CreateSalePayload,
@@ -69,6 +73,25 @@ export default function POSTerminalPage() {
   const [batches, setBatches] = useState<BatchItem[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [catalogQuery, setCatalogQuery] = useState('');
+  useEffect(() => { const timer = window.setTimeout(() => setCatalogQuery(searchQuery), 150); return () => window.clearTimeout(timer); }, [searchQuery]);
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [barcodePhotoBusy, setBarcodePhotoBusy] = useState(false);
+  const [posPreferences, setPosPreferences] = useState(defaultPosPreferences);
+  const autoPrintPending = useRef(false);
+  const barcodeRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const paymentRef = useRef<HTMLButtonElement>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState(0);
+  const [lastAdded, setLastAdded] = useState<number | null>(null);
+  const [undoRemoval, setUndoRemoval] = useState<{ before: CartItem[]; after: CartItem[] } | null>(null);
+  useEffect(() => {
+    const refresh = () => setPosPreferences(readPosPreferences(localStorage));
+    queueMicrotask(refresh);
+    window.addEventListener("focus", refresh); window.addEventListener("storage", refresh);
+    return () => { window.removeEventListener("focus", refresh); window.removeEventListener("storage", refresh); };
+  }, []);
+  const barcodePhotoApply = useRef<((code: string) => void) | null>(null);
 
   const assertCurrentSession = useCallback(() => {
     if (!token || getAuthToken() !== token) throw new Error("The signed-in account changed in another tab. Reload before billing or syncing.");
@@ -86,6 +109,13 @@ export default function POSTerminalPage() {
 
   // Post-sale / Receipt modal
   const [recentReceipt, setRecentReceipt] = useState<SaleReceipt | null>(null);
+  useEffect(() => {
+    if (!recentReceipt || !autoPrintPending.current) return;
+    autoPrintPending.current = false;
+    if (!posPreferences.autoPrint) return;
+    const timer = window.setTimeout(() => window.print(), 250);
+    return () => window.clearTimeout(timer);
+  }, [recentReceipt, posPreferences.autoPrint]);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [salesHistory, setSalesHistory] = useState<SaleReceipt[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
@@ -263,24 +293,15 @@ export default function POSTerminalPage() {
   useEffect(() => () => { speech.current?.abort(); }, []);
 
   // Filter medicines based on search
-  const filteredMedicines = medicines.filter((m) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      m.brand_name.toLowerCase().includes(q) ||
-      (m.generic_name && m.generic_name.toLowerCase().includes(q)) ||
-      (m.manufacturer && m.manufacturer.toLowerCase().includes(q))
-    );
-  });
-
-  // Calculate total stock for each medicine
-  const getMedicineStock = (medId: number) => {
-    const medBatches = batches.filter((b) => b.medicine_id === medId);
-    return medBatches.reduce((acc, b) => acc + (b.total_available || 0), 0);
-  };
+  const filteredMedicines = useMemo(() => filterPOSMedicines(medicines, catalogQuery), [medicines, catalogQuery]);
+  const stockByMedicine = useMemo(() => buildStockMap(batches), [batches]);
 
   // Add item to cart (Automatic FEFO Batch candidate selection)
-  const handleAddToCart = (medicine: Medicine) => {
+  const handleAddToCart = useCallback((medicine: Medicine) => {
+    if (checkoutBusy.current) {
+      setErrorMessage("Wait for the current bill to finish before changing the cart.");
+      return false;
+    }
     const medBatches = batches
       .filter((batch) => batch.medicine_id === medicine.id && batch.total_available > 0)
       .sort((a, b) => a.expiry_date.localeCompare(b.expiry_date));
@@ -291,14 +312,14 @@ export default function POSTerminalPage() {
     const totalStock = fefoBatch?.total_available || 0;
     if (!fefoBatch || totalStock <= 0) {
       setErrorMessage(`No unexpired stock is available for ${medicine.brand_name}.`);
-      return;
+      return false;
     }
     const existing = cart.find((item) => item.medicine.id === medicine.id && item.batch?.id === fefoBatch.id);
 
     if (existing) {
       if (existing.quantity >= totalStock && totalStock > 0) {
         setErrorMessage(`Cannot exceed available physical stock (${totalStock} units) for ${medicine.brand_name}.`);
-        return;
+        return false;
       }
       setCart(
         cart.map((item) =>
@@ -323,10 +344,52 @@ export default function POSTerminalPage() {
       ]);
     }
     setErrorMessage(null);
+    setLastAdded(medicine.id);
+    return true;
+  }, [batches, cart]);
+
+  const handleBarcodeScan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (checkoutBusy.current || loadingCatalog) return;
+    try {
+      assertCurrentSession();
+      const medicine = findBarcodeMedicine(medicines, barcodeInput);
+      if (handleAddToCart(medicine)) {
+        barcodeBeep(posPreferences.barcodeBeep);
+        setSuccessMessage(`Barcode: added 1 stock unit of ${medicine.brand_name}. Review pack quantity before charging.`);
+        setSearchQuery("");
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Barcode scan failed.");
+    }
+    setBarcodeInput("");
   };
+
+  const handleBarcodePhoto = async (file?: File) => {
+    if (!file || barcodePhotoBusy || checkoutBusy.current || loadingCatalog) return;
+    setBarcodePhotoBusy(true);
+    try {
+      const code = await decodeBarcodePhoto(file);
+      assertCurrentSession();
+      if (!checkoutBusy.current) barcodePhotoApply.current?.(code);
+    } catch (error) { setErrorMessage(error instanceof Error ? error.message : "Could not scan barcode photo."); }
+    finally { setBarcodePhotoBusy(false); }
+  };
+
+  useEffect(() => {
+    barcodePhotoApply.current = code => {
+      const medicine = findBarcodeMedicine(medicines, code);
+      if (handleAddToCart(medicine)) {
+        barcodeBeep(posPreferences.barcodeBeep);
+        setSuccessMessage(`Barcode ${code}: added 1 stock unit of ${medicine.brand_name}.`);
+      }
+    };
+    return () => { barcodePhotoApply.current = null; };
+  }, [medicines, handleAddToCart, posPreferences.barcodeBeep]);
 
   // Update item quantity
   const handleUpdateQuantity = (index: number, delta: number) => {
+    if (checkoutBusy.current) return;
     const updated = [...cart];
     const item = updated[index];
     const newQty = item.quantity + delta;
@@ -345,8 +408,10 @@ export default function POSTerminalPage() {
   };
 
   const handleRemoveItem = (index: number) => {
+    if (checkoutBusy.current) return;
     const updated = [...cart];
     updated.splice(index, 1);
+    setUndoRemoval({ before: cart, after: updated });
     setCart(updated);
   };
 
@@ -383,8 +448,13 @@ export default function POSTerminalPage() {
       setErrorMessage("Cart is empty. Please add items to bill.");
       return;
     }
+    if (paymentMethod === "cash" && cashTendered.trim() &&
+        (!Number.isFinite(Number(cashTendered)) || Number(cashTendered) < Number(grandTotal.toFixed(2)))) {
+      setErrorMessage("Cash tendered is less than the amount payable.");
+      return;
+    }
 
-    if (hasRxMedicines && !doctorName.trim()) {
+    if (hasRxMedicines && posPreferences.requireDoctor && !doctorName.trim()) {
       setErrorMessage(
         "Prescription Required: Cart contains Schedule H / Rx medicines. Prescribing Doctor Name is mandatory."
       );
@@ -448,7 +518,11 @@ export default function POSTerminalPage() {
         if (result?.status === "synced" || result?.status === "already_synced") {
           setSuccessMessage(`Invoice ${result.invoice_number || result.applied_sale_id} confirmed and synchronized.`);
           if (result.applied_sale_id) {
-            try { setRecentReceipt((await getSale(result.applied_sale_id)).sale); }
+            try {
+              const receipt = (await getSale(result.applied_sale_id)).sale;
+              autoPrintPending.current = true;
+              setRecentReceipt(receipt);
+            }
             catch { /* Receipt fetch failure does not invalidate the confirmed sale. */ }
           }
         } else if (result) {
@@ -480,577 +554,77 @@ export default function POSTerminalPage() {
   const tenderedNum = parseFloat(cashTendered) || 0;
   const changeDue = Math.max(0, tenderedNum - grandTotal);
 
+  const visibleSelection = Math.min(selectedMedicine, Math.max(0, filteredMedicines.length - 1));
+  const blockingModal = showCameraModal || showHistoryModal || !!recentReceipt;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (recentReceipt && event.altKey && event.key.toLowerCase() === 'p') { event.preventDefault(); window.print(); return; }
+      if (blockingModal) return;
+      if (event.key === 'F2') { event.preventDefault(); barcodeRef.current?.focus(); }
+      if (event.key === 'F8') { event.preventDefault(); paymentRef.current?.focus(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [blockingModal, recentReceipt]);
+  const undoRemovedItem = () => {
+    if (!undoRemoval || checkoutBusy.current || cart !== undoRemoval.after) return;
+    const valid = undoRemoval.before.every(item => {
+      const batch = batches.find(batch => batch.id === item.batch?.id);
+      return batch && batch.total_available >= item.quantity;
+    });
+    if (!valid) { setErrorMessage('Stock changed. Search the medicine again before adding it.'); return; }
+    setCart(undoRemoval.before); setUndoRemoval(null);
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {/* Header — Aligned 64px height */}
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">POS Billing Terminal</h1>
-          <p className="page-subtitle">
-            FEFO Stock Dispensing • GST Compliance • Retail Pharmacy Counter
-          </p>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <ThemeToggle />
-          <button className="btn btn-secondary" onClick={handleVoiceSearch} aria-pressed={listening}>
-            <Mic size={15} /> {listening ? "Stop listening" : "Voice search"}
-          </button>
-          <button
-            onClick={() => {
-              setCvResult(null);
-              setCvImagePreview(null);
-              setShowCameraModal(true);
-            }}
-            className="btn btn-primary"
-            style={{ backgroundColor: "#1e6ee8" }}
-          >
-            <Camera size={15} />
-            <span>Scan Packaging (CV)</span>
-          </button>
-          <button onClick={handleOpenHistory} className="btn btn-secondary">
-            <History size={15} />
-            <span>Recent Invoices</span>
-          </button>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.35rem 0.75rem",
-              borderRadius: "var(--radius-sm)",
-              backgroundColor: "var(--bg-surface-elevated)",
-              border: "1px solid var(--border-subtle)",
-              fontSize: "0.75rem",
-              fontWeight: 700,
-            }}
-          >
-            <span style={{ color: "var(--status-high-text)" }}>●</span>
-            <span>Terminal 01</span>
-          </div>
-        </div>
+    <div className="pos-terminal">
+      <header className="page-header pos-header">
+        <div><p className="pos-eyebrow">COUNTER & DISPENSING</p><h1 className="page-title">POS Billing Terminal</h1><p className="page-subtitle">FEFO Stock Dispensing • GST Compliance • Retail Pharmacy Counter</p></div>
+        <div className="pos-actions"><ThemeToggle /><Button variant="secondary" onClick={handleVoiceSearch} aria-pressed={listening}><Mic size={16} />{listening ? 'Stop listening' : 'Voice search'}</Button><Button variant="secondary" onClick={() => { setCvResult(null); setCvImagePreview(null); setShowCameraModal(true); }}><Camera size={16} />Scan barcode / packaging</Button><Button variant="secondary" onClick={handleOpenHistory}><History size={16} />Recent Invoices</Button></div>
       </header>
-
-      <section aria-label="Terminal synchronization" style={{ margin: "1rem 1.5rem 0", padding: "1rem", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center" }}>
-          <span role="status">{online ? "Online" : "Offline — using this account's saved catalog"} · {queue.length} local sale{queue.length === 1 ? "" : "s"} awaiting synchronization or review</span>
-          <button className="btn btn-secondary" disabled={!online || syncing} onClick={() => void syncQueuedSales()}>{syncing ? "Synchronizing…" : "Sync now"}</button>
-        </div>
-        {syncError && <p role="alert" style={{ color: "var(--status-med-text)", marginTop: "0.5rem" }}>{syncError} Local records are preserved.</p>}
-        {queue.length > 0 && <details style={{ marginTop: "0.75rem" }}><summary>Review local sales</summary>
-          <p style={{ fontSize: "0.8rem", margin: "0.5rem 0" }}>Pending sales retry automatically on reconnection. Conflicts require a manager to reconcile the server sync record; do not recreate the sale.</p>
-          <ul>{queue.map((item) => <li key={item.client_tx_id} style={{ marginTop: "0.5rem", overflowWrap: "anywhere" }}>
-            {item.client_tx_id} · {new Date(item.client_timestamp).toLocaleString()} · {item.sync_status === "synced" ? "Confirmed; catalog refresh pending" : item.sync_status}
-            {item.sync_message && ` — ${item.sync_message}`}
-          </li>)}</ul>
-        </details>}
-        {canResolveConflicts && serverConflicts.length > 0 && <details style={{ marginTop: "0.75rem" }}>
-          <summary>Manager review: {serverConflicts.length} recent server conflict{serverConflicts.length === 1 ? "" : "s"}</summary>
-          {serverConflicts.map((conflict) => <div key={conflict.id} style={{ borderTop: "1px solid var(--border-default)", marginTop: "0.75rem", paddingTop: "0.75rem" }}>
-            <p style={{ overflowWrap: "anywhere" }}>{conflict.client_tx_id} — {conflict.conflict_reason}</p>
-            <p style={{ fontSize: "0.8rem", margin: "0.5rem 0" }}>Correct stock or catalog data in Inventory first, then retry the original sale. A new invoice is created only if the retry succeeds.</p>
-            <label htmlFor={`conflict-note-${conflict.id}`}>Manager reconciliation notes</label>
-            <input id={`conflict-note-${conflict.id}`} className="form-input" value={conflictNotes[conflict.id] || ""} onChange={(event) => setConflictNotes((previous) => ({ ...previous, [conflict.id]: event.target.value }))} />
-            <button className="btn btn-secondary" style={{ marginTop: "0.5rem" }} disabled={resolvingId !== null || syncing || !online || !(conflictNotes[conflict.id] || "").trim()} onClick={() => void handleResolveConflict(conflict)}>
-              {resolvingId === conflict.id ? "Retrying…" : "Retry after stock correction"}
-            </button>
-          </div>)}
-        </details>}
+      <section className="pos-sync" aria-label="Terminal synchronization">
+        <div className="pos-sync-line"><StatusBadge tone={online ? 'success' : 'warning'}>{online ? 'Online' : "Offline — using this account's saved catalog"}</StatusBadge><span role="status">{queue.length} local sale{queue.length === 1 ? '' : 's'} awaiting synchronization or review</span><Button variant="quiet" disabled={!online || syncing} onClick={() => void syncQueuedSales()}>{syncing ? 'Synchronizing…' : 'Sync now'}</Button></div>
+        {syncError && <p role="alert" className="pos-warning">{syncError} Local records are preserved.</p>}
+        {queue.length > 0 && <details><summary>Review local sales</summary><p>Pending sales retry automatically on reconnection. Conflicts require a manager to reconcile the server sync record; do not recreate the sale.</p><ul>{queue.map(item => <li key={item.client_tx_id}>{item.client_tx_id} · {new Date(item.client_timestamp).toLocaleString()} · {item.sync_status === 'synced' ? 'Confirmed; catalog refresh pending' : item.sync_status}{item.sync_message && ` — ${item.sync_message}`}</li>)}</ul></details>}
+        {canResolveConflicts && serverConflicts.length > 0 && <details><summary>Manager review: {serverConflicts.length} recent server conflict{serverConflicts.length === 1 ? '' : 's'}</summary>{serverConflicts.map(conflict => <div className="pos-conflict" key={conflict.id}><p>{conflict.client_tx_id} — {conflict.conflict_reason}</p><p>Correct stock or catalog data in Inventory first, then retry the original sale. A new invoice is created only if the retry succeeds.</p><Field label="Manager reconciliation notes" value={conflictNotes[conflict.id] || ''} onChange={e => setConflictNotes(previous => ({ ...previous, [conflict.id]: e.target.value }))} /><Button variant="secondary" disabled={resolvingId !== null || syncing || !online || !(conflictNotes[conflict.id] || '').trim()} onClick={() => void handleResolveConflict(conflict)}>{resolvingId === conflict.id ? 'Retrying…' : 'Retry after stock correction'}</Button></div>)}</details>}
       </section>
-      {/* Main Terminal View */}
-      <div
-        className="page-body"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 420px",
-          gap: "1.5rem",
-          alignItems: "start",
-        }}
-      >
-        {/* Left: Medicine Search & Quick Catalog */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {/* Barcode / Name Search input */}
-          <div style={{ position: "relative", width: "100%" }}>
-            <Search
-              size={18}
-              style={{
-                position: "absolute",
-                left: "1rem",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--text-muted)",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Type medicine name, molecule, or scan product barcode..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="form-input"
-              style={{
-                paddingLeft: "2.75rem",
-                height: "44px",
-                fontSize: "0.9375rem",
-                borderRadius: "var(--radius-md)",
-              }}
-              autoFocus
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                style={{
-                  position: "absolute",
-                  right: "1rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={16} />
-              </button>
-            )}
+      <div className="pos-workspace">
+        <section className="pos-catalog" aria-label="Medicine catalog">
+          <div className="ui-card pos-search-card">
+            <form className="pos-barcode-form" onSubmit={handleBarcodeScan}><label className="ui-field pos-barcode-field">Barcode <span className="pos-key">F2</span><input ref={barcodeRef} aria-label="Barcode scanner input" className="form-input" type="text" autoComplete="off" spellCheck={false} autoFocus placeholder="Scan barcode, then press Enter" value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} maxLength={64} disabled={loadingCatalog || isSubmitting} /></label><Button type="submit" disabled={loadingCatalog || isSubmitting}>Add barcode</Button></form>
+            <div className="pos-search-row"><div className="ui-field pos-search-field"><label htmlFor="pos-medicine-search">Medicine name, molecule or barcode</label><input id="pos-medicine-search" ref={searchRef} className="form-input" type="search" value={searchQuery} placeholder="Search stocked medicines…" onChange={e => { setSearchQuery(e.target.value); setSelectedMedicine(0); }} disabled={isSubmitting} onKeyDown={e => {
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); setSelectedMedicine(Math.max(0, Math.min(filteredMedicines.length - 1, visibleSelection + (e.key === 'ArrowDown' ? 1 : -1)))); }
+              if (e.key === 'Enter' && !loadingCatalog) { e.preventDefault(); const selected = catalogQuery === searchQuery ? filteredMedicines[visibleSelection] : filterPOSMedicines(medicines, searchQuery)[0]; setCatalogQuery(searchQuery); if (selected) handleAddToCart(selected); }
+            }} aria-describedby="pos-search-help" /></div><label className="ui-button ui-button--secondary pos-photo-label"><Camera size={16} />{barcodePhotoBusy ? 'Reading barcode…' : 'Barcode photo / camera'}<input className="pos-file-input" type="file" aria-label="Scan barcode photo or camera" accept="image/*" capture="environment" disabled={loadingCatalog || barcodePhotoBusy || isSubmitting} onChange={e => { void handleBarcodePhoto(e.target.files?.[0]); e.target.value = ''; }} /></label></div>
+            <p id="pos-search-help" className="ui-hint">↑ ↓ Choose medicine · Enter Add selected medicine · Nearest expiry batch selected automatically</p>
           </div>
-
-          {/* Alert messages */}
-          {errorMessage && (
-            <div
-              style={{
-                padding: "0.75rem 1rem",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "rgba(255, 128, 128, 0.12)",
-                border: "1px solid var(--status-low-border)",
-                color: "var(--status-low-text)",
-                fontSize: "0.8125rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              <AlertTriangle size={16} />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {successMessage && (
-            <div
-              style={{
-                padding: "0.75rem 1rem",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "rgba(125, 255, 149, 0.12)",
-                border: "1px solid var(--status-high-border)",
-                color: "var(--status-high-text)",
-                fontSize: "0.8125rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <CheckCircle2 size={16} />
-                <span>{successMessage}</span>
-              </div>
-              {recentReceipt && (
-                <button
-                  onClick={() => setRecentReceipt(recentReceipt)}
-                  className="btn btn-secondary"
-                  style={{ height: "26px", fontSize: "0.6875rem", padding: "0 0.5rem" }}
-                >
-                  <Printer size={12} />
-                  <span>View Receipt</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Medicines Quick Catalog Table */}
-          <div className="table-container" style={{ maxHeight: "calc(100vh - 220px)", overflowY: "auto" }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Medicine & Molecular Form</th>
-                  <th>Stock Available</th>
-                  <th>MRP</th>
-                  <th>Schedule</th>
-                  <th style={{ textAlign: "right" }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingCatalog ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                      <span style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-                        Loading medicine catalog...
-                      </span>
-                    </td>
-                  </tr>
-                ) : filteredMedicines.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                      <div style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
-                        No medicines match &quot;{searchQuery}&quot;
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredMedicines.map((med) => {
-                    const totalStock = getMedicineStock(med.id);
-                    const isOutOfStock = totalStock <= 0;
-
-                    return (
-                      <tr key={med.id}>
-                        <td>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                            <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.875rem" }}>
-                              {med.brand_name}
-                            </span>
-                            <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
-                              {med.generic_name || "—"} {med.strength ? `• ${med.strength}` : ""}
-                            </span>
-                          </div>
-                        </td>
-
-                        <td>
-                          {isOutOfStock ? (
-                            <span className="status-badge low">
-                              <span className="badge-icon"><AlertTriangle size={11} /></span>
-                              <span>Out of Stock</span>
-                            </span>
-                          ) : (
-                            <span className="status-badge high">
-                              <span className="badge-icon"><CheckCircle2 size={11} /></span>
-                              <span>{totalStock} units</span>
-                            </span>
-                          )}
-                        </td>
-
-                        <td>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                            ₹{med.selling_price || med.mrp ? Number(med.selling_price || med.mrp).toFixed(2) : "0.00"}
-                          </span>
-                        </td>
-
-                        <td>
-                          {med.is_prescription_only ? (
-                            <span className="status-badge med" title="Doctor prescription required">
-                              <span className="badge-icon"><AlertTriangle size={11} /></span>
-                              <span>Rx Only</span>
-                            </span>
-                          ) : (
-                            <span className="status-badge high" title="General sale permitted">
-                              <span className="badge-icon"><CheckCircle2 size={11} /></span>
-                              <span>OTC</span>
-                            </span>
-                          )}
-                        </td>
-
-                        <td style={{ textAlign: "right" }}>
-                          <button
-                            onClick={() => handleAddToCart(med)}
-                            className="btn btn-primary"
-                            style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.75rem" }}
-                            disabled={isOutOfStock}
-                          >
-                            <Plus size={14} />
-                            <span>Add</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+          {errorMessage && <div role="alert" className="pos-message pos-message--error"><AlertTriangle size={18} /><span>{errorMessage}</span></div>}
+          {successMessage && <div role="status" className="pos-message pos-message--success"><CheckCircle2 size={18} /><span>{successMessage}</span></div>}
+          <div className="pos-catalog-heading"><h2>Stocked medicines</h2><span>{filteredMedicines.length} results</span></div>
+          {loadingCatalog ? <Skeleton label="Loading medicine catalog" rows={5} /> : <POSCatalog medicines={filteredMedicines} stock={stockByMedicine} selectedId={filteredMedicines[visibleSelection]?.id} onAdd={handleAddToCart} disabled={isSubmitting} empty={`No medicines match "${searchQuery}"`} />}
+        </section>
+        <aside className="ui-card pos-bill" aria-label="Current bill">
+          <div className="pos-bill-heading"><h2>Current Bill</h2><span>{cart.length} {cart.length === 1 ? 'item' : 'items'}</span></div>
+          <div className="pos-two-columns"><Field label="Customer Name" value={customerName} onChange={e => setCustomerName(e.target.value)} /><Field label="Mobile (WhatsApp)" type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} /></div>
+          {hasRxMedicines && <div><Field label={posPreferences.requireDoctor ? 'Prescribing Doctor Name * (Required for Rx)' : 'Prescribing Doctor Name (optional)'} required={posPreferences.requireDoctor} value={doctorName} onChange={e => setDoctorName(e.target.value)} /><p className="pos-warning">Schedule H requirement: Doctor verification recorded on receipt.</p></div>}
+          <div className="pos-cart-list" aria-label="Bill items">
+            {cart.length === 0 ? <EmptyState title="Your bill is empty" description="Scan a barcode or select medicines from the catalog to dispense." /> : cart.map((item, idx) => <article className={`pos-cart-item ${lastAdded === item.medicine.id ? 'pos-cart-item--recent' : ''}`} key={`${item.medicine.id}:${item.batch?.id}`}><div className="pos-cart-item-heading"><div><strong>{item.medicine.brand_name}</strong><p>{item.batch ? `FEFO Batch: ${item.batch.batch_number}` : 'Auto FEFO'} • ₹{item.unit_price.toFixed(2)}/unit</p></div><Button variant="quiet" aria-label={`Remove ${item.medicine.brand_name}`} disabled={isSubmitting} onClick={() => handleRemoveItem(idx)}><Trash2 size={16} /></Button></div><div className="pos-cart-item-footer"><div className="pos-quantity"><Button variant="quiet" aria-label={`Decrease quantity of ${item.medicine.brand_name}`} disabled={isSubmitting} onClick={() => handleUpdateQuantity(idx, -1)}>−</Button><span className="pos-number">{item.quantity}</span><Button variant="quiet" aria-label={`Increase quantity of ${item.medicine.brand_name}`} disabled={isSubmitting} onClick={() => handleUpdateQuantity(idx, 1)}>+</Button></div><strong className="pos-number">₹{(item.unit_price * item.quantity).toFixed(2)}</strong></div></article>)}
           </div>
-        </div>
-
-        {/* Right: Active Cart & Checkout Panel */}
-        <div
-          className="card"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "1rem",
-            backgroundColor: "var(--bg-card)",
-            padding: "1.25rem",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "0.75rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ color: "var(--brand-primary)" }}>
-                <ShoppingBag size={18} />
-              </span>
-              <strong style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>
-                Current Bill
-              </strong>
-            </div>
-            <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-              {cart.length} {cart.length === 1 ? "item" : "items"}
-            </span>
-          </div>
-
-          {/* Customer Metadata (Optional / Default Walk-in) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-              <input
-                type="text"
-                placeholder="Customer Name"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                className="form-input"
-                style={{ fontSize: "0.75rem", height: "32px" }}
-              />
-              <input
-                type="tel"
-                placeholder="Mobile (WhatsApp)"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                className="form-input"
-                style={{ fontSize: "0.75rem", height: "32px" }}
-              />
-            </div>
-
-            {hasRxMedicines && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                <input
-                  type="text"
-                  required
-                  placeholder="Prescribing Doctor Name * (Required for Rx)"
-                  value={doctorName}
-                  onChange={(e) => setDoctorName(e.target.value)}
-                  className="form-input"
-                  style={{
-                    fontSize: "0.75rem",
-                    height: "32px",
-                    borderColor: !doctorName.trim() ? "var(--status-med-border)" : undefined,
-                  }}
-                />
-                <span style={{ fontSize: "0.6875rem", color: "var(--status-med-text)" }}>
-                  Schedule H requirement: Doctor verification recorded on receipt.
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Cart Line Items List */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem",
-              maxHeight: "260px",
-              overflowY: "auto",
-              paddingRight: "0.25rem",
-            }}
-          >
-            {cart.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "2rem 1rem",
-                  color: "var(--text-muted)",
-                  fontSize: "0.8125rem",
-                  border: "1px dashed var(--border-default)",
-                  borderRadius: "var(--radius-sm)",
-                }}
-              >
-                Cart is empty. Select medicines from catalog to dispense.
-              </div>
-            ) : (
-              cart.map((item, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.35rem",
-                    padding: "0.625rem",
-                    backgroundColor: "var(--bg-surface-elevated)",
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--border-subtle)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
-                        {item.medicine.brand_name}
-                      </div>
-                      <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
-                        {item.batch ? `FEFO Batch: ${item.batch.batch_number}` : "Auto FEFO"} • ₹{item.unit_price.toFixed(2)}/unit
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveItem(idx)}
-                      className="btn-icon"
-                      style={{ width: "24px", height: "24px" }}
-                      title="Remove Item"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "2px" }}>
-                    {/* Quantity controls */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                      <button
-                        onClick={() => handleUpdateQuantity(idx, -1)}
-                        className="btn-icon"
-                        style={{ width: "24px", height: "24px" }}
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span style={{ fontWeight: 700, fontSize: "0.8125rem", minWidth: "20px", textAlign: "center" }}>
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => handleUpdateQuantity(idx, 1)}
-                        className="btn-icon"
-                        style={{ width: "24px", height: "24px" }}
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-
-                    {/* Total price */}
-                    <div style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.875rem" }}>
-                      ₹{(item.unit_price * item.quantity).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Payment Method Selector */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase" }}>
-              Payment Mode
-            </span>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("cash")}
-                className={`btn ${paymentMethod === "cash" ? "btn-primary" : "btn-secondary"}`}
-                style={{ height: "34px", fontSize: "0.75rem" }}
-              >
-                Cash
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("upi")}
-                className={`btn ${paymentMethod === "upi" ? "btn-primary" : "btn-secondary"}`}
-                style={{ height: "34px", fontSize: "0.75rem" }}
-              >
-                UPI / QR
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("card")}
-                className={`btn ${paymentMethod === "card" ? "btn-primary" : "btn-secondary"}`}
-                style={{ height: "34px", fontSize: "0.75rem" }}
-              >
-                Card
-              </button>
-            </div>
-          </div>
-
-          {/* Cash Change Calculator */}
-          {paymentMethod === "cash" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-              <div>
-                <label className="form-label">Tendered (₹)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 500"
-                  value={cashTendered}
-                  onChange={(e) => setCashTendered(e.target.value)}
-                  className="form-input"
-                  style={{ height: "32px", fontSize: "0.8125rem" }}
-                />
-              </div>
-              <div>
-                <label className="form-label">Change Due</label>
-                <div
-                  style={{
-                    height: "32px",
-                    display: "flex",
-                    alignItems: "center",
-                    fontWeight: 700,
-                    color: "var(--status-high-text)",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  ₹{changeDue.toFixed(2)}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Financial Totals */}
-          <div
-            style={{
-              padding: "0.75rem",
-              borderRadius: "var(--radius-sm)",
-              backgroundColor: "var(--bg-surface-elevated)",
-              border: "1px solid var(--border-subtle)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.35rem",
-              fontSize: "0.75rem",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-              <span>Subtotal:</span>
-              <span>₹{grossSubtotal.toFixed(2)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-              <span>Estimated GST (Tax):</span>
-              <span>₹{estimatedTax.toFixed(2)}</span>
-            </div>
-            {totalDiscount > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", color: "var(--status-high-text)" }}>
-                <span>Discount:</span>
-                <span>-₹{totalDiscount.toFixed(2)}</span>
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                color: "var(--text-primary)",
-                fontWeight: 700,
-                fontSize: "1.0625rem",
-                borderTop: "1px solid var(--border-subtle)",
-                paddingTop: "0.5rem",
-                marginTop: "0.25rem",
-              }}
-            >
-              <span>Total Payable:</span>
-              <span>₹{grandTotal.toFixed(2)}</span>
-            </div>
-          </div>
-
-          {/* Complete Transaction Button */}
-          <button
-            onClick={handleCheckout}
-            disabled={cart.length === 0 || isSubmitting}
-            className="btn btn-primary"
-            style={{ height: "42px", fontSize: "0.875rem" }}
-          >
-            <Receipt size={16} />
-            <span>{isSubmitting ? "Dispensing & Printing..." : `Charge ₹${grandTotal.toFixed(2)}`}</span>
-          </button>
-        </div>
+          {undoRemoval && cart === undoRemoval.after && !isSubmitting && <Button variant="quiet" onClick={undoRemovedItem}>Undo removed item</Button>}
+          <fieldset className="pos-payment"><legend>Payment Mode</legend><div className="pos-payment-options">{(['cash', 'upi', 'card'] as const).map(method => <Button key={method} variant={paymentMethod === method ? 'primary' : 'secondary'} aria-pressed={paymentMethod === method} disabled={isSubmitting} onClick={() => setPaymentMethod(method)}>{method === 'cash' ? 'Cash' : method === 'upi' ? 'UPI / QR' : 'Card'}</Button>)}</div></fieldset>
+          {paymentMethod === 'cash' && <div className="pos-two-columns"><Field label="Tendered (₹)" type="number" placeholder="e.g. 500" value={cashTendered} onChange={e => setCashTendered(e.target.value)} /><div className="ui-field"><span className="ui-hint">Change Due</span><strong className="pos-change pos-number">₹{changeDue.toFixed(2)}</strong></div></div>}
+          <div className="pos-totals"><div><span>Subtotal:</span><span className="pos-number">₹{grossSubtotal.toFixed(2)}</span></div>{posPreferences.showGst && <div><span>Estimated GST (Tax):</span><span className="pos-number">₹{estimatedTax.toFixed(2)}</span></div>}{totalDiscount > 0 && <div><span>Discount:</span><span className="pos-number">-₹{totalDiscount.toFixed(2)}</span></div>}<div className="pos-grand-total"><span>Total Payable:</span><strong className="pos-number">₹{grandTotal.toFixed(2)}</strong></div></div>
+          <div className="pos-checkout"><Button ref={paymentRef} onClick={handleCheckout} disabled={cart.length === 0 || isSubmitting} busy={isSubmitting}><Receipt size={18} />{isSubmitting ? 'Dispensing & Printing...' : `Charge ₹${grandTotal.toFixed(2)}`}</Button><p className="ui-hint">F2 Barcode · F8 Focus payment</p></div>
+        </aside>
       </div>
 
       {/* =====================================================================
           Modal: Printable Digital Receipt / Invoice
           ===================================================================== */}
       {recentReceipt && (
-        <div className="modal-backdrop" onClick={() => setRecentReceipt(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "520px" }}>
+        <div className="modal-backdrop" data-receipt-backdrop onClick={() => setRecentReceipt(null)}>
+          <style media="print">{`@page { size: ${posPreferences.receiptSize === "a4" ? "A4" : "80mm 297mm"}; margin: 4mm; } [data-pos-receipt] { width: ${posPreferences.receiptSize === "a4" ? "190mm" : "72mm"} !important; }`}</style>
+          <div className="modal-content" data-pos-receipt onClick={(e) => e.stopPropagation()} style={{ maxWidth: posPreferences.receiptSize === "a4" ? "800px" : "520px" }}>
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 <span style={{ color: "var(--brand-primary)" }}>
@@ -1139,8 +713,7 @@ export default function POSTerminalPage() {
                   <span>₹{recentReceipt.subtotal.toFixed(2)}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
-                  <span>Tax (GST)</span>
-                  <span>₹{recentReceipt.tax_amount.toFixed(2)}</span>
+                  {posPreferences.showGst && <><span>Tax (GST)</span><span>₹{recentReceipt.tax_amount.toFixed(2)}</span></>}
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-primary)", fontWeight: 700, fontSize: "0.9375rem" }}>
                   <span>Grand Total</span>
@@ -1150,7 +723,7 @@ export default function POSTerminalPage() {
             </div>
 
             <div className="modal-footer">
-              <button onClick={() => window.print()} className="btn btn-primary" style={{ height: "34px" }}>
+              <button title="Print receipt (Alt+P)" onClick={() => window.print()} className="btn btn-primary" style={{ height: "34px" }}>
                 <Printer size={15} />
                 <span>Print Tax Invoice</span>
               </button>
@@ -1253,19 +826,19 @@ export default function POSTerminalPage() {
                     width: "28px",
                     height: "28px",
                     borderRadius: "var(--radius-sm)",
-                    backgroundColor: "#1e3a5f",
+                    backgroundColor: "var(--brand-subtle)",
                     border: "1px solid #1e6ee8",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#87d1ff",
+                    color: "var(--brand-primary)",
                   }}
                 >
                   <Camera size={15} />
                 </div>
                 <div>
                   <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                    Camera Packaging Recognition (CV + OCR)
+                    Scan barcode or medicine packaging
                   </h2>
                   <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                     PRD Phase 2: Live Computer Vision Packaging Identification with Human Verification
@@ -1323,7 +896,7 @@ export default function POSTerminalPage() {
               {/* Status / OCR Pipeline Output */}
               {cvRecognizing && (
                 <div style={{ textAlign: "center", padding: "1.5rem 0", color: "var(--brand-primary)", fontSize: "0.875rem" }}>
-                  Reading packaging text and checking medicine matches...
+                  Checking barcode first, then reading packaging text...
                 </div>
               )}
 
@@ -1376,11 +949,14 @@ export default function POSTerminalPage() {
                             cvResult.match_result.top_candidate.confidence_level === "HIGH" ? "high" : "med"
                           }`}
                         >
-                          {Math.max(0, Math.min(100, cvResult.match_result.top_candidate.confidence_score)).toFixed(0)}% match score
+                          {cvResult.barcode ? "Exact barcode match" : `${Math.max(0, Math.min(100, cvResult.match_result.top_candidate.confidence_score)).toFixed(0)}% match score`}
                         </span>
                       </div>
 
                       {/* Human Verification Notice */}
+                      {cvResult.extracted_entities?.strength_inferred && <p style={{ fontSize: "0.75rem", color: "var(--status-med-text)" }}>
+                        Dose was inferred from the printed product name. Confirm the strength, formulation and pack before adding.
+                      </p>}
                       {cvResult.photo_model && (
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                           {cvResult.photo_model.agrees_with_ocr
@@ -1412,7 +988,9 @@ export default function POSTerminalPage() {
                     </div>
                   ) : (
                     <div style={{ textAlign: "center", padding: "1rem", color: "var(--status-low-text)", fontSize: "0.8125rem" }}>
-                      Unable to confidently identify this medicine. Capture another image or search manually.
+                      {cvResult.barcode
+                        ? `Barcode ${cvResult.barcode} is not linked to one active medicine. Link it in Medicines Catalog, then sync POS.`
+                        : "Unable to confidently identify this medicine. Capture another image or search manually."}
                       {cvResult.ocr?.full_text && (
                         <div style={{ marginTop: "0.75rem", color: "var(--text-secondary)", whiteSpace: "pre-wrap", maxHeight: "120px", overflowY: "auto" }}>
                           Text read from packaging: {cvResult.ocr.full_text}

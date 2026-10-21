@@ -62,6 +62,7 @@ class VisionRecognitionPipelineResult:
     human_verification_required: bool = True
     error_message: Optional[str] = None
     photo_model: Optional[Dict[str, Any]] = None
+    barcode: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -74,6 +75,7 @@ class VisionRecognitionPipelineResult:
             "human_verification_required": self.human_verification_required,
             "error_message": self.error_message,
             "photo_model": self.photo_model,
+            "barcode": self.barcode,
         }
 
 
@@ -142,6 +144,36 @@ def recognize_medicine_image(
 
     # Step 1: Quality assessment
     quality = assess_image_quality(image)
+    # The same upload button accepts product photos and barcode labels. Decode
+    # exact identifiers before OCR, so numeric barcode text is never fuzzy-matched.
+    from app.services.barcode_service import decode_barcode_pixels, lookup
+    from app.utils.errors import ValidationError, NotFoundError
+    barcode = None
+    try:
+        barcode = decode_barcode_pixels(image)
+    except ValidationError as error:
+        if not error.message.startswith("No readable barcode found"):
+            return VisionRecognitionPipelineResult(False, quality, None, None, None, None,
+                                                    error_message=error.message)
+    if barcode:
+        from app.vision.matcher import MatchCandidate
+        from app.models.batch import Batch
+        from app.models.inventory import Inventory
+        from sqlalchemy import func
+        from datetime import date
+        try:
+            med = lookup(store_id, barcode)
+            stock = (Inventory.query.with_entities(func.sum(Inventory.quantity_available))
+                .join(Batch, Inventory.batch_id == Batch.id)
+                .filter(Inventory.store_id == store_id, Batch.store_id == store_id,
+                        Batch.medicine_id == med.id, Batch.expiry_date >= date.today()).scalar()) or 0
+            candidate = MatchCandidate(med.id, med.brand_name, med.generic_name, med.strength,
+                med.dosage_form.value if med.dosage_form else None, med.manufacturer, med.mrp,
+                100.0, "HIGH", score_breakdown={"exact_barcode_match": 100.0}, active_stock=int(stock))
+            result = MatchResult(candidate, [], False, None, [])
+        except (NotFoundError, ValidationError) as error:
+            result = MatchResult(None, [], True, error.message, [barcode])
+        return VisionRecognitionPipelineResult(True, quality, None, None, None, result, barcode=barcode)
     if not quality.is_acceptable:
         logger.info(f"Image rejected due to poor quality: {quality.feedback}")
         return VisionRecognitionPipelineResult(

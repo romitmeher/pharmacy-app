@@ -1,4 +1,6 @@
 "use client";
+import "./presentation.css";
+import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import React, { useState, useEffect, useTransition } from "react";
 import {
@@ -84,11 +86,7 @@ export default function SalesReturnsPage() {
     setSelectedItems({});
 
     try {
-      const saleId = parseInt(saleIdInput.trim(), 10);
-      if (isNaN(saleId)) {
-        throw new Error("Please enter a valid numerical Sale ID or Invoice ID.");
-      }
-      const data = await getEligibleReturnItems(saleId);
+      const data = await getEligibleReturnItems(saleIdInput.trim());
       setEligibleData(data);
       // Pre-fill quantities as 0
       const initial: typeof selectedItems = {};
@@ -182,7 +180,7 @@ export default function SalesReturnsPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="returns-1">
       {/* Page Header */}
       <header className="page-header">
         <div>
@@ -192,55 +190,44 @@ export default function SalesReturnsPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="returns-2">
           <ThemeToggle />
         </div>
       </header>
 
       {/* Main Body */}
       <div
-        className="page-body"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 400px",
-          gap: "1.5rem",
-          alignItems: "start",
-        }}
+        
+        className="page-body returns-3"
       >
         {/* Left Column: Search & Return Form */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <div className="returns-4">
           {/* Invoice Lookup Card */}
-          <div className="card" style={{ padding: "1.25rem" }}>
-            <h3 style={{ fontSize: "0.9375rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+          <div  className="card returns-5">
+            <h3 className="returns-6">
               Lookup Sale Invoice
             </h3>
 
-            <form onSubmit={handleSearchSale} style={{ display: "flex", gap: "0.75rem" }}>
-              <div style={{ position: "relative", flex: 1 }}>
+            <form onSubmit={handleSearchSale} className="returns-7">
+              <div className="returns-8">
                 <Search
                   size={16}
-                  style={{
-                    position: "absolute",
-                    left: "0.75rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--text-muted)",
-                  }}
+                  className="returns-9"
                 />
                 <input
                   type="text"
                   placeholder="Enter numerical Sale ID (e.g. 1)..."
                   value={saleIdInput}
                   onChange={(e) => setSaleIdInput(e.target.value)}
-                  className="form-input"
-                  style={{ paddingLeft: "2.5rem", height: "38px" }}
+                  
+                  className="form-input returns-10"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loadingEligible || !saleIdInput.trim()}
-                className="btn btn-primary"
-                style={{ height: "38px", padding: "0 1.25rem" }}
+                
+                className="btn btn-primary returns-11"
               >
                 {loadingEligible ? "Finding..." : "Find Invoice"}
               </button>
@@ -250,17 +237,7 @@ export default function SalesReturnsPage() {
           {/* Feedback Messages */}
           {errorMessage && (
             <div
-              style={{
-                padding: "0.75rem 1rem",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "rgba(255, 128, 128, 0.12)",
-                border: "1px solid var(--status-low-border)",
-                color: "var(--status-low-text)",
-                fontSize: "0.8125rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
+              className="returns-12"
             >
               <AlertTriangle size={16} />
               <span>{errorMessage}</span>
@@ -269,17 +246,7 @@ export default function SalesReturnsPage() {
 
           {successMessage && (
             <div
-              style={{
-                padding: "0.75rem 1rem",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "rgba(125, 255, 149, 0.12)",
-                border: "1px solid var(--status-high-border)",
-                color: "var(--status-high-text)",
-                fontSize: "0.8125rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
+              className="returns-13"
             >
               <CheckCircle2 size={16} />
               <span>{successMessage}</span>
@@ -288,13 +255,13 @@ export default function SalesReturnsPage() {
 
           {/* Eligible Line Items Matrix */}
           {eligibleData && (
-            <div className="card" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div  className="card returns-14">
+              <div className="returns-15">
                 <div>
-                  <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h3 className="returns-16">
                     Invoice #{eligibleData.invoice_number}
                   </h3>
-                  <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                  <p className="returns-17">
                     Customer: <strong>{eligibleData.customer_name}</strong> • Date: {new Date(eligibleData.sale_date).toLocaleDateString()}
                   </p>
                 </div>
@@ -314,10 +281,10 @@ export default function SalesReturnsPage() {
                       <th>Already Returned</th>
                       <th>Qty to Return</th>
                       <th>Restock Disposition</th>
-                      <th style={{ textAlign: "right" }}>Refund</th>
+                      <th className="returns-18">Refund</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <VirtualTableBody>
                     {eligibleData.items.map((item) => {
                       const sel = selectedItems[item.sale_item_id] || {
                         quantity: 0,
@@ -328,10 +295,10 @@ export default function SalesReturnsPage() {
                       return (
                         <tr key={item.sale_item_id}>
                           <td>
-                            <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
+                            <div className="returns-19">
                               {item.medicine_name}
                             </div>
-                            <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
+                            <div className="returns-20">
                               Batch: {item.batch_number} • ₹{item.unit_price.toFixed(2)}/unit
                             </div>
                           </td>
@@ -350,8 +317,8 @@ export default function SalesReturnsPage() {
                                   item.quantity_eligible_for_return
                                 )
                               }
-                              className="form-input"
-                              style={{ width: "64px", height: "30px", fontSize: "0.8125rem", textAlign: "center" }}
+                              
+                              className="form-input returns-21"
                               disabled={item.quantity_eligible_for_return === 0}
                             />
                           </td>
@@ -364,8 +331,8 @@ export default function SalesReturnsPage() {
                                   e.target.value as typeof sel.restockCondition
                                 )
                               }
-                              className="form-input"
-                              style={{ height: "30px", fontSize: "0.75rem" }}
+                              
+                              className="form-input returns-22"
                               disabled={sel.quantity === 0}
                             >
                               <option value="restocked_to_inventory">Restock to Batch Inventory</option>
@@ -373,62 +340,56 @@ export default function SalesReturnsPage() {
                               <option value="discarded_expired">Discard (Expired / Unusable)</option>
                             </select>
                           </td>
-                          <td style={{ textAlign: "right", fontWeight: 700 }}>
+                          <td className="returns-23">
                             ₹{lineRefund.toFixed(2)}
                           </td>
                         </tr>
                       );
                     })}
-                  </tbody>
+                  </VirtualTableBody>
                 </table>
               </div>
 
               {/* Refund Summary & Action */}
               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  paddingTop: "0.75rem",
-                  borderTop: "1px solid var(--border-subtle)",
-                }}
+                className="returns-24"
               >
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <div className="returns-25">
                   <div>
-                    <label className="form-label" style={{ fontSize: "0.75rem" }}>Refund Mode</label>
+                    <label  className="form-label returns-26" htmlFor="returns-field-1">Refund Mode</label>
                     <select
                       value={refundMethod}
                       onChange={(e) => setRefundMethod(e.target.value)}
-                      className="form-input"
-                      style={{ height: "32px", fontSize: "0.75rem" }}
+                      
+                      className="form-input returns-27" id="returns-field-1"
                     >
                       <option value="cash">Cash Refund</option>
                       <option value="upi">UPI / Online Refund</option>
                       <option value="credit">Store Credit</option>
                     </select>
                   </div>
-                  <div style={{ flex: 1, minWidth: "220px" }}>
-                    <label className="form-label" style={{ fontSize: "0.75rem" }}>Audit Reason *</label>
+                  <div className="returns-28">
+                    <label  className="form-label returns-29" htmlFor="returns-field-2">Audit Reason *</label>
                     <input
                       type="text"
                       placeholder="e.g. Wrong item purchased by customer"
                       value={returnReason}
                       onChange={(e) => setReturnReason(e.target.value)}
-                      className="form-input"
-                      style={{ height: "32px", fontSize: "0.75rem" }}
+                      
+                      className="form-input returns-30" id="returns-field-2"
                     />
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.35rem" }}>
-                  <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                    Total Refund: <strong style={{ fontSize: "1.125rem", color: "var(--status-high-text)" }}>₹{estimatedRefund.toFixed(2)}</strong>
+                <div className="returns-31">
+                  <div className="returns-32">
+                    Total Refund: <strong className="returns-33">₹{estimatedRefund.toFixed(2)}</strong>
                   </div>
                   <button
                     onClick={handleSubmitReturn}
                     disabled={isSubmitting || returnPayloadItems.length === 0}
-                    className="btn btn-primary"
-                    style={{ height: "36px", padding: "0 1.25rem" }}
+                    
+                    className="btn btn-primary returns-34"
                   >
                     <RotateCcw size={15} />
                     <span>{isSubmitting ? "Processing Return..." : "Process Return & Restock"}</span>
@@ -440,49 +401,41 @@ export default function SalesReturnsPage() {
         </div>
 
         {/* Right Column: Historical Returns Audit Log */}
-        <div className="card" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "0.75rem" }}>
-            <Clock size={16} style={{ color: "var(--brand-primary)" }} />
-            <strong style={{ fontSize: "0.9375rem" }}>Recent Returns Log</strong>
+        <div  className="card returns-35">
+          <div className="returns-36">
+            <Clock size={16} className="returns-37" />
+            <strong className="returns-38">Recent Returns Log</strong>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", maxHeight: "calc(100vh - 240px)", overflowY: "auto" }}>
+          <div className="returns-39">
             {loadingHistory ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+              <div className="returns-40">
                 Loading return logs...
               </div>
             ) : recentReturns.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+              <div className="returns-41">
                 No customer returns processed yet.
               </div>
             ) : (
               recentReturns.map((ret) => (
                 <div
                   key={ret.id}
-                  style={{
-                    padding: "0.75rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "var(--bg-surface-elevated)",
-                    border: "1px solid var(--border-subtle)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.35rem",
-                  }}
+                  className="returns-42"
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
+                  <div className="returns-43">
+                    <span className="returns-44">
                       Return #{ret.return_number}
                     </span>
-                    <span style={{ fontWeight: 700, color: "var(--status-high-text)", fontSize: "0.8125rem" }}>
+                    <span className="returns-45">
                       ₹{Number(ret.total_refund_amount).toFixed(2)}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                  <div className="returns-46">
                     Orig Invoice: <strong>#{ret.sale_invoice_number}</strong> • Mode: {ret.refund_method.toUpperCase()}
                   </div>
 
-                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <div className="returns-47">
                     Reason: {ret.reason || "Customer Return"} • By: {ret.user_name}
                   </div>
                 </div>

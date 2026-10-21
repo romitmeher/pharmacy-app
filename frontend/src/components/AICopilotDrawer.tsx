@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { askCopilotQuery, submitCopilotFeedback, CopilotResponseData } from "@/lib/api";
 
-export default function AICopilotDrawer() {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+export default function AICopilotDrawer({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [isOpen, setIsOpen] = useState<boolean>(initialOpen);
   const [query, setQuery] = useState<string>("");
   const [messages, setMessages] = useState<
     Array<{
@@ -87,31 +87,9 @@ export default function AICopilotDrawer() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          style={{
-            position: "fixed",
-            bottom: "1.5rem",
-            right: "1.5rem",
-            zIndex: 900,
-            display: "flex",
-            alignItems: "center",
-            gap: "0.625rem",
-            padding: "0.75rem 1.25rem",
-            borderRadius: "var(--radius-full, 9999px)",
-            backgroundColor: "var(--brand-primary, #10b981)",
-            color: "#ffffff",
-            border: "none",
-            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.3)",
-            fontWeight: 700,
-            fontSize: "0.875rem",
-            cursor: "pointer",
-            transition: "transform 0.15s ease, box-shadow 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.04)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
+          aria-label="Ask Pharmacy Copilot"
+          className="aicopilotdrawer-1"
+
         >
           <Bot size={18} />
           <span>Ask Pharmacy Copilot</span>
@@ -121,54 +99,24 @@ export default function AICopilotDrawer() {
       {/* Slide-over Drawer Panel */}
       {isOpen && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: "420px",
-            maxWidth: "100vw",
-            backgroundColor: "var(--bg-card, #171717)",
-            borderLeft: "1px solid var(--border-subtle, #262626)",
-            zIndex: 1000,
-            display: "flex",
-            flexDirection: "column",
-            boxShadow: "-8px 0 32px rgba(0,0,0,0.5)",
-          }}
+          className="aicopilotdrawer-2"
         >
           {/* Header */}
           <div
-            style={{
-              padding: "1rem 1.25rem",
-              borderBottom: "1px solid var(--border-subtle)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              backgroundColor: "var(--bg-surface-elevated)",
-            }}
+            className="aicopilotdrawer-3"
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+            <div className="aicopilotdrawer-4">
               <div
-                style={{
-                  width: "30px",
-                  height: "30px",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "#1e3a5f",
-                  border: "1px solid #1e6ee8",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#87d1ff",
-                }}
+                className="aicopilotdrawer-5"
               >
                 <Bot size={16} />
               </div>
               <div>
-                <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                <h3 className="aicopilotdrawer-6">
                   Grounded AI Copilot
                 </h3>
-                <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                  <Database size={10} style={{ color: "var(--status-high-text)" }} />
+                <div className="aicopilotdrawer-7">
+                  <Database size={10} className="aicopilotdrawer-8" />
                   <span>MySQL RAG Source of Truth</span>
                 </div>
               </div>
@@ -181,30 +129,13 @@ export default function AICopilotDrawer() {
 
           {/* Quick Sample Questions */}
           <div
-            style={{
-              padding: "0.625rem 1rem",
-              backgroundColor: "var(--bg-app)",
-              borderBottom: "1px solid var(--border-subtle)",
-              display: "flex",
-              gap: "0.35rem",
-              overflowX: "auto",
-              scrollbarWidth: "none",
-            }}
+            className="aicopilotdrawer-9"
           >
             {sampleQueries.map((sq, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSendQuery(sq)}
-                style={{
-                  whiteSpace: "nowrap",
-                  fontSize: "0.6875rem",
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "var(--radius-full, 9999px)",
-                  backgroundColor: "var(--bg-surface-elevated)",
-                  border: "1px solid var(--border-subtle)",
-                  color: "var(--text-secondary)",
-                  cursor: "pointer",
-                }}
+                className="aicopilotdrawer-10"
               >
                 {sq}
               </button>
@@ -213,14 +144,7 @@ export default function AICopilotDrawer() {
 
           {/* Messages Stream */}
           <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "1rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-            }}
+            className="aicopilotdrawer-11"
           >
             {messages.map((msg, idx) => (
               <div
@@ -254,16 +178,10 @@ export default function AICopilotDrawer() {
                   {/* Grounded facts badge */}
                   {msg.data?.grounded_facts && msg.data.grounded_facts.length > 0 && (
                     <div
-                      style={{
-                        marginTop: "0.5rem",
-                        paddingTop: "0.5rem",
-                        borderTop: "1px dashed var(--border-subtle)",
-                        fontSize: "0.6875rem",
-                        color: "var(--text-muted)",
-                      }}
+                      className="aicopilotdrawer-12"
                     >
                       <strong>Grounded Database Facts ({msg.data.grounded_facts.length}):</strong>
-                      <ul style={{ paddingLeft: "1rem", marginTop: "0.25rem", marginBottom: 0 }}>
+                      <ul className="aicopilotdrawer-13">
                         {msg.data.grounded_facts.slice(0, 3).map((f, fIdx) => (
                           <li key={fIdx}>{f.summary}</li>
                         ))}
@@ -274,17 +192,17 @@ export default function AICopilotDrawer() {
 
                 {/* Copilot feedback buttons */}
                 {msg.sender === "copilot" && msg.data?.interaction_id && (
-                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem", paddingLeft: "0.5rem" }}>
+                  <div className="aicopilotdrawer-14">
                     <button
                       onClick={() => handleFeedback(msg.data?.interaction_id, true)}
-                      style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+                      className="aicopilotdrawer-15"
                       title="Helpful"
                     >
                       <ThumbsUp size={12} />
                     </button>
                     <button
                       onClick={() => handleFeedback(msg.data?.interaction_id, false)}
-                      style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+                      className="aicopilotdrawer-16"
                       title="Not helpful"
                     >
                       <ThumbsDown size={12} />
@@ -295,7 +213,7 @@ export default function AICopilotDrawer() {
             ))}
 
             {isSubmitting && (
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", color: "var(--text-muted)", fontSize: "0.75rem" }}>
+              <div className="aicopilotdrawer-17">
                 <Sparkles size={14} className="spin" />
                 <span>Searching MySQL database & reasoning...</span>
               </div>
@@ -304,33 +222,29 @@ export default function AICopilotDrawer() {
 
           {/* Input Area */}
           <div
-            style={{
-              padding: "0.75rem 1rem",
-              borderTop: "1px solid var(--border-subtle)",
-              backgroundColor: "var(--bg-surface-elevated)",
-            }}
+            className="aicopilotdrawer-18"
           >
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSendQuery();
               }}
-              style={{ display: "flex", gap: "0.5rem" }}
+              className="aicopilotdrawer-19"
             >
               <input
                 type="text"
                 placeholder="Ask about inventory, expiry, reorder..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="form-input"
-                style={{ height: "36px", fontSize: "0.8125rem", flex: 1 }}
+                
+                className="form-input aicopilotdrawer-20"
                 disabled={isSubmitting}
               />
               <button
                 type="submit"
                 disabled={isSubmitting || !query.trim()}
-                className="btn btn-primary"
-                style={{ height: "36px", width: "36px", padding: 0, justifyContent: "center" }}
+                
+                className="btn btn-primary aicopilotdrawer-21"
               >
                 <Send size={14} />
               </button>

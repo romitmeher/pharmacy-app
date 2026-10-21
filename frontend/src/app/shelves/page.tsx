@@ -1,4 +1,5 @@
 "use client";
+import "./presentation.css";
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
@@ -324,13 +325,13 @@ export default function ShelvesPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="shelves-1">
       {/* Header — Aligned 64px height */}
       <header className="page-header">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="shelves-2">
             <h1 className="page-title">Shelves & Storage Locations</h1>
-            <span className="status-badge info" style={{ fontSize: "0.6875rem", padding: "0.1rem 0.45rem" }}>
+            <span  className="status-badge info shelves-3">
               PRD Phase 6
             </span>
           </div>
@@ -339,12 +340,12 @@ export default function ShelvesPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="shelves-4">
           <ThemeToggle />
           <button
             onClick={() => handleOpenAuditModal()}
-            className="btn btn-secondary"
-            style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}
+            
+            className="btn btn-secondary shelves-5"
           >
             <ClipboardCheck size={14} />
             <span>Cycle Count Audit</span>
@@ -358,9 +359,9 @@ export default function ShelvesPage() {
           <button
             onClick={loadData}
             disabled={refreshing}
-            className="btn btn-secondary"
-            style={{ padding: "0 0.625rem" }}
-            title="Refresh layout data"
+            
+            className="btn btn-secondary shelves-6"
+            title="Refresh layout data" aria-label="Refresh"
           >
             <RefreshCw size={14} style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} />
           </button>
@@ -368,7 +369,7 @@ export default function ShelvesPage() {
       </header>
 
       {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div  className="page-body shelves-7">
         {/* Status Toast */}
         {statusMessage && (
           <div
@@ -386,7 +387,7 @@ export default function ShelvesPage() {
             }}
           >
             <span>{statusMessage.text}</span>
-            <button onClick={() => setStatusMessage(null)} className="btn-icon" style={{ width: "24px", height: "24px" }}>
+            <button onClick={() => setStatusMessage(null)}  className="btn-icon shelves-8" aria-label="Close dialog">
               <X size={14} />
             </button>
           </div>
@@ -394,16 +395,12 @@ export default function ShelvesPage() {
 
         {/* Operational Metrics Bar */}
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "1rem",
-          }}
+          className="shelves-9"
         >
           {/* Card 1: Storage Locations */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card shelves-10">
+            <div className="shelves-11">
+              <span className="shelves-12">
                 Storage Locations
               </span>
               <span className="status-badge info">
@@ -411,18 +408,18 @@ export default function ShelvesPage() {
                 <span>Active</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="shelves-13">
               {planogram?.summary.total_locations ?? locations.length}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="shelves-14">
               Physical Shelves, Racks & Fridges
             </div>
           </div>
 
           {/* Card 2: Stock Occupied */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card shelves-15">
+            <div className="shelves-16">
+              <span className="shelves-17">
                 Total Stock Occupied
               </span>
               <span className="status-badge high">
@@ -430,21 +427,21 @@ export default function ShelvesPage() {
                 <span>Logged</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="shelves-18">
               {planogram?.summary.total_occupied_units ?? 0}
-              <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)", marginLeft: "0.375rem" }}>
+              <span className="shelves-19">
                 / {planogram?.summary.total_capacity_units ?? 0} units
               </span>
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="shelves-20">
               Physical units logged across shelves
             </div>
           </div>
 
           {/* Card 3: Capacity Utilization */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card shelves-21">
+            <div className="shelves-22">
+              <span className="shelves-23">
                 Capacity Utilization
               </span>
               <span className="status-badge med">
@@ -452,10 +449,10 @@ export default function ShelvesPage() {
                 <span>Capacity</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="shelves-24">
               {planogram?.summary.store_utilization_pct ?? 0}%
             </div>
-            <div style={{ width: "100%", backgroundColor: "var(--bg-surface-elevated)", height: "4px", borderRadius: "2px", overflow: "hidden", marginTop: "0.25rem" }}>
+            <div className="shelves-25">
               <div
                 style={{
                   height: "100%",
@@ -468,9 +465,9 @@ export default function ShelvesPage() {
           </div>
 
           {/* Card 4: Climate Safety & Alerts */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card shelves-26">
+            <div className="shelves-27">
+              <span className="shelves-28">
                 Climate Safety
               </span>
               <span className={`status-badge ${(compliance?.summary.total_alerts ?? 0) === 0 ? "high" : "low"}`}>
@@ -478,17 +475,17 @@ export default function ShelvesPage() {
                 <span>{(compliance?.summary.total_alerts ?? 0) === 0 ? "Compliant" : "Violations"}</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="shelves-29">
               {(compliance?.summary.total_alerts ?? 0) === 0 ? "Safe" : `${compliance?.summary.total_alerts} Alerts`}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="shelves-30">
               Cold-chain & narcotic safe regulations
             </div>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--border-subtle)", paddingBottom: "0.75rem" }}>
+        <div className="shelves-31">
           {[
             { id: "planogram", label: "Physical Planogram & Shelves", icon: MapPin },
             { id: "locator", label: "Fast Dispense Locator", icon: Navigation },
@@ -513,23 +510,23 @@ export default function ShelvesPage() {
 
         {/* Tab 1: Physical Planogram & Shelves */}
         {activeTab === "planogram" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <div className="shelves-33">
             {/* Filters */}
-            <div className="card" style={{ padding: "0.875rem 1.25rem", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
-              <div style={{ position: "relative", flex: "1 1 240px" }}>
+            <div  className="card shelves-34">
+              <div className="shelves-35">
                 <input
                   type="text"
-                  className="form-input"
+                  
                   placeholder="Search shelf name, coordinate code, or medicine..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: "2.125rem" }}
+                  className="form-input shelves-36"
                 />
-                <Search size={14} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <Search size={14} className="shelves-37" />
               </div>
 
-              <div style={{ display: "flex", gap: "0.375rem", alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginRight: "0.25rem" }}>Zone:</span>
+              <div className="shelves-38">
+                <span className="shelves-39">Zone:</span>
                 {[
                   { id: "ALL", label: "All Units" },
                   { id: "AMBIENT", label: "Ambient" },
@@ -551,18 +548,18 @@ export default function ShelvesPage() {
 
             {/* Shelf Grid */}
             {loading ? (
-              <div style={{ padding: "4rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+              <div className="shelves-41">
                 Loading physical store planogram...
               </div>
             ) : filteredShelves.length === 0 ? (
-              <div className="card" style={{ padding: "4rem", textAlign: "center" }}>
-                <div style={{ width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "var(--bg-surface-elevated)", margin: "0 auto 0.75rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>
+              <div  className="card shelves-42">
+                <div className="shelves-43">
                   <MapPin size={22} />
                 </div>
-                <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
+                <div className="shelves-44">
                   No Storage Shelves Found
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                <div className="shelves-45">
                   Create your first physical storage location to start tracking batch positions and automated picking.
                 </div>
                 <button onClick={handleOpenNewLocation} className="btn btn-primary">
@@ -570,36 +567,36 @@ export default function ShelvesPage() {
                 </button>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "1rem" }}>
+              <div className="shelves-46">
                 {filteredShelves.map((shelf) => {
                   const rawLoc = locations.find((l) => l.id === shelf.location_id);
 
                   return (
-                    <div key={shelf.location_id} className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "1rem" }}>
+                    <div key={shelf.location_id}  className="card shelves-47">
                       <div>
                         {/* Shelf Header */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div className="shelves-48">
                           <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                              <strong style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{shelf.name}</strong>
-                              <span className="status-badge" style={{ fontSize: "0.625rem", padding: "0.1rem 0.4rem", textTransform: "uppercase" }}>
+                            <div className="shelves-49">
+                              <strong className="shelves-50">{shelf.name}</strong>
+                              <span  className="status-badge shelves-51">
                                 {shelf.location_type}
                               </span>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.75rem", fontFamily: "monospace", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                            <div className="shelves-52">
                               <MapPin size={12} />
                               <span>{shelf.coordinate_code}</span>
                             </div>
                           </div>
 
-                          <div style={{ display: "flex", gap: "0.25rem" }}>
+                          <div className="shelves-53">
                             {rawLoc && (
                               <button onClick={() => handleOpenEditLocation(rawLoc)} className="btn-icon" title="Edit Location">
                                 <Edit2 size={13} />
                               </button>
                             )}
                             {rawLoc && (
-                              <button onClick={() => handleDeleteLocation(rawLoc)} className="btn-icon" title="Deactivate Location">
+                              <button onClick={() => handleDeleteLocation(rawLoc)} className="btn-icon" title="Deactivate Location" aria-label="Delete">
                                 <Trash2 size={13} />
                               </button>
                             )}
@@ -607,15 +604,15 @@ export default function ShelvesPage() {
                         </div>
 
                         {/* Climate & Capacity */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem" }}>
+                        <div className="shelves-54">
                           {renderClimateBadge(shelf.climate_zone)}
-                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)" }}>
+                          <span className="shelves-55">
                             {shelf.current_occupied_units} / {shelf.capacity_units} units
                           </span>
                         </div>
 
                         {/* Capacity Bar */}
-                        <div style={{ width: "100%", height: "4px", backgroundColor: "var(--bg-surface-elevated)", borderRadius: "2px", overflow: "hidden", marginTop: "0.5rem" }}>
+                        <div className="shelves-56">
                           <div
                             style={{
                               height: "100%",
@@ -627,49 +624,40 @@ export default function ShelvesPage() {
                         </div>
 
                         {/* Stored Batches List */}
-                        <div style={{ marginTop: "1rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border-subtle)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                            <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase" }}>
+                        <div className="shelves-57">
+                          <div className="shelves-58">
+                            <span className="shelves-59">
                               Stored Batches ({shelf.items.length})
                             </span>
                             <button
                               onClick={() => handleOpenAuditModal(shelf)}
-                              style={{ background: "none", border: "none", color: "var(--brand-primary)", fontSize: "0.6875rem", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
+                              className="shelves-60"
                             >
                               Audit Count
                             </button>
                           </div>
 
                           {shelf.items.length === 0 ? (
-                            <div style={{ padding: "0.75rem", borderRadius: "var(--radius-sm)", backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)", textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                            <div className="shelves-61">
                               Empty shelf. Ready for batch inwarding.
                             </div>
                           ) : (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", maxHeight: "150px", overflowY: "auto" }}>
+                            <div className="shelves-62">
                               {shelf.items.map((item) => (
                                 <div
                                   key={item.inventory_id}
-                                  style={{
-                                    padding: "0.5rem 0.625rem",
-                                    borderRadius: "var(--radius-sm)",
-                                    backgroundColor: "var(--bg-surface)",
-                                    border: "1px solid var(--border-subtle)",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    fontSize: "0.75rem",
-                                  }}
+                                  className="shelves-63"
                                 >
                                   <div>
-                                    <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                                      {item.brand_name} <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: "0.6875rem" }}>{item.strength}</span>
+                                    <div className="shelves-64">
+                                      {item.brand_name} <span className="shelves-65">{item.strength}</span>
                                     </div>
-                                    <div style={{ fontFamily: "monospace", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                                    <div className="shelves-66">
                                       Lot {item.batch_number} • Exp: {item.expiry_date}
                                     </div>
                                   </div>
-                                  <div style={{ textAlign: "right" }}>
-                                    <strong style={{ color: "var(--text-primary)" }}>{item.quantity_available} pcs</strong>
+                                  <div className="shelves-67">
+                                    <strong className="shelves-68">{item.quantity_available} pcs</strong>
                                     <div
                                       style={{
                                         fontSize: "0.625rem",
@@ -688,11 +676,11 @@ export default function ShelvesPage() {
                       </div>
 
                       {/* Footer Actions */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-subtle)", paddingTop: "0.75rem" }}>
-                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                      <div className="shelves-69">
+                        <span className="shelves-70">
                           Tier {shelf.shelf_level} • Bin {shelf.bin_code}
                         </span>
-                        <button onClick={() => handleOpenAuditModal(shelf)} className="btn btn-secondary" style={{ height: "28px", fontSize: "0.75rem", padding: "0 0.625rem" }}>
+                        <button onClick={() => handleOpenAuditModal(shelf)}  className="btn btn-secondary shelves-71">
                           Verify Stock
                         </button>
                       </div>
@@ -706,29 +694,29 @@ export default function ShelvesPage() {
 
         {/* Tab 2: Fast Dispense Locator */}
         {activeTab === "locator" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+          <div className="shelves-72">
+            <div  className="card shelves-73">
+              <h2 className="shelves-74">
                 Fast Dispense Shelf Locator (PRD Phase 6)
               </h2>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+              <p className="shelves-75">
                 Locate medicine storage coordinates, picking direction instructions, and FEFO allocation for counter dispensing.
               </p>
 
-              <div style={{ position: "relative", width: "100%", maxWidth: "420px" }}>
+              <div className="shelves-76">
                 <input
                   type="text"
-                  className="form-input"
+                  
                   placeholder="Search medicine brand name to locate..."
                   value={locatorSearch}
                   onChange={(e) => setLocatorSearch(e.target.value)}
-                  style={{ paddingLeft: "2.125rem" }}
+                  className="form-input shelves-77"
                 />
-                <Search size={14} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <Search size={14} className="shelves-78" />
               </div>
 
               {/* Medicine buttons */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginTop: "0.25rem" }}>
+              <div className="shelves-79">
                 {medicines
                   .filter((m) => m.brand_name.toLowerCase().includes(locatorSearch.toLowerCase()))
                   .slice(0, 10)
@@ -748,27 +736,27 @@ export default function ShelvesPage() {
 
             {/* Results Display */}
             {locatorLoading ? (
-              <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+              <div className="shelves-81">
                 Finding physical shelf coordinates...
               </div>
             ) : pickResult ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="shelves-82">
+                <div  className="card shelves-83">
                   <div>
-                    <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    <h3 className="shelves-84">
                       Physical Picking Guide: {pickResult.brand_name}
                     </h3>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                    <div className="shelves-85">
                       {pickResult.total_available_locations} available storage positions found in pharmacy.
                     </div>
                   </div>
-                  <Link href="/pos" className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                  <Link href="/pos"  className="btn btn-primary shelves-86">
                     <span>Open in POS Terminal</span>
                     <ArrowRight size={13} />
                   </Link>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
+                <div className="shelves-87">
                   {pickResult.pick_locations.map((pick, idx) => (
                     <div
                       key={idx}
@@ -780,16 +768,16 @@ export default function ShelvesPage() {
                         gap: "0.75rem",
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div className="shelves-88">
                         <div>
                           {pick.is_fefo_priority && (
-                            <span className="status-badge high" style={{ marginBottom: "0.375rem" }}>
+                            <span  className="status-badge high shelves-89">
                               <span className="badge-icon"><CheckCircle2 size={10} /></span>
                               <span>FEFO Priority 1st Pick</span>
                             </span>
                           )}
-                          <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>{pick.location_name}</div>
-                          <div style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", fontFamily: "monospace" }}>
+                          <div className="shelves-90">{pick.location_name}</div>
+                          <div className="shelves-91">
                             {pick.coordinate_code}
                           </div>
                         </div>
@@ -798,35 +786,27 @@ export default function ShelvesPage() {
 
                       {/* Directional picking instruction banner */}
                       <div
-                        style={{
-                          padding: "0.75rem",
-                          borderRadius: "var(--radius-sm)",
-                          backgroundColor: "var(--bg-surface)",
-                          border: "1px solid var(--border-subtle)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.625rem",
-                        }}
+                        className="shelves-92"
                       >
-                        <Navigation size={18} style={{ color: "var(--status-info-text)", flexShrink: 0 }} />
+                        <Navigation size={18} className="shelves-93" />
                         <div>
-                          <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>Directional Instruction</div>
-                          <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>{pick.directional_guide}</strong>
+                          <div className="shelves-94">Directional Instruction</div>
+                          <strong className="shelves-95">{pick.directional_guide}</strong>
                         </div>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", borderTop: "1px solid var(--border-subtle)", paddingTop: "0.5rem", fontSize: "0.75rem" }}>
+                      <div className="shelves-96">
                         <div>
-                          <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", display: "block" }}>Batch</span>
-                          <strong style={{ fontFamily: "monospace", color: "var(--text-primary)" }}>{pick.batch_number}</strong>
+                          <span className="shelves-97">Batch</span>
+                          <strong className="shelves-98">{pick.batch_number}</strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", display: "block" }}>Expiry</span>
-                          <strong style={{ color: "var(--text-primary)" }}>{pick.expiry_date}</strong>
+                          <span className="shelves-99">Expiry</span>
+                          <strong className="shelves-100">{pick.expiry_date}</strong>
                         </div>
                         <div>
-                          <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", display: "block" }}>Available</span>
-                          <strong style={{ color: "var(--status-high-text)" }}>{pick.quantity_available} pcs</strong>
+                          <span className="shelves-101">Available</span>
+                          <strong className="shelves-102">{pick.quantity_available} pcs</strong>
                         </div>
                       </div>
                     </div>
@@ -834,12 +814,12 @@ export default function ShelvesPage() {
                 </div>
               </div>
             ) : (
-              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
-                <Navigation size={28} style={{ color: "var(--text-muted)", margin: "0 auto 0.75rem" }} />
-                <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
+              <div  className="card shelves-103">
+                <Navigation size={28} className="shelves-104" />
+                <div className="shelves-105">
                   Select a Medicine to Locate
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                <div className="shelves-106">
                   Click any medicine above or enter a search query to view directional picking directions and stock positions.
                 </div>
               </div>
@@ -849,18 +829,18 @@ export default function ShelvesPage() {
 
         {/* Tab 3: Cycle Count & Stock Audit */}
         {activeTab === "cycle_count" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+          <div className="shelves-107">
+            <div  className="card shelves-108">
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                <div className="shelves-109">
+                  <h2 className="shelves-110">
                     Physical Shelf Cycle Count & Variance Engine
                   </h2>
-                  <span className="status-badge med" style={{ fontSize: "0.6875rem" }}>
+                  <span  className="status-badge med shelves-111">
                     PRD Rule 22
                   </span>
                 </div>
-                <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                <p className="shelves-112">
                   Conduct shelf-by-shelf physical stock audits. Detect inventory shrinkage, surpluses, and misplaced batches.
                 </p>
               </div>
@@ -871,20 +851,20 @@ export default function ShelvesPage() {
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
+            <div className="shelves-113">
               {(planogram?.shelves || []).map((shelf) => (
-                <div key={shelf.location_id} className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: "1rem" }}>
+                <div key={shelf.location_id}  className="card shelves-114">
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <strong style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>{shelf.name}</strong>
-                      <span style={{ fontSize: "0.6875rem", fontFamily: "monospace", color: "var(--text-muted)" }}>{shelf.coordinate_code}</span>
+                    <div className="shelves-115">
+                      <strong className="shelves-116">{shelf.name}</strong>
+                      <span className="shelves-117">{shelf.coordinate_code}</span>
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.375rem" }}>
-                      Expected Stock: <strong style={{ color: "var(--text-primary)" }}>{shelf.current_occupied_units} units</strong> ({shelf.items.length} batches)
+                    <div className="shelves-118">
+                      Expected Stock: <strong className="shelves-119">{shelf.current_occupied_units} units</strong> ({shelf.items.length} batches)
                     </div>
                   </div>
 
-                  <button onClick={() => handleOpenAuditModal(shelf)} className="btn btn-secondary" style={{ width: "100%" }}>
+                  <button onClick={() => handleOpenAuditModal(shelf)}  className="btn btn-secondary shelves-120">
                     <ClipboardCheck size={14} />
                     <span>Conduct Cycle Count</span>
                   </button>
@@ -896,21 +876,21 @@ export default function ShelvesPage() {
 
         {/* Tab 4: Climate Safety */}
         {activeTab === "compliance" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <ThermometerSnowflake size={18} style={{ color: "var(--status-info-text)" }} />
-                <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+          <div className="shelves-121">
+            <div  className="card shelves-122">
+              <div className="shelves-123">
+                <ThermometerSnowflake size={18} className="shelves-124" />
+                <h2 className="shelves-125">
                   Cold-Chain & Storage Safety Auditing
                 </h2>
               </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+              <p className="shelves-126">
                 Monitors temperature requirements (e.g., insulin, biologics, vaccines requiring 2°C - 8°C) against physical storage zone allocations.
               </p>
             </div>
 
             {compliance?.alerts && compliance.alerts.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div className="shelves-127">
                 {compliance.alerts.map((alert, idx) => (
                   <div
                     key={idx}
@@ -925,16 +905,16 @@ export default function ShelvesPage() {
                     <span style={{ color: alert.severity === "CRITICAL_VIOLATION" ? "var(--status-low-text)" : "var(--status-med-text)", flexShrink: 0, marginTop: "2px", display: "inline-flex" }}>
                       <AlertTriangle size={18} />
                     </span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>{alert.title}</strong>
+                    <div className="shelves-128">
+                      <div className="shelves-129">
+                        <strong className="shelves-130">{alert.title}</strong>
                         <span className={`status-badge ${alert.severity === "CRITICAL_VIOLATION" ? "low" : "med"}`} style={{ fontSize: "0.625rem" }}>
                           {alert.severity}
                         </span>
                       </div>
-                      <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>{alert.message}</p>
+                      <p className="shelves-132">{alert.message}</p>
                       {alert.remedy_instruction && (
-                        <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--brand-primary)", marginTop: "0.375rem" }}>
+                        <div className="shelves-133">
                           Remedy: {alert.remedy_instruction}
                         </div>
                       )}
@@ -943,12 +923,12 @@ export default function ShelvesPage() {
                 ))}
               </div>
             ) : (
-              <div className="card" style={{ padding: "3rem", textAlign: "center" }}>
-                <ShieldCheck size={28} style={{ color: "var(--status-high-text)", margin: "0 auto 0.75rem" }} />
-                <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
+              <div  className="card shelves-134">
+                <ShieldCheck size={28} className="shelves-135" />
+                <div className="shelves-136">
                   All Storage Zones Compliant
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                <div className="shelves-137">
                   No cold-chain mismatches or shelf capacity overloads detected in pharmacy inventory.
                 </div>
               </div>
@@ -960,39 +940,39 @@ export default function ShelvesPage() {
       {/* MODAL: Create/Edit Location */}
       {showLocationModal && (
         <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: "480px" }}>
+          <div  className="modal-content shelves-138">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div className="shelves-139">
                 <MapPin size={18} />
-                <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                <h2 className="shelves-140">
                   {editingLocation ? "Edit Storage Location" : "New Physical Storage Location"}
                 </h2>
               </div>
-              <button onClick={() => setShowLocationModal(false)} className="btn-icon">
+              <button onClick={() => setShowLocationModal(false)} className="btn-icon" aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleSaveLocation}>
-              <div className="modal-body" style={{ gap: "1rem" }}>
+              <div  className="modal-body shelves-141">
                 <div className="form-group">
-                  <label className="form-label">Location Name *</label>
+                  <label className="form-label" htmlFor="shelves-field-1">Location Name *</label>
                   <input
                     type="text"
                     required
                     className="form-input"
                     placeholder="e.g. Shelf A-2, Fridge Unit 1, Narcotics Safe"
                     value={locFormName}
-                    onChange={(e) => setLocFormName(e.target.value)}
+                    onChange={(e) => setLocFormName(e.target.value)} id="shelves-field-1"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Storage Classification Type *</label>
+                  <label className="form-label" htmlFor="shelves-field-2">Storage Classification Type *</label>
                   <select
                     className="form-select"
                     value={locFormType}
-                    onChange={(e) => setLocFormType(e.target.value)}
+                    onChange={(e) => setLocFormType(e.target.value)} id="shelves-field-2"
                   >
                     <option value="shelf">Shelf (Ambient general medicines)</option>
                     <option value="rack">Rack (High-volume bulk medicines)</option>
@@ -1004,13 +984,13 @@ export default function ShelvesPage() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Description / Climate Requirements</label>
+                  <label className="form-label" htmlFor="shelves-field-3">Description / Climate Requirements</label>
                   <textarea
                     rows={3}
                     className="form-textarea"
                     placeholder="Optional physical notes, e.g. Locked safe, bottom drawer, key required."
                     value={locFormDesc}
-                    onChange={(e) => setLocFormDesc(e.target.value)}
+                    onChange={(e) => setLocFormDesc(e.target.value)} id="shelves-field-3"
                   />
                 </div>
               </div>
@@ -1031,27 +1011,27 @@ export default function ShelvesPage() {
       {/* MODAL: Cycle Count Audit Runner */}
       {showAuditModal && (
         <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: "640px" }}>
+          <div  className="modal-content shelves-142">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div className="shelves-143">
                 <ClipboardCheck size={18} />
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="shelves-144">
                     Shelf Cycle Count Audit
                   </h2>
-                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <div className="shelves-145">
                     Physical Stock Verification (PRD Rule 22 & Phase 6)
                   </div>
                 </div>
               </div>
-              <button onClick={() => setShowAuditModal(false)} className="btn-icon">
+              <button onClick={() => setShowAuditModal(false)} className="btn-icon" aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ gap: "1rem" }}>
+            <div  className="modal-body shelves-146">
               <div className="form-group">
-                <label className="form-label">Target Shelf / Location</label>
+                <label className="form-label" htmlFor="shelves-field-4">Target Shelf / Location</label>
                 <select
                   className="form-select"
                   value={auditLocationId ?? ""}
@@ -1065,7 +1045,7 @@ export default function ShelvesPage() {
                     });
                     setAuditCounts(counts);
                     setAuditPreview(null);
-                  }}
+                  }} id="shelves-field-4"
                 >
                   {locations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
@@ -1076,10 +1056,10 @@ export default function ShelvesPage() {
               </div>
 
               {/* Items Count List */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="shelves-147">
+                <div className="shelves-148">
                   <span className="form-label">Expected Shelf Items</span>
-                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>Input physical counted units</span>
+                  <span className="shelves-149">Input physical counted units</span>
                 </div>
 
                 {(() => {
@@ -1088,14 +1068,14 @@ export default function ShelvesPage() {
 
                   if (items.length === 0) {
                     return (
-                      <div style={{ padding: "1rem", borderRadius: "var(--radius-sm)", backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)", textAlign: "center", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                      <div className="shelves-150">
                         No recorded inventory on this shelf. All counts will evaluate to surplus if items exist physically.
                       </div>
                     );
                   }
 
                   return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                    <div className="shelves-151">
                       {items.map((it) => {
                         const key = `${it.medicine_id}_${it.batch_number}`;
                         const currentCount = auditCounts[key] ?? 0;
@@ -1104,27 +1084,18 @@ export default function ShelvesPage() {
                         return (
                           <div
                             key={it.inventory_id}
-                            style={{
-                              padding: "0.625rem 0.75rem",
-                              borderRadius: "var(--radius-sm)",
-                              backgroundColor: "var(--bg-surface)",
-                              border: "1px solid var(--border-subtle)",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              gap: "1rem",
-                            }}
+                            className="shelves-152"
                           >
                             <div>
-                              <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                              <div className="shelves-153">
                                 {it.brand_name} {it.strength && `(${it.strength})`}
                               </div>
-                              <div style={{ fontSize: "0.6875rem", fontFamily: "monospace", color: "var(--text-muted)" }}>
+                              <div className="shelves-154">
                                 Lot: {it.batch_number} • System: {it.quantity_available} pcs
                               </div>
                             </div>
 
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div className="shelves-155">
                               <input
                                 type="number"
                                 min={0}
@@ -1135,8 +1106,8 @@ export default function ShelvesPage() {
                                     [key]: Math.max(0, parseInt(e.target.value) || 0),
                                   })
                                 }
-                                className="form-input"
-                                style={{ width: "70px", height: "30px", textAlign: "center", padding: "0 0.25rem", fontWeight: 700 }}
+                                
+                                className="form-input shelves-156"
                               />
 
                               <span
@@ -1156,47 +1127,39 @@ export default function ShelvesPage() {
 
               {/* Notes */}
               <div className="form-group">
-                <label className="form-label">Audit Notes / Discrepancy Reason</label>
+                <label className="form-label" htmlFor="shelves-field-5">Audit Notes / Discrepancy Reason</label>
                 <input
                   type="text"
                   className="form-input"
                   placeholder="e.g. Monthly cycle count, shelf consolidation, damage check"
                   value={auditNotes}
-                  onChange={(e) => setAuditNotes(e.target.value)}
+                  onChange={(e) => setAuditNotes(e.target.value)} id="shelves-field-5"
                 />
               </div>
 
               {/* Preview Result */}
               {auditPreview && (
                 <div
-                  style={{
-                    padding: "0.875rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "var(--bg-surface)",
-                    border: "1px solid var(--border-default)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.5rem",
-                  }}
+                  className="shelves-158"
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <strong style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>Audit Evaluation Result</strong>
+                  <div className="shelves-159">
+                    <strong className="shelves-160">Audit Evaluation Result</strong>
                     <span className={`status-badge ${auditPreview.discrepancies_count === 0 ? "high" : "low"}`}>
                       {auditPreview.discrepancies_count === 0 ? "100% Match" : `${auditPreview.discrepancies_count} Discrepancies`}
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", borderTop: "1px solid var(--border-subtle)", paddingTop: "0.5rem", fontSize: "0.75rem" }}>
+                  <div className="shelves-161">
                     <div>
-                      <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", display: "block" }}>Matched Items</span>
-                      <strong style={{ color: "var(--status-high-text)" }}>{auditPreview.matched_items_count}</strong>
+                      <span className="shelves-162">Matched Items</span>
+                      <strong className="shelves-163">{auditPreview.matched_items_count}</strong>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", display: "block" }}>Net Variance</span>
-                      <strong style={{ color: "var(--text-primary)" }}>{auditPreview.net_variance_units} units</strong>
+                      <span className="shelves-164">Net Variance</span>
+                      <strong className="shelves-165">{auditPreview.net_variance_units} units</strong>
                     </div>
                     <div>
-                      <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", display: "block" }}>Financial Impact</span>
+                      <span className="shelves-166">Financial Impact</span>
                       <strong style={{ color: auditPreview.net_financial_variance < 0 ? "var(--status-low-text)" : "var(--status-high-text)" }}>
                         ₹{auditPreview.net_financial_variance.toFixed(2)}
                       </strong>

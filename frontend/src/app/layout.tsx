@@ -1,16 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import AuthGuard from "@/components/AuthGuard";
+import { EffectsProvider } from "@/context/EffectsContext";
 import AppShell from "@/components/AppShell";
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "SmartPharm - Operating System for Physical Pharmacies",
@@ -23,12 +16,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable} style={{ background: "var(--bg-app)", colorScheme: "dark" }}>
-      <body style={{ background: "var(--bg-app)", color: "var(--text-primary)", minHeight: "100vh" }}>
+    <html lang="en" style={{ background: "var(--bg-app)" }}>
+      <head><link rel="preload" href="/fonts/manrope.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /></head>
+      <body style={{ background: "var(--bg-app)", color: "var(--text-primary)", minHeight: "100dvh" }}>
         <AuthProvider>
-          <AuthGuard>
+          <EffectsProvider><AuthGuard>
             <AppShell>{children}</AppShell>
-          </AuthGuard>
+          </AuthGuard></EffectsProvider>
         </AuthProvider>
       </body>
     </html>

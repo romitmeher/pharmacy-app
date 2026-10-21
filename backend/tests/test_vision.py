@@ -215,8 +215,8 @@ def test_entity_extraction_pharma_label():
 # 4. DATABASE MATCHER & PRD RULE 9 CONFIDENCE SAFEGUARDS
 # =====================================================================
 
-def test_matcher_high_confidence(vision_seed_data):
-    """Verify database matching yields HIGH confidence for matching medicine and batch."""
+def test_matcher_review_confidence_for_brand_inferred_strength(vision_seed_data):
+    """Brand-inferred strength remains a review match even with a known batch."""
     ocr_result = OCRResult(
         full_text="Crocin 650\nB.No: CRO-2026-X1\nEXP: 05/2027\nM.R.P. Rs. 35.00",
         lines=["Crocin 650", "B.No: CRO-2026-X1", "EXP: 05/2027", "M.R.P. Rs. 35.00"],
@@ -230,8 +230,8 @@ def test_matcher_high_confidence(vision_seed_data):
     assert result.warning_message is None
     assert result.top_candidate is not None
     assert result.top_candidate.name == "Crocin 650"
-    assert result.top_candidate.confidence_level == "HIGH"
-    assert result.top_candidate.confidence_score >= 75.0
+    assert result.top_candidate.confidence_level == "MEDIUM"
+    assert 50.0 <= result.top_candidate.confidence_score < 75.0
     assert result.top_candidate.matched_batch is not None
     assert result.top_candidate.matched_batch["batch_number"] == "CRO-2026-X1"
     assert result.top_candidate.active_stock == 80
@@ -379,3 +379,91 @@ def test_white_product_background_is_not_foil_glare():
     quality = assess_image_quality(image)
     assert quality.is_acceptable
     assert not quality.is_glare
+
+
+def test_packaging_endpoint_resolves_barcode_before_ocr(client, pharmacist_token, vision_seed_data):
+    from unittest.mock import patch
+    from app.services.barcode_service import link
+    med = vision_seed_data["medicine"]
+    link(med.store_id, med.id, "2000000000015")
+    _, encoded = cv2.imencode(".png", np.full((300, 500, 3), 255, dtype=np.uint8))
+    with patch("app.services.barcode_service.decode_barcode_pixels", return_value="2000000000015"), \
+         patch("app.vision._packaging_ocr", side_effect=AssertionError("Barcode must not invoke OCR")):
+        response = client.post("/api/vision/recognize", headers=_auth_header(pharmacist_token),
+                               json={"image_base64": base64.b64encode(encoded).decode()})
+    assert response.status_code == 200
+    result = response.json["data"]
+    assert result["barcode"] == "2000000000015"
+    assert result["match_result"]["top_candidate"]["medicine_id"] == med.id
+    assert result["match_result"]["top_candidate"]["active_stock"] == 80
+    assert result["ocr"] is None
+
+
+def test_unknown_barcode_does_not_fall_back_to_guessing(client, pharmacist_token):
+    from unittest.mock import patch
+    _, encoded = cv2.imencode(".png", np.full((300, 500, 3), 255, dtype=np.uint8))
+    with patch("app.services.barcode_service.decode_barcode_pixels", return_value="UNLINKED-123"), \
+         patch("app.vision._packaging_ocr", side_effect=AssertionError("Do not guess an unlinked barcode")):
+        response = client.post("/api/vision/recognize", headers=_auth_header(pharmacist_token),
+                               json={"image_base64": base64.b64encode(encoded).decode()})
+    assert response.status_code == 200
+    assert response.json["data"]["match_result"]["top_candidate"] is None
+    assert response.json["data"]["match_result"]["low_confidence"]
+
+
+def test_verification_rejects_another_store_and_invalid_quantity(client, pharmacist_token, vision_seed_data, db):
+    from app.models.store import Store
+    other = Store(name="Other store")
+    db.session.add(other); db.session.flush()
+    medicine = Medicine(store_id=other.id, brand_name="Other store medicine", is_active=True)
+    db.session.add(medicine); db.session.commit()
+    auth = _auth_header(pharmacist_token)
+    assert client.post("/api/vision/verify", headers=auth, json={"medicine_id": medicine.id}).status_code == 404
+    for qty in [0, -1, 1.5, True]:
+        assert client.post("/api/vision/verify", headers=auth, json={
+            "medicine_id": vision_seed_data["medicine"].id, "quantity": qty}).status_code == 400
+
+
+def test_photo_brand_with_hyphen_is_retrieved_and_matched(vision_seed_data, db):
+    med = vision_seed_data["medicine"]
+    med.brand_name = "Crocin-650 Tablet"
+    db.session.commit()
+    extracted = default_entity_extractor.extract("Manufacturer address\nParacetamol Tablets IP\nCrocin-650")
+    assert extracted.brand_name == "Crocin 650"
+    assert extracted.strength_inferred
+    result = default_medicine_matcher.match(extracted, store_id=med.store_id)
+    assert result.top_candidate.medicine_id == med.id
+
+
+def test_small_strength_and_dosage_warning_are_distinguished():
+    extracted = default_entity_extractor.extract("Pantop 20\nMaximum daily dose 400 mg")
+    assert extracted.strength == "20 mg"
+    assert extracted.strength_inferred
+
+
+def test_split_brand_and_strength_lines_form_search_query():
+    extracted = default_entity_extractor.extract("Manufacturer address\nAUGMENTIN\n625\nPrescription medicine")
+    assert extracted.brand_name == "AUGMENTIN 625"
+    assert extracted.strength == "625 mg"
+
+
+def test_equal_scoring_catalog_variants_are_not_guessed(vision_seed_data, db):
+    med = vision_seed_data["medicine"]
+    db.session.add(Medicine(store_id=med.store_id, brand_name=med.brand_name, strength=med.strength,
+                            dosage_form=med.dosage_form, is_active=True))
+    db.session.commit()
+    extracted = default_entity_extractor.extract("Crocin 650\n650 mg")
+    result = default_medicine_matcher.match(extracted, store_id=med.store_id)
+    assert result.top_candidate is None
+    assert result.low_confidence
+
+
+def test_combination_brand_total_is_only_review_evidence(vision_seed_data, db):
+    med = vision_seed_data["medicine"]
+    med.brand_name = "Augmentin 625 Duo Tablet"
+    med.strength = "500 mg + 125 mg"
+    db.session.commit()
+    extracted = default_entity_extractor.extract("AUGMENTIN 625 DUO")
+    result = default_medicine_matcher.match(extracted, store_id=med.store_id)
+    assert result.top_candidate.medicine_id == med.id
+    assert result.top_candidate.confidence_level == "MEDIUM"

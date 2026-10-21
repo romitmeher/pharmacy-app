@@ -1,0 +1,12 @@
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; width: var(--touch-target); height: var(--touch-target); flex-shrink: 0; border: var(--border-width) solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-secondary); cursor: pointer; }
+.display-preferences { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-5); }
+.login-line { display: block; }
+/* All content is visible without JavaScript. Decorative code is loaded after paint. */
+:root[data-effects='full']:not([data-work-screen='true']):not([data-input-active='true']) :is(.ui-button, .btn, .theme-toggle) { transition: transform var(--duration-fast) var(--ease-ui); }
+:root[data-effects='full']:not([data-work-screen='true']):not([data-input-active='true']) :is(.ui-button, .btn, .theme-toggle):active { transform: scale(.98); }
+:root[data-effects='reduced']:not([data-work-screen='true']):not([data-input-active='true']) :is(.ui-button, .btn, .theme-toggle) { transition: transform var(--duration-fast) var(--ease-ui); }
+:root[data-effects='reduced']:not([data-work-screen='true']):not([data-input-active='true']) :is(.ui-button, .btn, .theme-toggle):active { transform: scale(.99); }
+:root[data-effects='off'] *, :root[data-effects='off'] *::before, :root[data-effects='off'] *::after,
+:root[data-input-active='true'] *, :root[data-work-screen='true'] * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+@media (max-width: 768px) { .display-preferences { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

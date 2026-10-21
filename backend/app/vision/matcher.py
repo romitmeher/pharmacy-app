@@ -107,6 +107,19 @@ def _string_similarity(str1: Optional[str], str2: Optional[str]) -> float:
     return max(ratio_raw, ratio_tok)
 
 
+def _brand_key(value):
+    value = re.sub(r"(?<=\d)\s*(?:mcg|mg|g)\b", "", (value or "").casefold())
+    value = re.sub(r"\b(?:tablets?|capsules?|injections?|syrups?|ip|i\.p)\b", "", value)
+    return re.sub(r"[^a-z0-9]", "", value)
+
+
+def _brand_similarity(left, right):
+    a, b = _brand_key(left), _brand_key(right)
+    if a and a == b:
+        return 1.0
+    return _string_similarity(left, right)
+
+
 class MedicineMatcher:
     """
     Evaluates extracted packaging tokens against database records
@@ -156,9 +169,11 @@ class MedicineMatcher:
             for term in search_terms:
                 like_pattern = f"%{term}%"
                 conditions.append(Medicine.brand_name.ilike(like_pattern))
-                conditions.append(Medicine.generic_name.ilike(like_pattern))
-                conditions.append(Medicine.manufacturer.ilike(like_pattern))
                 conditions.append(Medicine.aliases.any(MedicineAlias.alias_name.ilike(like_pattern)))
+                compact_brand = func.replace(func.replace(func.replace(func.lower(Medicine.brand_name), " ", ""), "-", ""), ".", "")
+                compact_term = re.sub(r"[ .-]", "", term.lower())
+                if len(compact_term) >= 3:
+                    conditions.append(compact_brand.ilike(f"%{compact_term}%"))
             candidates_query = candidates_query.filter(or_(*conditions))
 
         candidate_meds = candidates_query.options(selectinload(Medicine.aliases)).limit(100).all()
@@ -183,8 +198,8 @@ class MedicineMatcher:
 
             # 1. Brand name similarity (0 - 40 pts)
             best_name_sim = max(
-                (_string_similarity(name, target) for name in names
-                 for target in [med.brand_name, *(alias.alias_name for alias in med.aliases)]),
+                (_brand_similarity(name, target) for name in names
+                 for target in [med.brand_name, *(alias.alias_name for alias in med.aliases if alias.alias_type != "barcode")]),
                 default=0.0,
             )
             # OCR quality, packaging colour and batch-like text are not identity.
@@ -194,10 +209,18 @@ class MedicineMatcher:
                 detected_numbers = re.findall(r"\d+(?:\.\d+)?", entities.strength)
                 medicine_numbers = re.findall(r"\d+(?:\.\d+)?", med.strength)
                 if detected_numbers and medicine_numbers and detected_numbers != medicine_numbers:
-                    continue
+                    # Some combination brands print their total dose (625), while
+                    # the verified catalog lists components (500 + 125).
+                    total_agrees = (entities.strength_inferred and len(detected_numbers) == 1 and
+                        "+" in med.strength and "/" not in med.strength and
+                        len(set(re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", med.strength.lower()))) == 1 and
+                        float(detected_numbers[0]) == sum(float(n) for n in medicine_numbers) and
+                        detected_numbers[0] in re.findall(r"\d+(?:\.\d+)?", med.brand_name))
+                    if not total_agrees:
+                        continue
                 detected_units = re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", entities.strength.lower())
                 medicine_units = re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", med.strength.lower())
-                if detected_units and medicine_units and detected_units != medicine_units:
+                if not entities.strength_inferred and detected_units and medicine_units and detected_units != medicine_units:
                     continue
             brand_pts = round(best_name_sim * 40.0, 2)
             breakdown["brand_score"] = brand_pts
@@ -206,7 +229,10 @@ class MedicineMatcher:
             strength_pts = 0.0
             if entities.strength and med.strength:
                 s_sim = _string_similarity(entities.strength, med.strength)
-                if s_sim >= 0.85:
+                if entities.strength_inferred:
+                    strength_pts = 10.0
+                    breakdown["strength_from_product_name"] = 0.0  # evidence label, not an extra score
+                elif s_sim >= 0.85:
                     strength_pts = 20.0
                 elif s_sim >= 0.50:
                     strength_pts = 10.0
@@ -307,6 +333,8 @@ class MedicineMatcher:
 
         # PRD Rule 9 check: if top score < 50%, flag low confidence and warn
         low_confidence = top is None or top.confidence_score < self.LOW_CONFIDENCE_THRESHOLD
+        if top and len(scored_candidates) > 1 and top.confidence_score - scored_candidates[1].confidence_score < 3:
+            low_confidence = True
         warning_message = self.PRD_LOW_CONFIDENCE_WARNING if low_confidence else None
 
         # Build fallback search queries for pharmacist manual search

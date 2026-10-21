@@ -89,6 +89,10 @@ def test_get_eligible_return_items(client, owner_token):
     )
     assert res.status_code == 200
     data = res.get_json()["data"]
+    by_number = client.get(f"/api/returns/eligible-items/{data['invoice_number']}",
+                          headers={"Authorization": f"Bearer {owner_token}"})
+    assert by_number.status_code == 200
+    assert by_number.json["data"]["sale_id"] == sale_id
     assert data["sale_id"] == sale_id
     assert data["total_remaining_units"] == 10
     assert len(data["items"]) == 1

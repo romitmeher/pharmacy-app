@@ -1,0 +1,94 @@
+/* Shared visual contract for existing screen markup. */
+:root .page-header { height: auto; min-height: var(--header-height); max-height: none; padding: var(--space-5); gap: var(--space-4); flex-wrap: wrap; }
+:root .page-title { font-size: var(--text-title); line-height: 1.2; }
+:root .page-subtitle { font-size: var(--text-small); margin-top: var(--space-2); line-height: 1.5; }
+:root .page-body { padding: var(--space-5); width: 100%; max-width: var(--content-width); min-width: 0; }
+:root .page-header > div:last-child { flex-wrap: wrap; }
+:root .card { padding: var(--space-5); box-shadow: none; }
+:root .card:hover { border-color: var(--border-default); }
+:root .btn, :root .btn-icon { min-height: var(--touch-target); min-width: var(--touch-target); }
+:root .btn { height: auto; padding: var(--space-2) var(--space-4); white-space: normal; }
+:root .btn-primary { background: var(--brand-primary); color: var(--text-inverse); border-color: var(--brand-primary); }
+:root .btn-primary:hover { background: var(--brand-hover); }
+:root .btn-secondary { background: var(--bg-surface); color: var(--text-primary); border-color: var(--border-default); }
+:root .btn-secondary:hover { background: var(--bg-surface-hover); border-color: var(--border-default); }
+:root .form-input, :root .form-select, :root .form-textarea { font-size: var(--text-body); min-height: var(--touch-target); padding: var(--space-3); border-radius: var(--radius-sm); background: var(--bg-input); color: var(--text-primary); }
+:root .form-input:focus, :root .form-select:focus, :root .form-textarea:focus { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+:root .form-label { color: var(--text-secondary); font-size: var(--text-small); }
+:root .status-badge { border: 0; border-radius: var(--radius-sm); background: var(--status-info-bg); color: var(--status-info-text); gap: var(--space-2); padding: var(--space-1) var(--space-2); }
+:root .status-badge.high { background: var(--status-high-bg); color: var(--status-high-text); }
+:root .status-badge.med { background: var(--status-med-bg); color: var(--status-med-text); }
+:root .status-badge.low { background: var(--status-low-bg); color: var(--status-low-text); }
+:root .status-badge:not(:has(.badge-icon))::before { content: '○'; font-weight: 700; }
+:root .status-badge.high:not(:has(.badge-icon))::before { content: '✓'; }
+:root .status-badge.med:not(:has(.badge-icon))::before, :root .status-badge.low:not(:has(.badge-icon))::before { content: '!'; }
+:root .table-container { max-height: 65dvh; overflow: auto; overscroll-behavior: contain; }
+:root .data-table { border-collapse: separate; border-spacing: 0; font-size: var(--text-body); font-variant-numeric: tabular-nums lining-nums; }
+:root .data-table th { position: sticky; top: 0; z-index: 2; background: var(--bg-surface-elevated); color: var(--text-secondary); font-size: var(--text-small); text-transform: none; letter-spacing: var(--tracking-tight); }
+:root .data-table th, :root .data-table td { padding: var(--space-3) var(--space-4); height: var(--row-height); }
+:root .data-table td { font-size: inherit; background: var(--bg-surface); }
+:root .data-table th:first-child, :root .data-table td:first-child { position: sticky; left: 0; z-index: 1; max-width: var(--table-identity-width); overflow-wrap: anywhere; }
+:root .data-table th:first-child { z-index: 3; }
+:root .modal-backdrop { background: var(--overlay); backdrop-filter: none; padding: var(--space-4); }
+:root .modal-content { box-shadow: none; max-height: 90dvh; border-radius: var(--radius-lg); }
+:root .modal-header, :root .modal-footer { padding: var(--space-4) var(--space-5); gap: var(--space-3); }
+:root .modal-body { padding: var(--space-5); gap: var(--space-5); }
+:root .modal-footer { flex-wrap: wrap; }
+:root .module-card, :root .policy-card { background: var(--bg-surface); border-color: var(--border-default); }
+:root .module-card:hover, :root .policy-card:hover { background: var(--bg-surface-hover); border-color: var(--border-default); }
+:root .module-card .module-title, :root .module-card:hover .module-title { color: var(--text-primary); }
+:root .module-card .module-desc, :root .module-card:hover .module-desc { color: var(--text-secondary); }
+:root .module-card .module-icon, :root .module-card:hover .module-icon { color: var(--text-secondary); }
+:root .sidebar-section-title { color: var(--text-secondary); font-size: var(--text-small); padding: var(--space-4) var(--space-2) var(--space-2); }
+:root .sidebar-link { min-height: var(--touch-target); border-radius: var(--radius-sm); color: var(--text-secondary); gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+:root .sidebar-link.active, :root .sidebar-link:hover { background: var(--brand-subtle); color: var(--brand-primary); }
+:root .sidebar-link .sidebar-icon { color: inherit; }
+:root .sidebar-link.active .sidebar-icon, :root .sidebar-link:hover .sidebar-icon { color: var(--brand-primary); }
+.skip-link { position: fixed; top: var(--space-3); left: var(--space-3); z-index: 200; padding: var(--space-3) var(--space-4); background: var(--brand-primary); color: var(--text-inverse); border-radius: var(--radius-sm); transform: translateY(-200%); }
+.skip-link:focus { transform: translateY(0); }
+:root .login-2 { background: var(--bg-surface-elevated); padding: var(--space-7); border-color: var(--border-default); }
+:root .login-3 { display: none; }
+:root .login-5 { background: var(--brand-subtle); box-shadow: none; color: var(--brand-primary); }
+:root .login-10 { font-size: var(--text-title); max-width: var(--dialog-width); }
+:root .login-17 { background: var(--bg-app); padding: var(--space-7); }
+:root .login-18 { background: var(--bg-surface); border: var(--border-width) solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-6); }
+:root .login-20 { font-size: var(--text-title); }
+:root .login-28 { min-height: var(--touch-target); min-width: var(--touch-target); }
+:root .login-setup-3 { min-height: 100dvh; background: var(--bg-app); }
+.settings-8 { flex-wrap: wrap; }
+.aicopilotdrawer-1 { color: var(--text-inverse); }
+:root .login-setup-16, :root .login-setup-23 { min-width: 0; }
+.screen-error { min-height: 70dvh; display: grid; align-content: center; justify-items: start; gap: var(--space-5); max-width: var(--dialog-width); padding: var(--space-6); margin: auto; }
+.screen-error h1 { font-size: var(--text-title); }
+.screen-error p { color: var(--text-secondary); line-height: 1.6; }
+.screen-error-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+@media (max-width: 1024px) { :root .login-2, :root .login-17 { padding: var(--space-5); } }
+@media (max-width: 768px) {
+  :root .page-header, :root .page-body { padding: var(--space-4); }
+  :root .page-header { align-items: stretch; }
+  :root .page-header > div:last-child { gap: var(--space-2); }
+  :root .page-body > *, :root .modal-body > *, :root .card > * { min-width: 0; }
+  :root .card { padding: var(--space-4); }
+  :root .table-container { max-width: 100%; }
+  :root .data-table { min-width: max-content; }
+  :root .data-table td:first-child { max-width: var(--table-identity-width); white-space: normal; }
+  :root .modal-backdrop { padding: var(--space-2); padding-bottom: max(var(--space-2), env(safe-area-inset-bottom)); }
+  :root .modal-content { max-width: 100%; max-height: 90dvh; }
+  :root .modal-header, :root .modal-body, :root .modal-footer { padding: var(--space-4); }
+  :root .modal-footer { position: sticky; bottom: 0; padding-bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
+  :root .sidebar { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  :root .login-1 { flex-direction: column; }
+  :root .login-2 { width: 100%; min-width: 0; padding: var(--space-5); }
+  :root .login-8 { padding-block: var(--space-5); }
+  :root .login-13, :root .login-16 { display: none; }
+  :root .login-17 { padding: var(--space-4); padding-bottom: max(var(--space-5), env(safe-area-inset-bottom)); }
+  :root .login-18 { max-width: var(--dialog-width); padding: var(--space-5); }
+  :root .login-setup-16, :root .login-setup-23 { grid-template-columns: minmax(0, 1fr); }
+  .settings-6 { flex-direction: column; }
+}
+@media print {
+  .sidebar, .mobile-header, .skip-link { display: none; }
+  .main-content { margin: 0; width: 100%; }
+  :root .table-container { overflow: visible; max-height: none; }
+  :root .data-table th, :root .data-table td { position: static; }
+}

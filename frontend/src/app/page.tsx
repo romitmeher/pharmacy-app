@@ -2,23 +2,10 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
-import {
-  ShoppingBag,
-  ClipboardList,
-  Package,
-  Clock,
-  FileText,
-  CheckCircle2,
-  AlertTriangle,
-  OctagonAlert,
-  TrendingUp,
-  ShieldAlert,
-  ShoppingCart,
-  Bot,
-  ArrowRight,
-  RefreshCw,
-} from "lucide-react";
+import './operations.css';
+import { Button, StatCard, StatusBadge, Skeleton, EmptyState } from '@/components/ui/primitives';
 
+import { CountUp } from "@/components/ui/CountUp";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
   getSales,
@@ -30,6 +17,7 @@ import {
   createReorderDraftPO,
   StockOutPredictionItem,
   ReorderRecommendationItem,
+  SaleReceipt,
 } from "@/lib/api";
 
 export default function DashboardPage() {
@@ -46,6 +34,8 @@ export default function DashboardPage() {
   const [criticalExpiryCount, setCriticalExpiryCount] = useState<number>(0);
   const [pendingDraftsCount, setPendingDraftsCount] = useState<number>(0);
   const [loadingMetrics, setLoadingMetrics] = useState<boolean>(true);
+  const [recentSales, setRecentSales] = useState<SaleReceipt[]>([]);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   // ML Intelligence State (PRD Phase 5 & Rules 17 & 18)
   const [stockOutRisks, setStockOutRisks] = useState<StockOutPredictionItem[]>([]);
@@ -58,6 +48,7 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     setLoadingMetrics(true);
     setLoadingMl(true);
+    setDashboardError(null);
     try {
       const [salesRes, batchRes, expiryRes, purchaseRes, stockOutRes, reorderRes] =
         await Promise.all([
@@ -69,6 +60,7 @@ export default function DashboardPage() {
           getReorderRecommendations(10),
         ]);
 
+      setRecentSales(salesRes.items || []);
       setTodaySalesCount(salesRes.total || (salesRes.items || []).length);
       setPendingDraftsCount(purchaseRes.total || (purchaseRes.items || []).length);
       setCriticalExpiryCount(expiryRes.summary?.critical || 0 + (expiryRes.summary?.expired || 0));
@@ -83,7 +75,7 @@ export default function DashboardPage() {
       setStockOutRisks(stockOutRes.predictions || []);
       setReorderRecs(reorderRes.recommendations || []);
     } catch (err: unknown) {
-      // Graceful fallback
+      setDashboardError(err instanceof Error ? err.message : "Dashboard data could not load.");
     } finally {
       setLoadingMetrics(false);
       setLoadingMl(false);
@@ -125,354 +117,26 @@ export default function DashboardPage() {
     });
   };
 
+  const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const activity = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - (6 - index));
+    return { label: day.toLocaleDateString('en-IN', { weekday: 'short' }), date: day.toLocaleDateString('en-IN'), count: recentSales.filter(sale => sameDay(new Date(sale.sale_date), day)).length };
+  });
+  const maximum = Math.max(1, ...activity.map(day => day.count));
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {/* Header */}
-      <header className="page-header">
-        <div>
-          <h1 className="page-title">Pharmacy Operations</h1>
-          <p className="page-subtitle">
-            Physical Pharmacy Operating System • Store #1 • {currentDate}
-          </p>
+    <div className="ops-page dashboard-page">
+      <header className="page-header ops-header editorial-dashboard-header"><div><p className="ops-eyebrow">THE DAILY OVERVIEW</p><h1 className="page-title">Your pharmacy,<br /><span>at a glance.</span></h1><p className="page-subtitle">{currentDate}</p></div><div className="ops-actions dashboard-hero-actions"><ThemeToggle /><Button variant="secondary" onClick={loadDashboardData} disabled={loadingMetrics}>Refresh metrics</Button><Link href="/prescriptions" className="ui-button ui-button--secondary">Prescription Scan</Link><Link href="/pos" className="ui-button">Open POS Terminal</Link></div></header>
+      <div className="page-body ops-body">
+        {dashboardError && <div role="alert" className="ops-alert"><strong>Dashboard data could not load.</strong><p>{dashboardError}</p><Button variant="secondary" onClick={loadDashboardData}>Retry</Button></div>}
+        {actionSuccess && <div role="status" className="ops-success">{actionSuccess}</div>}
+        <div className="ops-stats"><StatCard label="Sales Invoices" value={loadingMetrics || dashboardError ? '—' : <CountUp value={todaySalesCount} />} detail="Invoice total from the current sales request" /><StatCard label="Low Stock Threshold" value={loadingMetrics || dashboardError ? '—' : <CountUp value={lowStockCount} />} detail="Batches with ≤ 10 units available" /><StatCard label="Expiry in ≤ 30 Days" value={loadingMetrics || dashboardError ? '—' : <CountUp value={criticalExpiryCount} />} detail="Batches requiring supplier return" /><StatCard label="Pending Purchase Drafts" value={loadingMetrics || dashboardError ? '—' : <CountUp value={pendingDraftsCount} />} detail="Draft invoices awaiting inward check" /></div>
+        <div className="dashboard-desk"><section className="ui-card ops-activity" aria-label="Recent invoice activity"><div className="ops-section-heading"><div><h2>Recent invoice activity</h2><p className="ui-hint">Last 7 days, from up to 50 most recent loaded invoices. This is not a complete sales report.</p></div><Link href="/pos" className="ops-text-link">Open billing</Link></div>{loadingMetrics ? <Skeleton label="Loading invoice activity" rows={3} /> : dashboardError ? <p className="ui-hint">Activity unavailable. Retry loading the dashboard.</p> : <><div className="ops-chart" role="img" aria-label={`Loaded invoices over the last seven days: ${activity.map(day => `${day.date}: ${day.count}`).join(', ')}`}>{activity.map(day => <div className="ops-chart-column" key={day.date} title={`${day.date}: ${day.count} loaded invoices`}><span className="ops-number">{day.count}</span><div className="ops-chart-track"><div className="ops-chart-bar" style={{ transform: `scaleY(${day.count / maximum})` }} /></div><span>{day.label}</span></div>)}</div><details className="ops-chart-data"><summary>View activity as a table</summary><table><caption>Loaded invoices only</caption><thead><tr><th scope="col">Date</th><th scope="col">Invoices</th></tr></thead><tbody>{activity.map(day => <tr key={day.date}><th scope="row">{day.date}</th><td>{day.count}</td></tr>)}</tbody></table></details></>}</section>
+        <div className="ops-dashboard-columns">
+          <section className="ui-card ops-panel"><div className="ops-section-heading"><h2>Stock-Out Probability Predictions</h2><StatusBadge tone="warning">Demand estimate</StatusBadge></div><p className="ui-hint">Estimates availability using stock, recent demand and supplier lead time.</p>{loadingMl ? <Skeleton label="Calculating stock-out risk probabilities" /> : dashboardError ? <p className="ui-hint">Predictions unavailable.</p> : stockOutRisks.length === 0 ? <EmptyState title="No stock-out alerts" description="All inventory items have healthy stock runways." /> : <ul className="ops-insight-list">{stockOutRisks.map(item => <li key={item.medicine_id}><div><strong>{item.brand_name}</strong><p>Stock: {item.current_stock} units • Runway: {item.runway_days} days</p></div><StatusBadge tone={item.risk_level === 'CRITICAL' || item.risk_level === 'HIGH_RISK' ? 'danger' : 'warning'}>{(item.stockout_probability_7d * 100).toFixed(0)}% Risk</StatusBadge></li>)}</ul>}</section>
+          <section className="ui-card ops-panel"><div className="ops-section-heading"><h2>Smart Reorder Recommendations</h2><StatusBadge tone="success">Reorder planning</StatusBadge></div><p className="ui-hint">Forecasted Demand + Safety Stock + Lead Time - Current Inventory - Open POs.</p>{loadingMl ? <Skeleton label="Computing reorder deficit models" /> : dashboardError ? <p className="ui-hint">Recommendations unavailable.</p> : reorderRecs.length === 0 ? <EmptyState title="No urgent reorders" description="No urgent supplier reorders required right now." /> : <ul className="ops-insight-list">{reorderRecs.map(rec => <li key={rec.medicine_id}><div><strong>{rec.brand_name}</strong><p>Stock: {rec.current_stock} | Rec Order: <strong>{rec.recommended_order_quantity} units</strong></p></div><Button disabled={isSubmitting} onClick={() => handleGenerateMlReorderPo(rec)}>Draft PO</Button></li>)}</ul>}</section>
         </div>
-
-        {/* Quick Dispensing Action & Theme Toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <ThemeToggle />
-          <button onClick={loadDashboardData} className="btn btn-secondary" title="Refresh metrics">
-            <RefreshCw size={15} />
-          </button>
-          <Link href="/prescriptions" className="btn btn-secondary">
-            <ClipboardList size={16} />
-            <span>Prescription Scan</span>
-          </Link>
-          <Link href="/pos" className="btn btn-primary">
-            <ShoppingBag size={16} />
-            <span>Open POS Terminal</span>
-          </Link>
-        </div>
-      </header>
-
-      {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
-        {actionSuccess && (
-          <div
-            style={{
-              padding: "0.75rem 1rem",
-              borderRadius: "var(--radius-sm)",
-              backgroundColor: "rgba(125, 255, 149, 0.12)",
-              border: "1px solid var(--status-high-border)",
-              color: "var(--status-high-text)",
-              fontSize: "0.8125rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <CheckCircle2 size={16} />
-            <span>{actionSuccess}</span>
-          </div>
-        )}
-
-        {/* Real Database Metric Cards Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "1rem",
-          }}
-        >
-          {/* Card 1: POS Billing */}
-          <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                Sales Invoices Today
-              </span>
-              <span className="status-badge high">
-                <span className="badge-icon"><CheckCircle2 size={13} /></span>
-                <span>Active Shift</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0.5rem 0 0.25rem", color: "var(--text-primary)" }}>
-              {loadingMetrics ? "..." : todaySalesCount}
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Dispensed bills in current session
-            </div>
-          </div>
-
-          {/* Card 2: Low Stock */}
-          <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                Low Stock Threshold
-              </span>
-              <span className="status-badge med">
-                <span className="badge-icon"><AlertTriangle size={13} /></span>
-                <span>Review</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0.5rem 0 0.25rem", color: "var(--text-primary)" }}>
-              {loadingMetrics ? "..." : lowStockCount}
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Batches with &le; 10 units available
-            </div>
-          </div>
-
-          {/* Card 3: Expiring Batches */}
-          <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                Expiry in &le; 30 Days
-              </span>
-              <span className="status-badge low">
-                <span className="badge-icon"><OctagonAlert size={13} /></span>
-                <span>Critical</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0.5rem 0 0.25rem", color: "var(--text-primary)" }}>
-              {loadingMetrics ? "..." : criticalExpiryCount}
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Batches requiring supplier return
-            </div>
-          </div>
-
-          {/* Card 4: Delivery Verification */}
-          <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                Pending Purchases
-              </span>
-              <span className="status-badge info">
-                <span className="badge-icon"><FileText size={13} /></span>
-                <span>Verification</span>
-              </span>
-            </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0.5rem 0 0.25rem", color: "var(--text-primary)" }}>
-              {loadingMetrics ? "..." : pendingDraftsCount}
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-              Draft invoices awaiting inward check
-            </div>
-          </div>
-        </div>
-
-        {/* Section: Predictive ML Intelligence Cards (PRD Phase 5 & Rules 17 & 18) */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-          {/* Predictive Stock-Out Risk Warnings */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <ShieldAlert size={18} style={{ color: "var(--status-low-text)" }} />
-                <h3 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                  Stock-Out Probability Predictions
-                </h3>
-              </div>
-              <span className="status-badge low">Demand estimate</span>
-            </div>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
-              Estimates availability using stock, recent demand and supplier lead time.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "240px", overflowY: "auto" }}>
-              {loadingMl ? (
-                <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
-                  Calculating stock-out risk probabilities...
-                </div>
-              ) : stockOutRisks.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
-                  All inventory items have healthy stock runways.
-                </div>
-              ) : (
-                stockOutRisks.map((item, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "0.625rem 0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "var(--bg-surface-elevated)",
-                      border: "1px solid var(--border-subtle)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                        {item.brand_name}
-                      </div>
-                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-                        Stock: {item.current_stock} units • Runway: {item.runway_days} days
-                      </div>
-                    </div>
-                    <span className={`status-badge ${item.risk_level === "CRITICAL" || item.risk_level === "HIGH_RISK" ? "low" : "med"}`}>
-                      {(item.stockout_probability_7d * 100).toFixed(0)}% Risk
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Explainable Smart Reorder Recommendations */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <ShoppingCart size={18} style={{ color: "var(--brand-primary)" }} />
-                <h3 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                  Smart Reorder Recommendations
-                </h3>
-              </div>
-              <span className="status-badge high">Reorder planning</span>
-            </div>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
-              Forecasted Demand + Safety Stock + Lead Time - Current Inventory - Open POs.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "240px", overflowY: "auto" }}>
-              {loadingMl ? (
-                <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
-                  Computing reorder deficit models...
-                </div>
-              ) : reorderRecs.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
-                  No urgent supplier reorders required right now.
-                </div>
-              ) : (
-                reorderRecs.map((rec, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "0.625rem 0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "var(--bg-surface-elevated)",
-                      border: "1px solid var(--border-subtle)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                        {rec.brand_name}
-                      </div>
-                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-                        Stock: {rec.current_stock} | Rec Order: <strong>{rec.recommended_order_quantity} units</strong>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleGenerateMlReorderPo(rec)}
-                      disabled={isSubmitting}
-                      className="btn btn-primary"
-                      style={{ height: "28px", fontSize: "0.6875rem", padding: "0 0.5rem" }}
-                    >
-                      <span>Draft PO</span>
-                      <ArrowRight size={11} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Operational Modules & Policy Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "1.25rem" }}>
-          {/* Section A: Core Operational Modules */}
-          <div className="card">
-            <div className="card-title">Core Operational Modules</div>
-            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: "1.25rem" }}>
-              Daily pharmacy workflows, from receiving stock to dispensing.
-            </p>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <Link href="/inventory" className="module-card">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span className="module-icon">
-                    <Package size={16} />
-                  </span>
-                  <span className="module-title">Batch Inventory</span>
-                </div>
-                <span className="module-desc">
-                  FEFO tracking, locations, physical units
-                </span>
-              </Link>
-
-              <Link href="/purchases" className="module-card">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span className="module-icon">
-                    <FileText size={16} />
-                  </span>
-                  <span className="module-title">Invoices & Verification</span>
-                </div>
-                <span className="module-desc">
-                  Distributor drafts & physical verification
-                </span>
-              </Link>
-
-              <Link href="/expiry" className="module-card">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span className="module-icon">
-                    <Clock size={16} />
-                  </span>
-                  <span className="module-title">Expiry Protocol</span>
-                </div>
-                <span className="module-desc">
-                  Near-expiry alerts & supplier returns
-                </span>
-              </Link>
-
-              <Link href="/returns" className="module-card">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span className="module-icon">
-                    <CheckCircle2 size={16} />
-                  </span>
-                  <span className="module-title">Sales Returns</span>
-                </div>
-                <span className="module-desc">
-                  Customer credit refunds & restocking audit
-                </span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Section B: Operating Policy & RAG Assistant */}
-          <div className="card">
-            <div className="card-title">Pharmacy AI & Compliance</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", marginTop: "0.75rem" }}>
-              <div className="policy-card">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
-                  <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
-                    <Bot size={16} />
-                  </span>
-                  <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
-                    Grounded Pharmacy Copilot Active
-                  </span>
-                </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  Use the floating Copilot button to query real-time database stock, expiring batches, and alternative medicines.
-                </div>
-              </div>
-
-              <div className="policy-card">
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.35rem" }}>
-                  <span style={{ color: "var(--status-high-text)", display: "inline-flex" }}>
-                    <CheckCircle2 size={15} />
-                  </span>
-                  <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
-                    Human Verification Boundary
-                  </span>
-                </div>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  AI recommendations and camera scans require explicit pharmacist verification before altering database inventory.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </div><section className="ui-card ops-panel dashboard-workflows"><div className="ops-section-heading"><h2>Daily workflows</h2><span className="ui-hint">Receiving, stock and dispensing</span></div><div className="ops-workflow-grid">{[{ href: '/inventory', title: 'Batch Inventory', description: 'FEFO tracking, locations, physical units' }, { href: '/purchases', title: 'Invoices & Verification', description: 'Distributor drafts & physical verification' }, { href: '/expiry', title: 'Expiry Protocol', description: 'Near-expiry alerts & supplier returns' }, { href: '/returns', title: 'Sales Returns', description: 'Customer credit refunds & restocking audit' }].map(link => <Link className="ops-workflow" key={link.href} href={link.href}><strong>{link.title}<span aria-hidden="true">↗</span></strong><span>{link.description}</span></Link>)}</div></section>
+        <section className="ops-compliance" aria-label="Pharmacy AI & Compliance"><StatusBadge tone="neutral">Human Verification Boundary</StatusBadge><p>AI recommendations and camera scans require explicit pharmacist verification before altering database inventory.</p><p>Use the floating Copilot button to query real-time database stock, expiring batches, and alternative medicines.</p></section>
       </div>
     </div>
   );

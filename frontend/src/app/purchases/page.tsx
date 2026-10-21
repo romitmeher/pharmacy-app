@@ -1,4 +1,6 @@
 "use client";
+import "./presentation.css";
+import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
@@ -26,6 +28,7 @@ import {
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
+import StockingAssistant from "@/components/StockingAssistant";
 import {
   getPurchases,
   getPurchase,
@@ -65,6 +68,7 @@ export default function PurchasesPage() {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [showStockingAssistant, setShowStockingAssistant] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoiceRecord | null>(null);
   const [showAcceptModal, setShowAcceptModal] = useState<boolean>(false);
   const [acceptLocationId, setAcceptLocationId] = useState<number>(0);
@@ -368,7 +372,7 @@ export default function PurchasesPage() {
     .reduce((sum, p) => sum + (p.total_amount || 0), 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="purchases-1">
       {/* Header — Aligned 64px height */}
       <header className="page-header">
         <div>
@@ -378,12 +382,13 @@ export default function PurchasesPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="purchases-2">
           <ThemeToggle />
+          <button className="btn btn-secondary" onClick={() => setShowStockingAssistant(true)}><Scan size={16} />Stock medicine from photo</button>
           <button
             onClick={() => setShowOcrModal(true)}
-            className="btn btn-secondary"
-            style={{ backgroundColor: "var(--bg-surface-elevated)" }}
+            
+            className="btn btn-secondary purchases-3"
           >
             <Scan size={16} />
             <span>Scan Distributor Invoice (OCR)</span>
@@ -395,30 +400,28 @@ export default function PurchasesPage() {
         </div>
       </header>
 
+      {showStockingAssistant && <StockingAssistant onClose={() => setShowStockingAssistant(false)} onUse={(medicine, extracted) => {
+        setMedicines(previous => [medicine, ...previous.filter(item => item.id !== medicine.id)]);
+        setDraftSupplierId(0); setDraftInvoiceNumber("");
+        setDraftInvoiceDate(new Date().toISOString().split("T")[0]);
+        setDraftItems([{ medicine_id: medicine.id, batch_number: extracted.batch_number || "",
+          expiry_date: extracted.expiry_date || "", quantity: 1, purchase_rate: 0, mrp: extracted.mrp || 0 }]);
+        setShowStockingAssistant(false); setShowCreateModal(true);
+      }} />}
       {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div  className="page-body purchases-4">
         {/* Two-Stage Protocol Notice */}
         <div
-          style={{
-            padding: "0.75rem 1.25rem",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border-default)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.4,
-          }}
+          className="purchases-5"
         >
-          <span style={{ color: "var(--brand-primary)", display: "inline-flex" }}>
+          <span className="purchases-6">
             <FileText size={18} />
           </span>
           <div>
-            <strong style={{ color: "var(--text-primary)" }}>
+            <strong className="purchases-7">
               Two-Stage Procurement Protocol (PRD Rule 8 & 11):
             </strong>{" "}
-            <span style={{ color: "var(--text-secondary)" }}>
+            <span className="purchases-8">
               Wholesale invoices are saved in DRAFT status with zero stock mutation. Batches and physical units are only
               booked when a licensed pharmacist confirms physical quantities upon delivery.
             </span>
@@ -427,15 +430,11 @@ export default function PurchasesPage() {
 
         {/* Metrics Overview Row */}
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "1rem",
-          }}
+          className="purchases-9"
         >
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card purchases-10">
+            <div className="purchases-11">
+              <span className="purchases-12">
                 Total Invoices
               </span>
               <span className="status-badge info">
@@ -443,17 +442,17 @@ export default function PurchasesPage() {
                 <span>Ledger</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="purchases-13">
               {totalCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="purchases-14">
               Total wholesale distributor invoices
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card purchases-15">
+            <div className="purchases-16">
+              <span className="purchases-17">
                 Pending Inward
               </span>
               <span className="status-badge med">
@@ -461,17 +460,17 @@ export default function PurchasesPage() {
                 <span>Drafts</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="purchases-18">
               {pendingInwardCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="purchases-19">
               Awaiting physical delivery count
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card purchases-20">
+            <div className="purchases-21">
+              <span className="purchases-22">
                 Accepted & Stocked
               </span>
               <span className="status-badge high">
@@ -479,17 +478,17 @@ export default function PurchasesPage() {
                 <span>Booked</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="purchases-23">
               {acceptedCount}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="purchases-24">
               Verified lots booked into inventory
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card purchases-25">
+            <div className="purchases-26">
+              <span className="purchases-27">
                 Inward Inventory Value
               </span>
               <span className="status-badge high">
@@ -497,10 +496,10 @@ export default function PurchasesPage() {
                 <span>Cost</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="purchases-28">
               ₹{totalInwardValue.toFixed(2)}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="purchases-29">
               Cumulative wholesale acquisition cost
             </div>
           </div>
@@ -508,47 +507,26 @@ export default function PurchasesPage() {
 
         {/* Toolbar */}
         <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+          className="purchases-30"
         >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", flex: 1, minWidth: "280px" }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
+          <div className="purchases-31">
+            <div className="purchases-32">
               <Search
                 size={16}
-                style={{
-                  position: "absolute",
-                  left: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-muted)",
-                }}
+                className="purchases-33"
               />
               <input
                 type="text"
                 placeholder="Search invoice # or distributor..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="form-input"
-                style={{ paddingLeft: "2.25rem" }}
+                
+                className="form-input purchases-34"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
+                  className="purchases-35" aria-label="Close dialog"
                 >
                   <X size={14} />
                 </button>
@@ -558,8 +536,8 @@ export default function PurchasesPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="form-select"
-              style={{ width: "180px" }}
+              
+              className="form-select purchases-36"
             >
               <option value="">All Statuses</option>
               <option value="draft">Draft (Pending Inward)</option>
@@ -570,8 +548,8 @@ export default function PurchasesPage() {
             <select
               value={supplierFilter}
               onChange={(e) => setSupplierFilter(e.target.value)}
-              className="form-select"
-              style={{ width: "200px" }}
+              
+              className="form-select purchases-37"
             >
               <option value="">All Suppliers</option>
               {suppliers.map((s) => (
@@ -582,7 +560,7 @@ export default function PurchasesPage() {
             </select>
           </div>
 
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+          <div className="purchases-38">
             Showing <strong>{purchases.length}</strong> of <strong>{totalCount}</strong> records
           </div>
         </div>
@@ -597,22 +575,22 @@ export default function PurchasesPage() {
                 <th>Invoiced Items</th>
                 <th>Total Value (₹)</th>
                 <th>Inward Status</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
+                <th className="purchases-39">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <VirtualTableBody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
+                  <td colSpan={6} className="purchases-40">
+                    <div className="purchases-41">
                       Loading purchase invoices...
                     </div>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--status-low-text)", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  <td colSpan={6} className="purchases-42">
+                    <div className="purchases-43">
                       {error}
                     </div>
                     <button onClick={loadData} className="btn btn-secondary">
@@ -622,18 +600,18 @@ export default function PurchasesPage() {
                 </tr>
               ) : purchases.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-                      <span style={{ color: "var(--text-muted)" }}>
+                  <td colSpan={6} className="purchases-44">
+                    <div className="purchases-45">
+                      <span className="purchases-46">
                         <FileText size={32} />
                       </span>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                      <div className="purchases-47">
                         No purchase invoices found
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", maxWidth: "360px" }}>
+                      <div className="purchases-48">
                         Record your first wholesale invoice draft to begin inward stock verification.
                       </div>
-                      <button onClick={handleOpenCreate} className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
+                      <button onClick={handleOpenCreate}  className="btn btn-primary purchases-49">
                         <PlusCircle size={16} />
                         <span>Create First Purchase Draft</span>
                       </button>
@@ -650,11 +628,11 @@ export default function PurchasesPage() {
                     <tr key={inv.id}>
                       {/* Invoice # & Date */}
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                        <div className="purchases-50">
+                          <span className="purchases-51">
                             {inv.invoice_number}
                           </span>
-                          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                          <span className="purchases-52">
                             {inv.invoice_date}
                           </span>
                         </div>
@@ -662,11 +640,11 @@ export default function PurchasesPage() {
 
                       {/* Supplier */}
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                          <span style={{ color: "var(--text-muted)" }}>
+                        <div className="purchases-53">
+                          <span className="purchases-54">
                             <Building2 size={14} />
                           </span>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
+                          <span className="purchases-55">
                             {inv.supplier_name || `Supplier #${inv.supplier_id}`}
                           </span>
                         </div>
@@ -674,14 +652,14 @@ export default function PurchasesPage() {
 
                       {/* Items */}
                       <td>
-                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                        <span className="purchases-56">
                           {(inv.items || []).length} line items
                         </span>
                       </td>
 
                       {/* Total Amount */}
                       <td>
-                        <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.875rem" }}>
+                        <span className="purchases-57">
                           ₹{inv.total_amount ? Number(inv.total_amount).toFixed(2) : "0.00"}
                         </span>
                       </td>
@@ -709,12 +687,12 @@ export default function PurchasesPage() {
                       </td>
 
                       {/* Actions */}
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: "0.5rem", alignItems: "center" }}>
+                      <td className="purchases-58">
+                        <div className="purchases-59">
                           <button
                             onClick={() => handleViewDetail(inv)}
-                            className="btn btn-secondary"
-                            style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                            
+                            className="btn btn-secondary purchases-60"
                             title="View Invoice Details"
                           >
                             <Eye size={13} />
@@ -725,8 +703,8 @@ export default function PurchasesPage() {
                             <>
                               <button
                                 onClick={() => handleRunDeliveryVerification(inv)}
-                                className="btn btn-secondary"
-                                style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                                
+                                className="btn btn-secondary purchases-61"
                                 title="Run physical delivery discrepancy check"
                               >
                                 <ShieldAlert size={13} />
@@ -734,17 +712,17 @@ export default function PurchasesPage() {
                               </button>
                               <button
                                 onClick={() => handleOpenAccept(inv)}
-                                className="btn btn-primary"
-                                style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                                
+                                className="btn btn-primary purchases-62"
                               >
                                 <PackageCheck size={13} />
                                 <span>Book Stock</span>
                               </button>
                               <button
                                 onClick={() => handleCancelInvoice(inv.id)}
-                                className="btn-icon"
+                                
                                 title="Cancel Draft"
-                                style={{ width: "30px", height: "30px" }}
+                                className="btn-icon purchases-63"
                               >
                                 <Ban size={14} />
                               </button>
@@ -756,7 +734,7 @@ export default function PurchasesPage() {
                   );
                 })
               )}
-            </tbody>
+            </VirtualTableBody>
           </table>
         </div>
       </div>
@@ -766,66 +744,52 @@ export default function PurchasesPage() {
           ===================================================================== */}
       {showCreateModal && (
         <div className="modal-backdrop" onClick={() => !isSubmitting && setShowCreateModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "720px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content purchases-64">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--brand-primary)" }}>
+              <div className="purchases-65">
+                <span className="purchases-66">
                   <FileText size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="purchases-67">
                     New Distributor Purchase Draft
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="purchases-68">
                     PRD Rule 8: Creates draft without mutating active inventory
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="btn-icon" disabled={isSubmitting}>
+              <button onClick={() => setShowCreateModal(false)} className="btn-icon" disabled={isSubmitting} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitDraft} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <form onSubmit={handleSubmitDraft} className="purchases-69">
               <div className="modal-body">
                 {actionError && (
                   <div
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "rgba(255, 128, 128, 0.12)",
-                      border: "1px solid var(--status-low-border)",
-                      color: "var(--status-low-text)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="purchases-70"
                   >
                     {actionError}
                   </div>
                 )}
                 {actionSuccess && (
                   <div
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "rgba(125, 255, 149, 0.12)",
-                      border: "1px solid var(--status-high-border)",
-                      color: "var(--status-high-text)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="purchases-71"
                   >
                     {actionSuccess}
                   </div>
                 )}
 
                 {/* Supplier & Invoice metadata */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px", gap: "0.75rem" }}>
+                <div className="purchases-72">
                   <div className="form-group">
-                    <label className="form-label">Distributor / Supplier *</label>
+                    <label className="form-label" htmlFor="purchases-field-1">Distributor / Supplier *</label>
                     <select
                       required
                       value={draftSupplierId}
                       onChange={(e) => setDraftSupplierId(Number(e.target.value))}
-                      className="form-select"
+                      className="form-select" id="purchases-field-1"
                     >
                       <option value="">-- Choose Supplier --</option>
                       {suppliers.map((s) => (
@@ -837,67 +801,52 @@ export default function PurchasesPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Distributor Invoice # *</label>
+                    <label className="form-label" htmlFor="purchases-field-2">Distributor Invoice # *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. INV-DIST-9481"
                       value={draftInvoiceNumber}
                       onChange={(e) => setDraftInvoiceNumber(e.target.value)}
-                      className="form-input"
+                      className="form-input" id="purchases-field-2"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Invoice Date</label>
+                    <label className="form-label" htmlFor="purchases-field-3">Invoice Date</label>
                     <input
                       type="date"
                       value={draftInvoiceDate}
                       onChange={(e) => setDraftInvoiceDate(e.target.value)}
-                      className="form-input"
+                      className="form-input" id="purchases-field-3"
                     />
                   </div>
                 </div>
 
                 {/* Line items repeater */}
                 <div className="form-group">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                  <div className="purchases-73">
                     <label className="form-label">Inward Line Items</label>
                     <button
                       type="button"
                       onClick={handleAddItemRow}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--brand-primary)",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
+                      className="purchases-74"
                     >
                       + Add Item
                     </button>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "250px", overflowY: "auto" }}>
+                  <div className="purchases-75">
                     {draftItems.map((item, idx) => (
                       <div
                         key={idx}
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "2fr 1.2fr 1.2fr 80px 90px 90px 30px",
-                          gap: "0.5rem",
-                          alignItems: "center",
-                          padding: "0.5rem",
-                          backgroundColor: "var(--bg-surface-elevated)",
-                          borderRadius: "var(--radius-sm)",
-                        }}
+                        className="purchases-76"
                       >
                         <select
                           value={item.medicine_id}
                           onChange={(e) => handleItemChange(idx, "medicine_id", Number(e.target.value))}
-                          className="form-select"
-                          style={{ fontSize: "0.75rem" }}
+                          
+                          className="form-select purchases-77"
                         >
                           {medicines.map((m) => (
                             <option key={m.id} value={m.id}>
@@ -912,8 +861,8 @@ export default function PurchasesPage() {
                           placeholder="Batch #"
                           value={item.batch_number}
                           onChange={(e) => handleItemChange(idx, "batch_number", e.target.value)}
-                          className="form-input"
-                          style={{ fontSize: "0.75rem" }}
+                          
+                          className="form-input purchases-78"
                         />
 
                         <input
@@ -921,8 +870,8 @@ export default function PurchasesPage() {
                           required
                           value={item.expiry_date}
                           onChange={(e) => handleItemChange(idx, "expiry_date", e.target.value)}
-                          className="form-input"
-                          style={{ fontSize: "0.75rem" }}
+                          
+                          className="form-input purchases-79"
                         />
 
                         <input
@@ -932,8 +881,8 @@ export default function PurchasesPage() {
                           placeholder="Qty"
                           value={item.quantity}
                           onChange={(e) => handleItemChange(idx, "quantity", parseInt(e.target.value) || 0)}
-                          className="form-input"
-                          style={{ fontSize: "0.75rem" }}
+                          
+                          className="form-input purchases-80"
                         />
 
                         <input
@@ -942,8 +891,8 @@ export default function PurchasesPage() {
                           placeholder="Rate ₹"
                           value={item.purchase_rate}
                           onChange={(e) => handleItemChange(idx, "purchase_rate", parseFloat(e.target.value) || 0)}
-                          className="form-input"
-                          style={{ fontSize: "0.75rem" }}
+                          
+                          className="form-input purchases-81"
                         />
 
                         <input
@@ -952,16 +901,16 @@ export default function PurchasesPage() {
                           placeholder="MRP ₹"
                           value={item.mrp}
                           onChange={(e) => handleItemChange(idx, "mrp", parseFloat(e.target.value) || 0)}
-                          className="form-input"
-                          style={{ fontSize: "0.75rem" }}
+                          
+                          className="form-input purchases-82"
                         />
 
                         {draftItems.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveItemRow(idx)}
-                            className="btn-icon"
-                            style={{ width: "24px", height: "24px" }}
+                            
+                            className="btn-icon purchases-83" aria-label="Close dialog"
                           >
                             <X size={14} />
                           </button>
@@ -990,22 +939,22 @@ export default function PurchasesPage() {
           ===================================================================== */}
       {showAcceptModal && selectedInvoice && (
         <div className="modal-backdrop" onClick={() => !isSubmitting && setShowAcceptModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "560px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content purchases-84">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--status-high-text)" }}>
+              <div className="purchases-85">
+                <span className="purchases-86">
                   <PackageCheck size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="purchases-87">
                     Physical Inward Verification & Acceptance
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="purchases-88">
                     Books batches and physical stock into pharmacy shelves
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowAcceptModal(false)} className="btn-icon" disabled={isSubmitting}>
+              <button onClick={() => setShowAcceptModal(false)} className="btn-icon" disabled={isSubmitting} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
@@ -1013,66 +962,44 @@ export default function PurchasesPage() {
             <div className="modal-body">
               {actionError && (
                 <div
-                  style={{
-                    padding: "0.75rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "rgba(255, 128, 128, 0.12)",
-                    border: "1px solid var(--status-low-border)",
-                    color: "var(--status-low-text)",
-                    fontSize: "0.75rem",
-                  }}
+                  className="purchases-89"
                 >
                   {actionError}
                 </div>
               )}
               {actionSuccess && (
                 <div
-                  style={{
-                    padding: "0.75rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "rgba(125, 255, 149, 0.12)",
-                    border: "1px solid var(--status-high-border)",
-                    color: "var(--status-high-text)",
-                    fontSize: "0.75rem",
-                  }}
+                  className="purchases-90"
                 >
                   {actionSuccess}
                 </div>
               )}
 
               <div
-                style={{
-                  padding: "0.875rem",
-                  backgroundColor: "var(--bg-surface-elevated)",
-                  borderRadius: "var(--radius-sm)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.25rem",
-                  fontSize: "0.8125rem",
-                }}
+                className="purchases-91"
               >
                 <div>
-                  <span style={{ color: "var(--text-muted)" }}>Invoice: </span>
-                  <strong style={{ color: "var(--text-primary)" }}>{selectedInvoice.invoice_number}</strong>
+                  <span className="purchases-92">Invoice: </span>
+                  <strong className="purchases-93">{selectedInvoice.invoice_number}</strong>
                 </div>
                 <div>
-                  <span style={{ color: "var(--text-muted)" }}>Distributor: </span>
-                  <strong style={{ color: "var(--text-primary)" }}>{selectedInvoice.supplier_name}</strong>
+                  <span className="purchases-94">Distributor: </span>
+                  <strong className="purchases-95">{selectedInvoice.supplier_name}</strong>
                 </div>
                 <div>
-                  <span style={{ color: "var(--text-muted)" }}>Invoiced Total: </span>
-                  <strong style={{ color: "var(--text-primary)" }}>₹{Number(selectedInvoice.total_amount).toFixed(2)}</strong>
+                  <span className="purchases-96">Invoiced Total: </span>
+                  <strong className="purchases-97">₹{Number(selectedInvoice.total_amount).toFixed(2)}</strong>
                 </div>
               </div>
 
               {/* Destination Shelf Allocation */}
               <div className="form-group">
-                <label className="form-label">Initial Storage Shelf / Rack Allocation *</label>
+                <label className="form-label" htmlFor="purchases-field-4">Initial Storage Shelf / Rack Allocation *</label>
                 <select
                   required
                   value={acceptLocationId}
                   onChange={(e) => setAcceptLocationId(Number(e.target.value))}
-                  className="form-select"
+                  className="form-select" id="purchases-field-4"
                 >
                   {locations.map((loc) => (
                     <option key={loc.id} value={loc.id}>
@@ -1080,21 +1007,13 @@ export default function PurchasesPage() {
                     </option>
                   ))}
                 </select>
-                <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                <span className="purchases-98">
                   All verified batches in this shipment will be initially placed on this shelf.
                 </span>
               </div>
 
               <div
-                style={{
-                  padding: "0.75rem",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "rgba(30, 110, 232, 0.08)",
-                  border: "1px solid var(--brand-border)",
-                  fontSize: "0.6875rem",
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.4,
-                }}
+                className="purchases-99"
               >
                 <strong>PRD Rule 11 Verification Gate:</strong> Confirming this physical inward will create immutable
                 batch records and instantly increment physical stock counts available for POS dispensing.
@@ -1118,43 +1037,43 @@ export default function PurchasesPage() {
           ===================================================================== */}
       {selectedInvoice && !showAcceptModal && (
         <div className="modal-backdrop" onClick={() => setSelectedInvoice(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "640px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content purchases-100">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--brand-primary)" }}>
+              <div className="purchases-101">
+                <span className="purchases-102">
                   <FileText size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="purchases-103">
                     Invoice #{selectedInvoice.invoice_number}
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="purchases-104">
                     {selectedInvoice.supplier_name} • {selectedInvoice.invoice_date}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setSelectedInvoice(null)} className="btn-icon">
+              <button onClick={() => setSelectedInvoice(null)} className="btn-icon" aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ gap: "1rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", padding: "0.75rem", backgroundColor: "var(--bg-surface-elevated)", borderRadius: "var(--radius-sm)", fontSize: "0.75rem" }}>
+            <div  className="modal-body purchases-105">
+              <div className="purchases-106">
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Status</div>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
+                  <div className="purchases-107">Status</div>
+                  <div className="purchases-108">
                     {selectedInvoice.status?.toUpperCase()}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Total Value</div>
-                  <div style={{ fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
+                  <div className="purchases-109">Total Value</div>
+                  <div className="purchases-110">
                     ₹{Number(selectedInvoice.total_amount).toFixed(2)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "var(--text-muted)" }}>Verified At</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                  <div className="purchases-111">Verified At</div>
+                  <div className="purchases-112">
                     {selectedInvoice.verified_at ? new Date(selectedInvoice.verified_at).toLocaleDateString("en-IN") : "Pending"}
                   </div>
                 </div>
@@ -1162,7 +1081,7 @@ export default function PurchasesPage() {
 
               {/* Items */}
               <div className="table-container">
-                <table className="data-table" style={{ fontSize: "0.75rem" }}>
+                <table  className="data-table purchases-113">
                   <thead>
                     <tr>
                       <th>Medicine</th>
@@ -1170,21 +1089,21 @@ export default function PurchasesPage() {
                       <th>Expiry</th>
                       <th>Invoiced</th>
                       <th>Rate (₹)</th>
-                      <th style={{ textAlign: "right" }}>Total</th>
+                      <th className="purchases-114">Total</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <VirtualTableBody>
                     {(selectedInvoice.items || []).map((it, idx) => (
                       <tr key={idx}>
-                        <td style={{ fontWeight: 700 }}>{it.medicine_name || it.raw_medicine_name}</td>
-                        <td style={{ fontFamily: "monospace" }}>{it.batch_number}</td>
+                        <td className="purchases-115">{it.medicine_name || it.raw_medicine_name}</td>
+                        <td className="purchases-116">{it.batch_number}</td>
                         <td>{it.expiry_date}</td>
-                        <td style={{ fontWeight: 700 }}>{it.quantity}</td>
+                        <td className="purchases-117">{it.quantity}</td>
                         <td>₹{Number(it.purchase_rate).toFixed(2)}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700 }}>₹{Number(it.total_amount).toFixed(2)}</td>
+                        <td className="purchases-118">₹{Number(it.total_amount).toFixed(2)}</td>
                       </tr>
                     ))}
-                  </tbody>
+                  </VirtualTableBody>
                 </table>
               </div>
             </div>
@@ -1203,29 +1122,29 @@ export default function PurchasesPage() {
           ===================================================================== */}
       {showOcrModal && (
         <div className="modal-backdrop" onClick={() => !ocrParsing && setShowOcrModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "600px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content purchases-119">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--brand-primary)" }}>
+              <div className="purchases-120">
+                <span className="purchases-121">
                   <Scan size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="purchases-122">
                     Distributor Invoice OCR Parsing
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="purchases-123">
                     PRD Rule 11: Converts unstructured wholesale invoice OCR into a reviewable Purchase Draft
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowOcrModal(false)} className="btn-icon" disabled={ocrParsing}>
+              <button onClick={() => setShowOcrModal(false)} className="btn-icon" disabled={ocrParsing} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">Paste Wholesale Invoice OCR Text / Table *</label>
+                <label className="form-label" htmlFor="purchases-field-5">Paste Wholesale Invoice OCR Text / Table *</label>
                 <textarea
                   rows={8}
                   placeholder={`Paste distributor invoice OCR text e.g.:
@@ -1236,20 +1155,13 @@ LINE 1: Paracetamol 500mg | BATCH: B-102 | EXP: 2027-11-30 | QTY: 100 | RATE: 12
 LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 45.00 | MRP: 78.00`}
                   value={rawOcrInputText}
                   onChange={(e) => setRawOcrInputText(e.target.value)}
-                  className="form-textarea"
-                  style={{ fontFamily: "monospace", fontSize: "0.75rem" }}
+                  
+                  className="form-textarea purchases-124" id="purchases-field-5"
                 />
               </div>
 
               <div
-                style={{
-                  padding: "0.625rem 0.875rem",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "rgba(30, 110, 232, 0.08)",
-                  border: "1px solid var(--brand-border)",
-                  fontSize: "0.6875rem",
-                  color: "var(--text-secondary)",
-                }}
+                className="purchases-125"
               >
                 <strong>Human-in-the-Loop Protocol:</strong> Scanning creates a DRAFT purchase invoice. Physical stock will NOT be added to inventory until verified upon delivery.
               </div>
@@ -1272,78 +1184,70 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
           ===================================================================== */}
       {showVerifyDeliveryModal && selectedInvoice && (
         <div className="modal-backdrop" onClick={() => !verifyingDelivery && setShowVerifyDeliveryModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "780px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content purchases-126">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--status-med-text)" }}>
+              <div className="purchases-127">
+                <span className="purchases-128">
                   <ShieldAlert size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="purchases-129">
                     Physical Delivery Discrepancy Matrix
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="purchases-130">
                     Enter the quantities, batch numbers and expiry dates physically received before booking stock.
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowVerifyDeliveryModal(false)} className="btn-icon">
+              <button onClick={() => setShowVerifyDeliveryModal(false)} className="btn-icon" aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
             <div className="modal-body">
-              {actionError && <p role="alert" style={{ color: "var(--status-low-text)" }}>{actionError}</p>}
+              {actionError && <p role="alert" className="purchases-131">{actionError}</p>}
               <p>Count every line independently. Quantities start at zero until you enter the received stock.</p>
               <div className="table-container"><table className="data-table">
                 <thead><tr><th>Medicine</th><th>Expected</th><th>Received</th><th>Actual batch</th><th>Actual expiry</th></tr></thead>
-                <tbody>{deliveryCounts.map((line, index) => <tr key={index}>
+                <VirtualTableBody>{deliveryCounts.map((line, index) => <tr key={index}>
                   <td>{line.medicine_name}</td><td>{selectedInvoice.items?.[index]?.quantity}</td>
                   <td><input aria-label={`Received quantity ${index + 1}`} className="form-input" type="number" min="0" step="1" value={line.actual_quantity} disabled={verifyingDelivery} onChange={(event) => { setDeliveryCounts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, actual_quantity: Number(event.target.value) } : row)); setVerifiedDeliveryId(null); setDiscrepancyReport(null); }} /></td>
                   <td><input aria-label={`Received batch ${index + 1}`} className="form-input" value={line.batch_number} disabled={verifyingDelivery} onChange={(event) => { setDeliveryCounts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, batch_number: event.target.value } : row)); setVerifiedDeliveryId(null); setDiscrepancyReport(null); }} /></td>
                   <td><input aria-label={`Received expiry ${index + 1}`} className="form-input" type="date" value={line.expiry_date} disabled={verifyingDelivery} onChange={(event) => { setDeliveryCounts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, expiry_date: event.target.value } : row)); setVerifiedDeliveryId(null); setDiscrepancyReport(null); }} /></td>
-                </tr>)}</tbody>
+                </tr>)}</VirtualTableBody>
               </table></div>
               <button type="button" className="btn btn-secondary" disabled={verifyingDelivery || !deliveryCounts.length} onClick={compareDelivery}>Compare received stock</button>
 
               {verifyingDelivery ? (
-                <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                <div className="purchases-132">
                   Analyzing physical delivery scans against invoice expected quantities...
                 </div>
               ) : discrepancyReport ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div className="purchases-133">
                   {/* Summary Bar */}
                   <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(4, 1fr)",
-                      gap: "0.75rem",
-                      padding: "0.75rem",
-                      backgroundColor: "var(--bg-surface-elevated)",
-                      borderRadius: "var(--radius-sm)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="purchases-134"
                   >
                     <div>
-                      <div style={{ color: "var(--text-muted)" }}>Expected Items</div>
-                      <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                      <div className="purchases-135">Expected Items</div>
+                      <div className="purchases-136">
                         {discrepancyReport.total_expected_items} ({discrepancyReport.total_expected_units} units)
                       </div>
                     </div>
                     <div>
-                      <div style={{ color: "var(--text-muted)" }}>Actual Scanned</div>
-                      <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                      <div className="purchases-137">Actual Scanned</div>
+                      <div className="purchases-138">
                         {discrepancyReport.total_actual_items} ({discrepancyReport.total_actual_units} units)
                       </div>
                     </div>
                     <div>
-                      <div style={{ color: "var(--text-muted)" }}>Matched Count</div>
-                      <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--status-high-text)" }}>
+                      <div className="purchases-139">Matched Count</div>
+                      <div className="purchases-140">
                         {discrepancyReport.matched_items_count} lines
                       </div>
                     </div>
                     <div>
-                      <div style={{ color: "var(--text-muted)" }}>Discrepancies</div>
+                      <div className="purchases-141">Discrepancies</div>
                       <div
                         style={{
                           fontWeight: 700,
@@ -1358,7 +1262,7 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
 
                   {/* Discrepancy Lines Matrix */}
                   <div className="table-container">
-                    <table className="data-table" style={{ fontSize: "0.75rem" }}>
+                    <table  className="data-table purchases-142">
                       <thead>
                         <tr>
                           <th>Item Name</th>
@@ -1366,23 +1270,23 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
                           <th>Invoiced Qty</th>
                           <th>Actual Scanned</th>
                           <th>Batch (Exp vs Act)</th>
-                          <th style={{ textAlign: "right" }}>Diff</th>
+                          <th className="purchases-143">Diff</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <VirtualTableBody>
                         {discrepancyReport.lines.map((line, idx) => {
                           const isMatched = line.status === "MATCHED";
                           return (
                             <tr key={idx}>
-                              <td style={{ fontWeight: 700 }}>{line.medicine_name}</td>
+                              <td className="purchases-144">{line.medicine_name}</td>
                               <td>
                                 <span className={`status-badge ${isMatched ? "high" : "low"}`}>
                                   {line.status}
                                 </span>
                               </td>
                               <td>{line.expected_quantity}</td>
-                              <td style={{ fontWeight: 700 }}>{line.actual_quantity}</td>
-                              <td style={{ fontFamily: "monospace" }}>
+                              <td className="purchases-145">{line.actual_quantity}</td>
+                              <td className="purchases-146">
                                 {line.expected_batch} {line.actual_batch !== line.expected_batch ? `-> ${line.actual_batch}` : ""}
                               </td>
                               <td style={{ textAlign: "right", fontWeight: 700, color: line.quantity_difference !== 0 ? "var(--status-low-text)" : "var(--status-high-text)" }}>
@@ -1391,7 +1295,7 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
                             </tr>
                           );
                         })}
-                      </tbody>
+                      </VirtualTableBody>
                     </table>
                   </div>
                 </div>

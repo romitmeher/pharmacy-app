@@ -1,0 +1,134 @@
+.medicines-1 { display: flex; flex-direction: column; min-height: 100%; }
+.medicines-2 { display: flex; align-items: center; gap: var(--view-value-1); }
+.medicines-3 { display: flex; flex-direction: column; gap: var(--view-value-2); }
+.medicines-4 { padding: var(--view-value-3); border-radius: var(--radius-sm); background-color: var(--bg-card); border: 1px solid var(--border-default); display: flex; align-items: center; gap: var(--view-value-1); font-size: var(--view-value-1); line-height: 1.4; }
+.medicines-5 { color: var(--brand-primary); display: inline-flex; }
+.medicines-6 { color: var(--text-primary); }
+.medicines-7 { color: var(--text-secondary); }
+.medicines-8 { color: var(--brand-primary); text-decoration: underline; }
+.medicines-9 { display: grid; grid-template-columns: var(--view-value-4); gap: var(--view-value-5); }
+@media (max-width: 768px) { .medicines-9 { grid-template-columns: minmax(0, 1fr); } }
+.medicines-10 { display: flex; flex-direction: column; gap: var(--view-value-6); }
+.medicines-11 { display: flex; justify-content: space-between; align-items: center; }
+.medicines-12 { font-size: var(--view-value-1); color: var(--text-secondary); font-weight: 700; }
+.medicines-13 { font-size: var(--view-value-7); font-weight: 700; color: var(--text-primary); }
+.medicines-14 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-15 { display: flex; flex-direction: column; gap: var(--view-value-6); }
+.medicines-16 { display: flex; justify-content: space-between; align-items: center; }
+.medicines-17 { font-size: var(--view-value-1); color: var(--text-secondary); font-weight: 700; }
+.medicines-18 { font-size: var(--view-value-7); font-weight: 700; color: var(--text-primary); }
+.medicines-19 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-20 { display: flex; flex-direction: column; gap: var(--view-value-6); }
+.medicines-21 { display: flex; justify-content: space-between; align-items: center; }
+.medicines-22 { font-size: var(--view-value-1); color: var(--text-secondary); font-weight: 700; }
+.medicines-23 { font-size: var(--view-value-7); font-weight: 700; color: var(--text-primary); }
+.medicines-24 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-25 { display: flex; flex-direction: column; gap: var(--view-value-6); }
+.medicines-26 { display: flex; justify-content: space-between; align-items: center; }
+.medicines-27 { font-size: var(--view-value-1); color: var(--text-secondary); font-weight: 700; }
+.medicines-28 { font-size: var(--view-value-7); font-weight: 700; color: var(--text-primary); }
+.medicines-29 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-30 { display: flex; flex-wrap: wrap; gap: var(--view-value-1); align-items: center; justify-content: space-between; }
+.medicines-31 { display: flex; flex-wrap: wrap; gap: var(--view-value-1); flex: 1; min-width: var(--view-value-9); }
+@media (max-width: 768px) { .medicines-31 { min-width: 0; } }
+.medicines-32 { position: relative; width: 100%; max-width: var(--view-value-10); }
+.medicines-33 { position: absolute; left: var(--view-value-1); top: var(--view-value-11); transform: var(--view-value-12); color: var(--text-muted); }
+.medicines-34 { padding-left: var(--view-value-13); }
+.medicines-35 { position: absolute; right: var(--view-value-1); top: var(--view-value-11); transform: var(--view-value-12); background: none; border: none; color: var(--text-muted); cursor: pointer; }
+.medicines-36 { width: var(--view-value-14); }
+.medicines-37 { width: var(--view-value-15); }
+.medicines-38 { font-size: var(--view-value-1); color: var(--text-secondary); }
+.medicines-39 { text-align: right; }
+.medicines-40 { text-align: center; padding: var(--view-value-16); }
+.medicines-41 { color: var(--text-secondary); font-size: var(--view-value-17); }
+.medicines-42 { text-align: center; padding: var(--view-value-16); }
+.medicines-43 { color: var(--status-low-text); font-size: var(--view-value-17); margin-bottom: var(--view-value-6); }
+.medicines-44 { text-align: center; padding: var(--view-value-18); }
+.medicines-45 { display: flex; flex-direction: column; align-items: center; gap: var(--view-value-1); }
+.medicines-46 { color: var(--text-muted); }
+.medicines-47 { font-size: var(--view-value-17); font-weight: 700; color: var(--text-primary); }
+.medicines-48 { font-size: var(--view-value-1); color: var(--text-secondary); max-width: var(--view-value-10); }
+.medicines-49 { margin-top: var(--view-value-6); }
+.medicines-50 { display: flex; flex-direction: column; gap: var(--view-value-19); }
+.medicines-51 { font-weight: 700; color: var(--text-primary); font-size: var(--view-value-17); }
+.medicines-52 { display: flex; align-items: center; gap: var(--view-value-20); }
+.medicines-53 { font-size: var(--view-value-8); font-weight: 700; text-transform: uppercase; padding: var(--view-value-21); border-radius: var(--radius-sm); background-color: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.medicines-54 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-55 { color: var(--text-secondary); }
+.medicines-56 { display: flex; flex-direction: column; gap: var(--view-value-22); }
+.medicines-57 { font-weight: 700; color: var(--text-primary); }
+.medicines-58 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-59 { color: var(--text-secondary); }
+.medicines-60 { display: flex; flex-direction: column; gap: var(--view-value-22); }
+.medicines-61 { font-weight: 700; color: var(--text-primary); }
+.medicines-62 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-63 { text-align: right; }
+.medicines-64 { display: flex; align-items: center; justify-content: space-between; padding: var(--view-value-23); }
+.medicines-65 { font-size: var(--view-value-1); color: var(--text-secondary); }
+.medicines-66 { display: flex; gap: var(--view-value-6); }
+.medicines-67 { height: var(--view-value-24); padding: var(--view-value-25); }
+.medicines-68 { height: var(--view-value-24); padding: var(--view-value-25); }
+.medicines-69 { max-width: var(--view-value-26); }
+.medicines-70 { display: flex; align-items: center; gap: var(--view-value-27); }
+.medicines-71 { width: var(--view-value-28); height: var(--view-value-28); border-radius: var(--radius-sm); background-color: var(--bg-surface-elevated); border: 1px solid var(--border-default); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); }
+.medicines-72 { font-size: var(--view-value-29); font-weight: 700; color: var(--text-primary); }
+.medicines-73 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-74 { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.medicines-75 { padding: var(--view-value-1); border-radius: var(--radius-sm); background-color: var(--status-low-bg); border: 1px solid var(--status-low-border); color: var(--status-low-text); font-size: var(--view-value-1); }
+.medicines-76 { padding: var(--view-value-1); border-radius: var(--radius-sm); background-color: var(--status-high-bg); border: 1px solid var(--status-high-border); color: var(--status-high-text); font-size: var(--view-value-1); }
+.medicines-77 { display: grid; grid-template-columns: var(--view-value-30); gap: var(--view-value-5); }
+@media (max-width: 768px) { .medicines-77 { grid-template-columns: minmax(0, 1fr); } }
+.medicines-78 { display: grid; grid-template-columns: var(--view-value-31); gap: var(--view-value-5); }
+@media (max-width: 768px) { .medicines-78 { grid-template-columns: minmax(0, 1fr); } }
+.medicines-79 { display: grid; grid-template-columns: var(--view-value-31); gap: var(--view-value-5); }
+@media (max-width: 768px) { .medicines-79 { grid-template-columns: minmax(0, 1fr); } }
+.medicines-80 { display: grid; grid-template-columns: var(--view-value-31); gap: var(--view-value-5); }
+@media (max-width: 768px) { .medicines-80 { grid-template-columns: minmax(0, 1fr); } }
+.medicines-81 { display: flex; align-items: center; gap: var(--view-value-1); padding: var(--view-value-1); border-radius: var(--radius-sm); background-color: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); }
+.medicines-82 { width: var(--view-value-32); height: var(--view-value-32); cursor: pointer; }
+.medicines-83 { font-size: var(--view-value-33); color: var(--text-primary); cursor: pointer; }
+.medicines-84 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-85 { display: flex; justify-content: space-between; align-items: center; }
+.medicines-86 { background: none; border: none; color: var(--brand-primary); font-size: var(--view-value-8); font-weight: 700; cursor: pointer; }
+.medicines-87 { display: flex; gap: var(--view-value-6); align-items: center; }
+.medicines-88 { flex: 2; }
+.medicines-89 { flex: 1; }
+.medicines-90 { width: var(--view-value-34); }
+.medicines-91 { width: var(--view-value-28); height: var(--view-value-28); }
+.medicines-92 { max-width: var(--view-value-35); }
+.medicines-93 { display: flex; align-items: center; gap: var(--view-value-27); }
+.medicines-94 { width: var(--view-value-28); height: var(--view-value-28); border-radius: var(--radius-sm); background-color: var(--bg-surface-elevated); border: 1px solid var(--border-default); display: flex; align-items: center; justify-content: center; color: var(--brand-primary); }
+.medicines-95 { font-size: var(--view-value-29); font-weight: 700; color: var(--text-primary); }
+.medicines-96 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-97 { gap: var(--view-value-36); }
+.medicines-98 { display: flex; flex-direction: column; gap: var(--view-value-1); }
+.medicines-99 { border: 0; padding: 0; }
+.medicines-100 { display: flex; gap: var(--view-value-6); }
+.medicines-101 { font-size: var(--view-value-1); color: var(--text-secondary); }
+.medicines-102 { display: flex; gap: var(--view-value-1); margin: var(--view-value-23); }
+.medicines-103 { display: flex; gap: var(--view-value-6); }
+.medicines-104 { display: grid; grid-template-columns: var(--view-value-30); gap: var(--view-value-1); padding: var(--view-value-5); background-color: var(--bg-surface-elevated); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+@media (max-width: 768px) { .medicines-104 { grid-template-columns: minmax(0, 1fr); } }
+.medicines-105 { font-size: var(--view-value-8); color: var(--text-muted); text-transform: uppercase; }
+.medicines-106 { font-size: var(--view-value-33); font-weight: 700; color: var(--text-primary); margin-top: var(--view-value-37); }
+.medicines-107 { font-size: var(--view-value-8); color: var(--text-muted); text-transform: uppercase; }
+.medicines-108 { font-size: var(--view-value-33); font-weight: 700; color: var(--text-primary); margin-top: var(--view-value-37); }
+.medicines-109 { font-size: var(--view-value-8); color: var(--text-muted); text-transform: uppercase; }
+.medicines-110 { font-size: var(--view-value-33); font-weight: 700; color: var(--text-primary); margin-top: var(--view-value-37); }
+.medicines-111 { font-size: var(--view-value-8); color: var(--text-muted); text-transform: uppercase; }
+.medicines-112 { font-size: var(--view-value-33); font-weight: 700; color: var(--text-primary); margin-top: var(--view-value-37); }
+.medicines-113 { font-size: var(--view-value-8); color: var(--text-muted); text-transform: uppercase; }
+.medicines-114 { font-size: var(--view-value-33); color: var(--text-primary); margin-top: var(--view-value-37); }
+.medicines-115 { font-size: var(--view-value-8); color: var(--text-muted); text-transform: uppercase; }
+.medicines-116 { margin-top: var(--view-value-38); }
+.medicines-117 { font-size: var(--view-value-1); font-weight: 700; color: var(--text-secondary); margin-bottom: var(--view-value-6); }
+.medicines-118 { display: flex; flex-direction: column; gap: var(--view-value-20); }
+.medicines-119 { display: flex; justify-content: space-between; padding: var(--view-value-39); background-color: var(--bg-surface-elevated); border-radius: var(--radius-sm); font-size: var(--view-value-1); }
+.medicines-120 { color: var(--text-primary); font-weight: 700; }
+.medicines-121 { color: var(--text-muted); }
+.medicines-122 { font-size: var(--view-value-1); color: var(--text-secondary); }
+.medicines-123 { color: var(--text-primary); }
+.medicines-124 { padding: var(--view-value-17); border-radius: var(--radius-sm); background-color: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; }
+.medicines-125 { font-size: var(--view-value-33); font-weight: 700; color: var(--text-primary); }
+.medicines-126 { font-size: var(--view-value-8); color: var(--text-muted); }
+.medicines-127 { height: var(--view-value-40); font-size: var(--view-value-1); }

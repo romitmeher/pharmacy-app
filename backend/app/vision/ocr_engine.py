@@ -120,6 +120,11 @@ class OCREngine:
         largest_side = max(image.shape[:2])
         if largest_side > 1600:
             image = cv2.resize(image, None, fx=1600 / largest_side, fy=1600 / largest_side)
+        elif largest_side < 800:
+            # Small product images contain readable lettering below the detector's
+            # preferred scale. Upscale for detection; quality checks still use the original.
+            scale = min(3.0, 900 / largest_side)
+            image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         raw_results = None
         try:
             with self._prediction_lock:

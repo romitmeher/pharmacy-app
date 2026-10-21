@@ -1,0 +1,13 @@
+.team-1 { margin-top: var(--view-value-5); }
+.team-2 { display: grid; gap: var(--view-value-36); }
+.team-3 { display: flex; gap: var(--view-value-1); flex-wrap: wrap; }
+.team-4 { color: var(--status-high-text); }
+.team-5 { color: var(--status-low-text); }
+.team-6 { color: var(--text-secondary); font-size: var(--view-value-33); }
+.team-7 { color: var(--status-low-text); margin-bottom: var(--view-value-5); }
+.team-8 { display: grid; gap: var(--view-value-5); }
+.team-9 { display: grid; grid-template-columns: var(--view-value-78); gap: var(--view-value-5); }
+@media (max-width: 768px) { .team-9 { grid-template-columns: minmax(0, 1fr); } }
+.team-10 { display: flex; align-items: center; gap: var(--view-value-6); }
+.team-11 { color: var(--text-secondary); font-size: var(--view-value-33); }
+.team-12 { display: flex; gap: var(--view-value-1); }

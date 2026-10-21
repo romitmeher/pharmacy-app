@@ -1,4 +1,6 @@
 "use client";
+import "./presentation.css";
+import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
@@ -126,7 +128,7 @@ export default function ExpiryManagementPage() {
   const summary = report?.summary || { expired: 0, critical: 0, warning: 0, good: 0 };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="expiry-1">
       {/* Header — Aligned 64px height */}
       <header className="page-header">
         <div>
@@ -136,7 +138,7 @@ export default function ExpiryManagementPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="expiry-2">
           <ThemeToggle />
           <button onClick={loadExpiryData} className="btn btn-secondary">
             <RefreshCw size={15} />
@@ -150,29 +152,19 @@ export default function ExpiryManagementPage() {
       </header>
 
       {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div  className="page-body expiry-3">
         {/* Regulatory Governance Notice */}
         <div
-          style={{
-            padding: "0.75rem 1.25rem",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "var(--bg-card)",
-            border: "1px solid var(--border-default)",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            fontSize: "0.75rem",
-            lineHeight: 1.4,
-          }}
+          className="expiry-4"
         >
-          <span style={{ color: "var(--status-med-text)", display: "inline-flex" }}>
+          <span className="expiry-5">
             <Clock size={18} />
           </span>
           <div>
-            <strong style={{ color: "var(--text-primary)" }}>
+            <strong className="expiry-6">
               PRD Rule 15 Statutory Expiry Tiers:
             </strong>{" "}
-            <span style={{ color: "var(--text-secondary)" }}>
+            <span className="expiry-7">
               Physical lots expiring within 30 days are legally flagged <strong>CRITICAL</strong> and must be segregated
               or prioritized via FEFO; stock within 90 days is marked <strong>WARNING</strong> to trigger supplier return
               agreements.
@@ -182,15 +174,11 @@ export default function ExpiryManagementPage() {
 
         {/* 4 Metrics Summary Cards Row */}
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "1rem",
-          }}
+          className="expiry-8"
         >
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card expiry-9">
+            <div className="expiry-10">
+              <span className="expiry-11">
                 Critical (≤ 30 Days)
               </span>
               <span className="status-badge med">
@@ -198,17 +186,17 @@ export default function ExpiryManagementPage() {
                 <span>Immediate Action</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--status-med-text)" }}>
+            <div className="expiry-12">
               {summary.critical}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="expiry-13">
               Lots requiring immediate dispensing or return
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card expiry-14">
+            <div className="expiry-15">
+              <span className="expiry-16">
                 Warning (31 - 90 Days)
               </span>
               <span className="status-badge med">
@@ -216,17 +204,17 @@ export default function ExpiryManagementPage() {
                 <span>FEFO Window</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="expiry-17">
               {summary.warning}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="expiry-18">
               Lots to prioritize in POS dispensing
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card expiry-19">
+            <div className="expiry-20">
+              <span className="expiry-21">
                 Expired Lots
               </span>
               <span className="status-badge low">
@@ -237,14 +225,14 @@ export default function ExpiryManagementPage() {
             <div style={{ fontSize: "1.625rem", fontWeight: 700, color: summary.expired > 0 ? "var(--status-low-text)" : "var(--text-primary)" }}>
               {summary.expired}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="expiry-22">
               Must be destroyed or returned for credit
             </div>
           </div>
 
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card expiry-23">
+            <div className="expiry-24">
+              <span className="expiry-25">
                 Near-Expiry Value Exposure
               </span>
               <span className="status-badge med">
@@ -252,10 +240,10 @@ export default function ExpiryManagementPage() {
                 <span>Financial Risk</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.625rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="expiry-26">
               ₹{totalFinancialExposure.toFixed(2)}
             </div>
-            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+            <div className="expiry-27">
               Capital tied up in ≤ 90 day lots
             </div>
           </div>
@@ -263,47 +251,26 @@ export default function ExpiryManagementPage() {
 
         {/* Toolbar with Tier Filters */}
         <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+          className="expiry-28"
         >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", flex: 1, minWidth: "280px" }}>
-            <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
+          <div className="expiry-29">
+            <div className="expiry-30">
               <Search
                 size={16}
-                style={{
-                  position: "absolute",
-                  left: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-muted)",
-                }}
+                className="expiry-31"
               />
               <input
                 type="text"
                 placeholder="Search by brand, generic, or batch code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="form-input"
-                style={{ paddingLeft: "2.25rem" }}
+                
+                className="form-input expiry-32"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  style={{
-                    position: "absolute",
-                    right: "0.75rem",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                  }}
+                  className="expiry-33" aria-label="Close dialog"
                 >
                   <X size={14} />
                 </button>
@@ -311,7 +278,7 @@ export default function ExpiryManagementPage() {
             </div>
 
             {/* Quick Filter Buttons */}
-            <div style={{ display: "flex", gap: "0.375rem" }}>
+            <div className="expiry-34">
               <button
                 type="button"
                 onClick={() => setSelectedTier("all")}
@@ -347,7 +314,7 @@ export default function ExpiryManagementPage() {
             </div>
           </div>
 
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+          <div className="expiry-39">
             Showing <strong>{filteredItems.length}</strong> batches
           </div>
         </div>
@@ -363,22 +330,22 @@ export default function ExpiryManagementPage() {
                 <th>Physical Storage Shelf</th>
                 <th>Stock at Risk</th>
                 <th>Capital Exposure</th>
-                <th style={{ textAlign: "right" }}>Mitigation Actions</th>
+                <th className="expiry-40">Mitigation Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <VirtualTableBody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
+                  <td colSpan={7} className="expiry-41">
+                    <div className="expiry-42">
                       Auditing pharmacy lots for expiration risks...
                     </div>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                    <div style={{ color: "var(--status-low-text)", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  <td colSpan={7} className="expiry-43">
+                    <div className="expiry-44">
                       {error}
                     </div>
                     <button onClick={loadExpiryData} className="btn btn-secondary">
@@ -388,15 +355,15 @@ export default function ExpiryManagementPage() {
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: "3.5rem 1rem" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-                      <span style={{ color: "var(--status-high-text)" }}>
+                  <td colSpan={7} className="expiry-45">
+                    <div className="expiry-46">
+                      <span className="expiry-47">
                         <CheckCircle2 size={32} />
                       </span>
-                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                      <div className="expiry-48">
                         No batches matching selected expiry tier
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                      <div className="expiry-49">
                         All tracked physical stock complies with healthy inventory runway metrics.
                       </div>
                     </div>
@@ -410,11 +377,11 @@ export default function ExpiryManagementPage() {
                     <tr key={item.batch_id}>
                       {/* Medicine */}
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                          <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.875rem" }}>
+                        <div className="expiry-50">
+                          <span className="expiry-51">
                             {item.brand_name || `Medicine #${item.medicine_id}`}
                           </span>
-                          <span style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
+                          <span className="expiry-52">
                             {item.generic_name || "—"}
                           </span>
                         </div>
@@ -422,15 +389,15 @@ export default function ExpiryManagementPage() {
 
                       {/* Batch Code */}
                       <td>
-                        <span style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--text-primary)", fontSize: "0.8125rem" }}>
+                        <span className="expiry-53">
                           {item.batch_number}
                         </span>
                       </td>
 
                       {/* Expiry Date & Days Left */}
                       <td>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>
+                        <div className="expiry-54">
+                          <span className="expiry-55">
                             {item.expiry_date}
                           </span>
                           <div>
@@ -464,11 +431,11 @@ export default function ExpiryManagementPage() {
 
                       {/* Location */}
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                          <span style={{ color: "var(--text-muted)" }}>
+                        <div className="expiry-56">
+                          <span className="expiry-57">
                             <MapPin size={14} />
                           </span>
-                          <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
+                          <span className="expiry-58">
                             {item.location_name || "Unassigned"}
                           </span>
                         </div>
@@ -476,25 +443,25 @@ export default function ExpiryManagementPage() {
 
                       {/* Units */}
                       <td>
-                        <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>
+                        <span className="expiry-59">
                           {item.quantity_available} units
                         </span>
                       </td>
 
                       {/* Capital Exposure */}
                       <td>
-                        <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "0.875rem" }}>
+                        <span className="expiry-60">
                           ₹{exposure.toFixed(2)}
                         </span>
                       </td>
 
                       {/* Actions */}
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: "0.5rem", alignItems: "center" }}>
+                      <td className="expiry-61">
+                        <div className="expiry-62">
                           <button
                             onClick={() => handleOpenWriteOff(item)}
-                            className="btn btn-secondary"
-                            style={{ height: "30px", fontSize: "0.75rem", padding: "0 0.625rem" }}
+                            
+                            className="btn btn-secondary expiry-63"
                             title="Reconcile / Write-Off from active stock"
                           >
                             <SlidersHorizontal size={13} />
@@ -506,7 +473,7 @@ export default function ExpiryManagementPage() {
                   );
                 })
               )}
-            </tbody>
+            </VirtualTableBody>
           </table>
         </div>
       </div>
@@ -516,86 +483,64 @@ export default function ExpiryManagementPage() {
           ===================================================================== */}
       {adjustingItem && (
         <div className="modal-backdrop" onClick={() => !isSubmitting && setAdjustingItem(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "540px" }}>
+          <div  onClick={(e) => e.stopPropagation()} className="modal-content expiry-64">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ color: "var(--status-med-text)" }}>
+              <div className="expiry-65">
+                <span className="expiry-66">
                   <ShieldAlert size={18} />
                 </span>
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="expiry-67">
                     Quarantine / Write-Off Lot
                   </h2>
-                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <p className="expiry-68">
                     Batch #{adjustingItem.batch_number} • Reconciles physical count
                   </p>
                 </div>
               </div>
-              <button onClick={() => setAdjustingItem(null)} className="btn-icon" disabled={isSubmitting}>
+              <button onClick={() => setAdjustingItem(null)} className="btn-icon" disabled={isSubmitting} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmWriteOff} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+            <form onSubmit={handleConfirmWriteOff} className="expiry-69">
               <div className="modal-body">
                 {actionError && (
                   <div
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "rgba(255, 128, 128, 0.12)",
-                      border: "1px solid var(--status-low-border)",
-                      color: "var(--status-low-text)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="expiry-70"
                   >
                     {actionError}
                   </div>
                 )}
                 {actionSuccess && (
                   <div
-                    style={{
-                      padding: "0.75rem",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "rgba(125, 255, 149, 0.12)",
-                      border: "1px solid var(--status-high-border)",
-                      color: "var(--status-high-text)",
-                      fontSize: "0.75rem",
-                    }}
+                    className="expiry-71"
                   >
                     {actionSuccess}
                   </div>
                 )}
 
                 <div
-                  style={{
-                    padding: "0.875rem",
-                    backgroundColor: "var(--bg-surface-elevated)",
-                    borderRadius: "var(--radius-sm)",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    fontSize: "0.8125rem",
-                  }}
+                  className="expiry-72"
                 >
                   <div>
-                    <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div className="expiry-73">
                       {adjustingItem.brand_name}
                     </div>
-                    <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                    <div className="expiry-74">
                       Batch: {adjustingItem.batch_number} • Exp: {adjustingItem.expiry_date}
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>Current In Stock</div>
-                    <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                  <div className="expiry-75">
+                    <div className="expiry-76">Current In Stock</div>
+                    <div className="expiry-77">
                       {adjustingItem.quantity_available} units
                     </div>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">New Physical Quantity in Sellable Stock *</label>
+                  <label className="form-label" htmlFor="expiry-field-1">New Physical Quantity in Sellable Stock *</label>
                   <input
                     type="number"
                     min="0"
@@ -603,21 +548,21 @@ export default function ExpiryManagementPage() {
                     required
                     value={adjustQuantity}
                     onChange={(e) => setAdjustQuantity(parseInt(e.target.value) || 0)}
-                    className="form-input"
+                    className="form-input" id="expiry-field-1"
                   />
-                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <span className="expiry-78">
                     Setting to 0 removes all units from active POS dispensing.
                   </span>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Statutory Audit Justification *</label>
+                  <label className="form-label" htmlFor="expiry-field-2">Statutory Audit Justification *</label>
                   <textarea
                     rows={3}
                     required
                     value={adjustReason}
                     onChange={(e) => setAdjustReason(e.target.value)}
-                    className="form-textarea"
+                    className="form-textarea" id="expiry-field-2"
                   />
                 </div>
               </div>

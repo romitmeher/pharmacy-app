@@ -1,0 +1,42 @@
+{
+  "contract": "C:\\Users\\user\\Desktop\\pharmacy app\\plans\\editorial-design-contract-20261021.md",
+  "targetViewports": [
+    "390x844",
+    "1366x768"
+  ],
+  "renderedEvidence": [],
+  "accessibility": {
+    "status": "untested",
+    "evidence": "Source review only; rendered keyboard/contrast checks pending."
+  },
+  "responsive": {
+    "status": "untested",
+    "evidence": "Breakpoint rules implemented; rendered inspection pending."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "untested",
+      "evidence": "Existing state markup and handlers retained; browser interaction checks were not performed under the no-browser instruction."
+    },
+    "empty": {
+      "status": "untested",
+      "evidence": "Existing state markup and handlers retained; browser interaction checks were not performed under the no-browser instruction."
+    },
+    "error": {
+      "status": "untested",
+      "evidence": "Existing state markup and handlers retained; browser interaction checks were not performed under the no-browser instruction."
+    },
+    "partial": {
+      "status": "untested",
+      "evidence": "Existing state markup and handlers retained; browser interaction checks were not performed under the no-browser instruction."
+    },
+    "success": {
+      "status": "untested",
+      "evidence": "Existing state markup and handlers retained; browser interaction checks were not performed under the no-browser instruction."
+    },
+    "permission": {
+      "status": "untested",
+      "evidence": "Existing state markup and handlers retained; browser interaction checks were not performed under the no-browser instruction."
+    }
+  }
+}

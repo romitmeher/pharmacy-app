@@ -47,37 +47,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          backgroundColor: "var(--bg-app)",
-          gap: "1rem",
-        }}
+        className="authguard-1"
       >
         <div
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "8px",
-            backgroundColor: "#252525",
-            border: "1px solid #393939",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--brand-primary)",
-          }}
+          className="authguard-2"
         >
           <Package size={20} />
         </div>
         <div
-          style={{
-            fontSize: "0.75rem",
-            color: "var(--text-muted)",
-            letterSpacing: "0.05em",
-          }}
+          className="authguard-3"
         >
           LOADING SMARTPHARM…
         </div>

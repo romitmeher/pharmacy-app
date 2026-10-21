@@ -25,6 +25,123 @@ logger = logging.getLogger(__name__)
 vision_bp = Blueprint("vision", __name__, url_prefix="/api/vision")
 
 
+@vision_bp.route("/stocking/read", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER, UserRole.PHARMACIST, UserRole.INVENTORY_STAFF)
+def read_stocking_pack():
+    from app.vision import _packaging_ocr
+    from app.vision.extractor import default_entity_extractor
+    from app.utils.errors import ValidationError
+    data = request.get_json(silent=True) or {}
+    raw = data.get("raw_text", "")
+    if not isinstance(raw, str) or len(raw) > 12000:
+        raise ValidationError("Packaging text must be at most 12000 characters.")
+    quality = None
+    if not raw.strip():
+        image_bytes, error = _extract_image_bytes_from_request()
+        if error or not image_bytes or len(image_bytes) > 12 * 1024 * 1024:
+            raise ValidationError(error or "Image exceeds the 12 MB limit.")
+        try:
+            image = decode_image_bytes(image_bytes)
+        except Exception:
+            raise ValidationError("Invalid image file.")
+        quality = assess_image_quality(image)
+        if not quality.is_acceptable:
+            return jsonify({"message": " ".join(quality.feedback), "quality": quality.to_dict()}), 422
+        ocr = _packaging_ocr(image)
+        raw = ocr.full_text
+        extracted = default_entity_extractor.extract(ocr)
+    else:
+        extracted = default_entity_extractor.extract(raw)
+    from app.vision.stocking import product_queries
+    suggestions = product_queries(raw)
+    if suggestions:
+        extracted.brand_candidates = list(dict.fromkeys([*suggestions, *extracted.brand_candidates]))[:8]
+        extracted.brand_name = suggestions[0]
+        # Warning/dosage text can contain a different amount from the product
+        # name. Leave conflicting strength empty for explicit pack review.
+        import re
+        if extracted.strength_inferred or (extracted.strength and re.findall(r"\d+", extracted.strength) != re.findall(r"\d+", suggestions[0])):
+            extracted.strength = None
+    return jsonify({"raw_text": raw, "extracted": extracted.to_dict(),
+                    "quality": quality.to_dict() if quality else None}), 200
+
+
+@vision_bp.route("/stocking/search", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER, UserRole.PHARMACIST, UserRole.INVENTORY_STAFF)
+def search_stocking_pack():
+    from app.vision.stocking import search
+    from app.utils.errors import ValidationError
+    data = request.get_json(silent=True) or {}
+    query, raw = data.get("query", ""), data.get("raw_text", "")
+    if not isinstance(query, str) or not 3 <= len(query.strip()) <= 120:
+        raise ValidationError("Enter a medicine name/strength between 3 and 120 characters.")
+    if not isinstance(raw, str) or len(raw) > 12000:
+        raise ValidationError("Packaging text is too long.")
+    return jsonify(search(g.current_store_id, query.strip(), raw, data.get("include_web") is True)), 200
+
+
+@vision_bp.route("/stocking/confirm", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER, UserRole.PHARMACIST)
+def confirm_stocking_pack():
+    from app.extensions import db
+    from app.services import medicine_service, barcode_service
+    from app.vision.stocking import remember
+    from app.utils.errors import ValidationError
+    from app.models.store import Store
+    from sqlalchemy import select
+    data = request.get_json(silent=True) or {}
+    if data.get("confirmed") is not True:
+        raise ValidationError("Confirm the medicine, strength and pack against the physical product.")
+    query, raw, sources = data.get("query", ""), data.get("raw_text", ""), data.get("source_urls", [])
+    if not isinstance(query, str) or not 3 <= len(query.strip()) <= 120 or not isinstance(raw, str) or len(raw) > 12000:
+        raise ValidationError("Invalid medicine query or packaging text.")
+    if not isinstance(sources, list):
+        raise ValidationError("Source URLs must be a list.")
+    try:
+        db.session.execute(select(Store.id).where(Store.id == g.current_store_id).with_for_update()).scalar_one()
+        if data.get("medicine_id"):
+            med = medicine_service.get_medicine(g.current_store_id, data["medicine_id"])
+        else:
+            identity = data.get("medicine") or {}
+            if not isinstance(identity, dict):
+                raise ValidationError("Enter the confirmed medicine details.")
+            allowed = {k: identity[k] for k in ["brand_name", "generic_name", "strength", "manufacturer", "dosage_form"] if k in identity}
+            if any(not isinstance(v, str) for v in allowed.values()):
+                raise ValidationError("Medicine identity fields must contain text.")
+            for field, value in allowed.items():
+                maximum = 100 if field == "strength" else 50 if field == "dosage_form" else 300
+                if len(value) > maximum:
+                    raise ValidationError(f"{field} must be at most {maximum} characters.")
+            if not allowed.get("strength", "").strip():
+                raise ValidationError("Confirm the medicine strength before saving.")
+            if not allowed.get("brand_name", "").strip():
+                raise ValidationError("Confirm the medicine name before saving.")
+            existing = Medicine.query.filter_by(store_id=g.current_store_id, is_active=True,
+                brand_name=allowed["brand_name"].strip(), strength=allowed["strength"].strip()).all()
+            existing = [m for m in existing if (m.manufacturer or "").casefold() == allowed.get("manufacturer", "").strip().casefold()
+                        and (m.dosage_form.value if m.dosage_form else "") == allowed.get("dosage_form", "")]
+            if len(existing) > 1:
+                raise ValidationError("Multiple catalog records match. Select the correct existing medicine.")
+            med = existing[0] if existing else medicine_service.create_medicine(g.current_store_id, allowed, commit=False)
+        if data.get("barcode"):
+            barcode_service.link(g.current_store_id, med.id, data["barcode"], commit=False)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    learned = True
+    try:
+        remember(g.current_store_id, g.current_user.id, med, query.strip(), raw, sources)
+    except Exception:
+        learned = False
+        logger.exception("Medicine saved, but stocking correction memory could not be updated")
+    return jsonify({"medicine": medicine_service.serialize_medicine(med), "learning_saved": learned,
+                    "message": "Verified identity saved. Add batch, expiry and received quantity in the purchase draft."}), 200
+
+
 def _extract_image_bytes_from_request() -> Tuple[Optional[bytes], Optional[str]]:
     """Helper to extract image bytes from multipart upload or base64 JSON payload."""
     # 1. Check for file in multipart form-data
@@ -120,6 +237,7 @@ def recognize_medicine():
 
 @vision_bp.route("/verify", methods=["POST"])
 @login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER, UserRole.PHARMACIST)
 def verify_recognition():
     """
     Pharmacist Human-in-the-loop verification step.
@@ -132,7 +250,7 @@ def verify_recognition():
         return jsonify({"status": "error", "message": "medicine_id is required for verification."}), 400
 
     from app.extensions import db
-    med = db.session.get(Medicine, medicine_id)
+    med = Medicine.query.filter_by(id=medicine_id, store_id=g.current_store_id, is_active=True).first()
 
     if not med:
         return jsonify({"status": "error", "message": f"Medicine with id {medicine_id} not found."}), 404
@@ -140,14 +258,25 @@ def verify_recognition():
     batch_number = (data.get("batch_number") or "").strip()
     expiry_date = data.get("expiry_date")
     quantity = data.get("quantity", 1)
+    if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity < 1:
+        return jsonify({"message": "Quantity must be a positive whole number."}), 400
+    if expiry_date:
+        from datetime import date
+        try:
+            date.fromisoformat(expiry_date)
+        except (ValueError, TypeError):
+            return jsonify({"message": "Expiry must be a valid ISO date."}), 400
 
     # Check if batch exists
     batch = None
     if batch_number:
         batch = Batch.query.filter(
             Batch.medicine_id == med.id,
+            Batch.store_id == g.current_store_id,
             Batch.batch_number.ilike(batch_number),
         ).first()
+    if batch and expiry_date and expiry_date != batch.expiry_date.isoformat():
+        return jsonify({"message": "Expiry does not match this saved batch."}), 400
 
     current_user = getattr(g, "current_user", None)
     dosage_val = med.dosage_form.value if hasattr(med.dosage_form, "value") else str(med.dosage_form or "")

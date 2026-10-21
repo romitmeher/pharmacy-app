@@ -49,7 +49,7 @@ def _parse_decimal(value, field_name, min_val=0):
         raise ValidationError(f"Invalid numeric value for {field_name}.")
 
 
-def create_medicine(store_id: int, data: dict) -> Medicine:
+def create_medicine(store_id: int, data: dict, commit=True) -> Medicine:
     """Create a new medicine with optional nested ingredients, aliases, and visual features.
 
     Args:
@@ -61,6 +61,8 @@ def create_medicine(store_id: int, data: dict) -> Medicine:
     """
     if not data:
         raise ValidationError("Request data cannot be empty.")
+    if any((a.get("alias_type") or "").strip().lower() == "barcode" for a in (data.get("aliases") or [])):
+        raise ValidationError("Link barcodes using the medicine barcode endpoint.")
 
     brand_name = data.get("brand_name", "").strip()
     if not brand_name:
@@ -130,7 +132,10 @@ def create_medicine(store_id: int, data: dict) -> Medicine:
         )
         db.session.add(feature)
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return medicine
 
 
@@ -199,6 +204,8 @@ def list_medicines(
 def update_medicine(store_id: int, medicine_id: int, data: dict) -> Medicine:
     """Update an existing medicine and optionally its ingredients/aliases."""
     medicine = get_medicine(store_id, medicine_id, include_inactive=True)
+    if any((a.get("alias_type") or "").strip().lower() == "barcode" for a in (data.get("aliases") or [])):
+        raise ValidationError("Link barcodes using the medicine barcode endpoint.")
 
     if "brand_name" in data:
         new_brand = data["brand_name"].strip()
@@ -262,7 +269,7 @@ def update_medicine(store_id: int, medicine_id: int, data: dict) -> Medicine:
 
     # If aliases explicitly passed, update them
     if "aliases" in data and isinstance(data["aliases"], list):
-        medicine.aliases.clear()
+        medicine.aliases[:] = [a for a in medicine.aliases if a.alias_type == "barcode"]
         for alias in data["aliases"]:
             alias_name = alias.get("alias_name", "").strip()
             if not alias_name:
@@ -351,6 +358,7 @@ def serialize_medicine(medicine: Medicine, detailed: bool = False) -> dict:
         "id": medicine.id,
         "store_id": medicine.store_id,
         "brand_name": medicine.brand_name,
+        "barcodes": [a.alias_name for a in medicine.aliases if a.alias_type == "barcode"],
         "generic_name": medicine.generic_name,
         "manufacturer": medicine.manufacturer,
         "strength": medicine.strength,

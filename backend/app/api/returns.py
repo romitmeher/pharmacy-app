@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 returns_bp = Blueprint("returns", __name__, url_prefix="/api/returns")
 
 
-@returns_bp.route("/eligible-items/<int:sale_id>", methods=["GET"])
+@returns_bp.route("/eligible-items/<sale_reference>", methods=["GET"])
 @login_required
 @role_required(
     UserRole.OWNER,
@@ -34,9 +34,18 @@ returns_bp = Blueprint("returns", __name__, url_prefix="/api/returns")
     UserRole.PHARMACIST,
     UserRole.CASHIER,
 )
-def fetch_eligible_return_items(sale_id: int):
+def fetch_eligible_return_items(sale_reference: str):
     """Fetch original sale items and eligible remaining returnable quantities."""
     store_id = getattr(g, "current_store_id", None) or 1
+    from app.models.sale import Sale
+    from app.utils.errors import NotFoundError
+    if sale_reference.isdigit():
+        sale_id = int(sale_reference)
+    else:
+        sale = Sale.query.filter_by(store_id=store_id, invoice_number=sale_reference).first()
+        if sale is None:
+            raise NotFoundError("Invoice not found in this store.")
+        sale_id = sale.id
     data = get_eligible_return_items(store_id=store_id, sale_id=sale_id)
     return jsonify({
         "success": True,

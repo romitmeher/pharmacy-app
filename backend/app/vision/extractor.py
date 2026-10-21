@@ -74,6 +74,7 @@ class ExtractedEntities:
     confidence: float = 0.8
     raw_text: str = ""
     brand_candidates: List[str] = field(default_factory=list)
+    strength_inferred: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -87,6 +88,7 @@ class ExtractedEntities:
             "manufacturer": self.manufacturer,
             "confidence": round(self.confidence, 3),
             "brand_candidates": self.brand_candidates,
+            "strength_inferred": self.strength_inferred,
             "raw_text": self.raw_text,
         }
 
@@ -149,7 +151,8 @@ def _parse_pharma_date(date_str: str) -> Optional[date]:
 def extract_entities(ocr_lines: Union[List[Dict[str, Any]], List[str], str, OCRResult]) -> Dict[str, Any]:
     """Legacy dict-based extractor for compatibility with test suites and helpers."""
     if isinstance(ocr_lines, OCRResult):
-        lines_list = [{"text": l, "confidence": ocr_lines.avg_confidence} for l in ocr_lines.lines]
+        confidence_by_text = {word.text: word.confidence for word in ocr_lines.word_boxes}
+        lines_list = [{"text": line, "confidence": confidence_by_text.get(line, ocr_lines.avg_confidence)} for line in ocr_lines.lines]
     elif isinstance(ocr_lines, str):
         lines_list = [{"text": l, "confidence": 0.8} for l in ocr_lines.split("\n")]
     elif isinstance(ocr_lines, list) and ocr_lines and isinstance(ocr_lines[0], str):
@@ -163,6 +166,7 @@ def extract_entities(ocr_lines: Union[List[Dict[str, Any]], List[str], str, OCRR
         "raw_text": full_text,
         "brand_name_candidates": [],
         "strength": None,
+        "strength_inferred": False,
         "batch_number": None,
         "expiry_date": None,
         "manufacturing_date": None,
@@ -204,17 +208,33 @@ def extract_entities(ocr_lines: Union[List[Dict[str, Any]], List[str], str, OCRR
             extracted["manufacturing_date"] = parsed_mfg.isoformat()
 
     # 4. Strength
-    str_match = RE_STRENGTH.search(full_text)
+    str_match = None
+    for line in lines_list:
+        text = line.get("text", "")
+        if re.search(r"\b(?:max(?:imum)?|daily|dosage|dose|hours?|exceed|overdose)\b", text, re.I):
+            continue
+        str_match = RE_STRENGTH.search(text)
+        if str_match:
+            break
     if str_match:
         extracted["strength"] = f"{str_match.group(1)} {str_match.group(2).lower()}"
         extracted["confidence_factors"]["strength"] = 0.85
     else:
         # Fallback for Indian pharma convention where strength is part of brand name (e.g. Crocin 650, Dolo 650)
-        num_match = re.search(r"\b(?:[A-Za-z]{3,})\s+(\d{2,4})\b", full_text)
+        from app.vision.stocking import product_queries
+        product_names = product_queries("\n".join(line.get("text", "") for line in lines_list))
+        num_match = re.search(r"\b(\d{1,4})\b", product_names[0]) if product_names else None
+        if num_match is None:
+            for line in lines_list:
+                num_match = re.search(r"\b(?:tablets?|capsules?)\s*(?:I\.?\s*P\.?|I\.?)?\s*(\d{1,4})\s*$",
+                                      line.get("text", ""), re.I)
+                if num_match:
+                    break
         if num_match:
             val = int(num_match.group(1))
-            if 50 <= val <= 2000 and val not in (2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030):
+            if 1 <= val <= 2000 and val not in (2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030):
                 extracted["strength"] = f"{val} mg"
+                extracted["strength_inferred"] = True
                 extracted["confidence_factors"]["strength"] = 0.75
 
 
@@ -251,8 +271,10 @@ def extract_entities(ocr_lines: Union[List[Dict[str, Any]], List[str], str, OCRR
             "ocr_confidence": round(float(line.get("confidence", 0.7)), 3),
         })
 
+    from app.vision.stocking import product_queries
+    prioritized = product_queries("\n".join(line.get("text", "") for line in lines_list))
     candidates.sort(key=lambda c: c["ocr_confidence"], reverse=True)
-    extracted["brand_name_candidates"] = [c["text"] for c in candidates[:5]]
+    extracted["brand_name_candidates"] = list(dict.fromkeys([*prioritized, *(c["text"] for c in candidates)]))[:20]
 
     return extracted
 
@@ -306,6 +328,7 @@ class EntityExtractor:
             confidence=final_conf,
             raw_text=raw_dict.get("raw_text", ""),
             brand_candidates=brand_candidates,
+            strength_inferred=raw_dict.get("strength_inferred", False),
         )
 
 

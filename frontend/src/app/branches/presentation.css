@@ -1,0 +1,31 @@
+.branches-1 { margin-top: var(--view-value-5); }
+.branches-2 { display: grid; gap: var(--view-value-36); }
+.branches-3 { color: var(--status-low-text); }
+.branches-4 { color: var(--status-high-text); }
+.branches-5 { display: flex; flex-wrap: wrap; gap: var(--view-value-1); }
+.branches-6 { color: var(--text-secondary); margin-bottom: var(--view-value-5); font-size: var(--view-value-33); }
+.branches-7 { color: var(--status-low-text); margin-bottom: var(--view-value-5); }
+.branches-8 { display: grid; gap: var(--view-value-5); }
+.branches-9 { display: grid; grid-template-columns: var(--view-value-78); gap: var(--view-value-5); }
+@media (max-width: 768px) { .branches-9 { grid-template-columns: minmax(0, 1fr); } }
+.branches-10 { justify-self: var(--view-value-79); }
+.branches-11 { display: grid; grid-template-columns: var(--view-value-4); gap: var(--view-value-5); }
+@media (max-width: 768px) { .branches-11 { grid-template-columns: minmax(0, 1fr); } }
+.branches-12 { color: var(--text-secondary); }
+.branches-13 { display: grid; gap: var(--view-value-5); }
+.branches-14 { color: var(--text-secondary); font-size: var(--view-value-33); }
+.branches-15 { display: flex; flex-wrap: wrap; align-items: end; gap: var(--view-value-1); }
+.branches-16 { flex: 1 1 260px; }
+.branches-17 { justify-self: var(--view-value-79); }
+.branches-18 { justify-self: var(--view-value-79); }
+.branches-19 { color: var(--text-secondary); margin-bottom: var(--view-value-5); font-size: var(--view-value-33); }
+.branches-20 { display: grid; gap: var(--view-value-5); }
+.branches-21 { border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--view-value-5); }
+.branches-22 { vertical-align: var(--view-value-73); }
+.branches-23 { padding-left: var(--view-value-36); margin: var(--view-value-23); }
+.branches-24 { color: var(--text-secondary); white-space: pre-wrap; }
+.branches-25 { margin-bottom: var(--view-value-5); }
+.branches-26 { display: flex; gap: var(--view-value-1); margin-top: var(--view-value-5); }
+.branches-27 { display: flex; flex-wrap: wrap; align-items: end; gap: var(--view-value-1); }
+.branches-28 { color: var(--status-low-text); margin-top: var(--view-value-1); }
+.branches-29 { margin-top: var(--view-value-5); }

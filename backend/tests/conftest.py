@@ -165,6 +165,7 @@ def isolate_optional_cloud_services(monkeypatch):
     """Unit tests never use optional cloud services from the developer's .env."""
     monkeypatch.setenv("PGVECTOR_URL", "")
     monkeypatch.setenv("GEMINI_API_KEY", "")
+    monkeypatch.setenv("TAVILY_API_KEY", "")
 
 
 @pytest.fixture(autouse=True)

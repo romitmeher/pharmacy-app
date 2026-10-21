@@ -122,7 +122,7 @@ def assess_image_quality(
         issues.append("Significant glare detected on packaging foil. Adjust angle to minimize reflection.")
 
     # 4. Minimum Resolution
-    is_too_small = h < 200 or w < 200
+    is_too_small = min(h, w) < 160 or h * w < 30000
     if is_too_small:
         issues.append("Image resolution is too low. Bring packaging closer to camera.")
 

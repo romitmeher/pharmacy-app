@@ -1,4 +1,6 @@
 "use client";
+import "./presentation.css";
+import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import React, { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
@@ -187,13 +189,13 @@ export default function AuditPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+    <div className="audit-1">
       {/* Header — 64px height seam matching sidebar */}
       <header className="page-header">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="audit-2">
             <h1 className="page-title">Audit Trail & Regulatory Governance</h1>
-            <span className="status-badge high" style={{ fontSize: "0.6875rem", padding: "0.1rem 0.45rem" }}>
+            <span  className="status-badge high audit-3">
               PRD Rule 7 & 22
             </span>
           </div>
@@ -202,24 +204,24 @@ export default function AuditPage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div className="audit-4">
           <ThemeToggle />
           <button
             onClick={handleExportCSV}
             disabled={logs.length === 0}
-            className="btn btn-secondary"
-            style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}
+            
+            className="btn btn-secondary audit-5"
           >
             <Download size={14} />
-            <span>Export Audit Log (CSV)</span>
+            <span>Export visible logs (CSV)</span>
           </button>
 
           <button
             onClick={() => fetchAuditData(currentPage)}
             disabled={refreshing}
-            className="btn btn-secondary"
-            style={{ padding: "0 0.625rem" }}
-            title="Refresh logs"
+            
+            className="btn btn-secondary audit-6"
+            title="Refresh logs" aria-label="Refresh"
           >
             <RefreshCw size={14} style={{ animation: refreshing ? "spin 1s linear infinite" : "none" }} />
           </button>
@@ -227,19 +229,15 @@ export default function AuditPage() {
       </header>
 
       {/* Main Body */}
-      <div className="page-body" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div  className="page-body audit-7">
         {/* Metric Cards Grid */}
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "1rem",
-          }}
+          className="audit-8"
         >
           {/* Total Events */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card audit-9">
+            <div className="audit-10">
+              <span className="audit-11">
                 Total Audit Events
               </span>
               <span className="status-badge high">
@@ -247,18 +245,18 @@ export default function AuditPage() {
                 <span>Committed</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="audit-12">
               {metrics?.total_audit_events ?? totalCount}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="audit-13">
               Immutable records committed to DB
             </div>
           </div>
 
           {/* Events Today */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card audit-14">
+            <div className="audit-15">
+              <span className="audit-16">
                 Events Today
               </span>
               <span className="status-badge info">
@@ -266,18 +264,18 @@ export default function AuditPage() {
                 <span>Active Shift</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="audit-17">
               {metrics?.events_today ?? 0}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="audit-18">
               Operational changes logged today
             </div>
           </div>
 
           {/* Stock Adjustments (7d) */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card audit-19">
+            <div className="audit-20">
+              <span className="audit-21">
                 Stock Adjustments (7d)
               </span>
               <span className="status-badge med">
@@ -285,18 +283,18 @@ export default function AuditPage() {
                 <span>Overrides</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="audit-22">
               {metrics?.adjustments_last_7d ?? 0}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="audit-23">
               Physical counts & manual adjustments
             </div>
           </div>
 
           {/* Reconciliations (7d) */}
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 700 }}>
+          <div  className="card audit-24">
+            <div className="audit-25">
+              <span className="audit-26">
                 Cycle Reconciliations (7d)
               </span>
               <span className="status-badge high">
@@ -304,54 +302,43 @@ export default function AuditPage() {
                 <span>Reconciled</span>
               </span>
             </div>
-            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            <div className="audit-27">
               {metrics?.reconciliations_last_7d ?? 0}
             </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="audit-28">
               Shelf cycle counts authorized by staff
             </div>
           </div>
         </div>
 
         {/* Search & Filters Card */}
-        <div className="card" style={{ padding: "1rem 1.25rem" }}>
+        <div  className="card audit-29">
           <form
             onSubmit={handleSearchSubmit}
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.75rem",
-              alignItems: "center",
-            }}
+            className="audit-30"
           >
             {/* Search Query */}
-            <div style={{ position: "relative", flex: "1 1 240px" }}>
+            <div className="audit-31">
               <input
                 type="text"
-                className="form-input"
+                
                 placeholder="Search audit reason, entity ID, or action..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: "2.125rem" }}
+                className="form-input audit-32"
               />
               <Search
                 size={14}
-                style={{
-                  position: "absolute",
-                  left: "0.75rem",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-muted)",
-                }}
+                className="audit-33"
               />
             </div>
 
             {/* Entity Filter */}
             <select
-              className="form-select"
+              
               value={selectedEntity}
               onChange={(e) => setSelectedEntity(e.target.value)}
-              style={{ flex: "0 1 180px" }}
+              className="form-select audit-34"
             >
               <option value="ALL">All Entity Types</option>
               <option value="inventory">Inventory & Batches</option>
@@ -364,10 +351,10 @@ export default function AuditPage() {
 
             {/* Action Filter */}
             <select
-              className="form-select"
+              
               value={selectedAction}
               onChange={(e) => setSelectedAction(e.target.value)}
-              style={{ flex: "0 1 200px" }}
+              className="form-select audit-35"
             >
               <option value="ALL">All Action Codes</option>
               <option value="MANUAL_ADJUSTMENT">MANUAL_ADJUSTMENT</option>
@@ -382,32 +369,32 @@ export default function AuditPage() {
             {/* Start Date */}
             <input
               type="date"
-              className="form-input"
+              
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              style={{ flex: "0 1 140px" }}
+              className="form-input audit-36"
               title="Start Date"
             />
 
             {/* End Date */}
             <input
               type="date"
-              className="form-input"
+              
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              style={{ flex: "0 1 140px" }}
+              className="form-input audit-37"
               title="End Date"
             />
 
             {/* Filter & Reset Buttons */}
-            <button type="submit" className="btn btn-primary" style={{ padding: "0 1rem" }}>
+            <button type="submit"  className="btn btn-primary audit-38">
               Filter
             </button>
             <button
               type="button"
               onClick={handleResetFilters}
-              className="btn btn-secondary"
-              style={{ padding: "0 0.875rem" }}
+              
+              className="btn btn-secondary audit-39"
             >
               Reset
             </button>
@@ -415,56 +402,40 @@ export default function AuditPage() {
         </div>
 
         {/* Audit Event Table */}
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div  className="card audit-40">
           <div
-            style={{
-              padding: "1rem 1.25rem",
-              borderBottom: "1px solid var(--border-subtle)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
+            className="audit-41"
           >
             <div>
-              <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              <div className="audit-42">
                 Audit Event Ledger
               </div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+              <div className="audit-43">
                 Showing {logs.length} of {totalCount} records (Page {currentPage} of {totalPages})
               </div>
             </div>
           </div>
 
           {loading ? (
-            <div style={{ padding: "4rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
+            <div className="audit-44">
               Loading immutable audit records...
             </div>
           ) : logs.length === 0 ? (
-            <div style={{ padding: "4rem", textAlign: "center" }}>
+            <div className="audit-45">
               <div
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--bg-surface-elevated)",
-                  margin: "0 auto 0.75rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--text-muted)",
-                }}
+                className="audit-46"
               >
                 <CheckCircle2 size={22} />
               </div>
-              <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
+              <div className="audit-47">
                 No Audit Records Found
               </div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+              <div className="audit-48">
                 No events match the current search or date range filters.
               </div>
             </div>
           ) : (
-            <div className="table-container" style={{ border: "none", borderRadius: 0 }}>
+            <div  className="table-container audit-49">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -474,10 +445,10 @@ export default function AuditPage() {
                     <th>Operational Justification / Reason</th>
                     <th>Actor</th>
                     <th>Client IP</th>
-                    <th style={{ textAlign: "right" }}>State Diff</th>
+                    <th className="audit-50">State Diff</th>
                   </tr>
                 </thead>
-                <tbody>
+                <VirtualTableBody>
                   {logs.map((log) => {
                     const formattedDate = new Date(log.created_at).toLocaleString("en-IN", {
                       day: "2-digit",
@@ -490,42 +461,35 @@ export default function AuditPage() {
 
                     return (
                       <tr key={log.id}>
-                        <td style={{ fontFamily: "monospace", fontSize: "0.75rem", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>
+                        <td className="audit-51">
                           {formattedDate}
                         </td>
-                        <td style={{ whiteSpace: "nowrap" }}>
+                        <td className="audit-52">
                           {renderActionBadge(log.action)}
                         </td>
-                        <td style={{ whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.75rem" }}>
-                          <span style={{ fontSize: "0.625rem", textTransform: "uppercase", color: "var(--text-muted)", display: "block", fontFamily: "var(--font-inter)" }}>
+                        <td className="audit-53">
+                          <span className="audit-54">
                             {log.entity_type}
                           </span>
-                          <strong style={{ color: "var(--text-primary)" }}>#{log.entity_id}</strong>
+                          <strong className="audit-55">#{log.entity_id}</strong>
                         </td>
-                        <td style={{ maxWidth: "360px", color: "var(--text-primary)", lineHeight: 1.4 }}>
+                        <td className="audit-56">
                           {log.reason}
                         </td>
-                        <td style={{ whiteSpace: "nowrap" }}>
-                          <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{log.user_name}</div>
-                          <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                        <td className="audit-57">
+                          <div className="audit-58">{log.user_name}</div>
+                          <div className="audit-59">
                             {log.user_role}
                           </div>
                         </td>
-                        <td style={{ whiteSpace: "nowrap", fontFamily: "monospace", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        <td className="audit-60">
                           {log.ip_address || "Internal / System"}
                         </td>
-                        <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        <td className="audit-61">
                           <button
                             onClick={() => setSelectedLog(log)}
-                            className="btn btn-secondary"
-                            style={{
-                              height: "28px",
-                              padding: "0 0.5rem",
-                              fontSize: "0.6875rem",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.25rem",
-                            }}
+                            
+                            className="btn btn-secondary audit-62"
                             title="Inspect JSON state diff"
                           >
                             <Eye size={12} />
@@ -535,7 +499,7 @@ export default function AuditPage() {
                       </tr>
                     );
                   })}
-                </tbody>
+                </VirtualTableBody>
               </table>
             </div>
           )}
@@ -543,25 +507,18 @@ export default function AuditPage() {
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div
-              style={{
-                padding: "0.875rem 1.25rem",
-                borderTop: "1px solid var(--border-subtle)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                backgroundColor: "var(--bg-surface)",
-              }}
+              className="audit-63"
             >
-              <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+              <span className="audit-64">
                 Page {currentPage} of {totalPages} ({totalCount} total entries)
               </span>
 
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div className="audit-65">
                 <button
                   disabled={currentPage <= 1}
                   onClick={() => fetchAuditData(currentPage - 1)}
-                  className="btn btn-secondary"
-                  style={{ height: "30px", padding: "0 0.625rem", fontSize: "0.75rem" }}
+                  
+                  className="btn btn-secondary audit-66"
                 >
                   <ChevronLeft size={13} />
                   <span>Previous</span>
@@ -570,8 +527,8 @@ export default function AuditPage() {
                 <button
                   disabled={currentPage >= totalPages}
                   onClick={() => fetchAuditData(currentPage + 1)}
-                  className="btn btn-secondary"
-                  style={{ height: "30px", padding: "0 0.625rem", fontSize: "0.75rem" }}
+                  
+                  className="btn btn-secondary audit-67"
                 >
                   <span>Next</span>
                   <ChevronRight size={13} />
@@ -585,94 +542,67 @@ export default function AuditPage() {
       {/* MODAL: State Diff Inspector */}
       {selectedLog && (
         <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: "680px" }}>
+          <div  className="modal-content audit-68">
             <div className="modal-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div className="audit-69">
                 <CheckCircle2 size={18} />
                 <div>
-                  <h2 style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                  <h2 className="audit-70">
                     Audit Log #{selectedLog.id}: {selectedLog.action}
                   </h2>
-                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                  <div className="audit-71">
                     {selectedLog.entity_type} #{selectedLog.entity_id} • Recorded {selectedLog.created_at}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedLog(null)} className="btn-icon">
+              <button onClick={() => setSelectedLog(null)} className="btn-icon" aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ gap: "1rem" }}>
+            <div  className="modal-body audit-72">
               {/* Context row */}
               <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                  gap: "0.75rem",
-                  padding: "0.75rem",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "var(--bg-surface)",
-                  border: "1px solid var(--border-subtle)",
-                  fontSize: "0.75rem",
-                }}
+                className="audit-73"
               >
                 <div>
-                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>Actor</span>
-                  <strong style={{ color: "var(--text-primary)" }}>{selectedLog.user_name}</strong>
-                  <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", textTransform: "uppercase", display: "block" }}>
+                  <span className="audit-74">Actor</span>
+                  <strong className="audit-75">{selectedLog.user_name}</strong>
+                  <span className="audit-76">
                     {selectedLog.user_role}
                   </span>
                 </div>
                 <div>
-                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>IP Address</span>
-                  <span style={{ fontFamily: "monospace", color: "var(--text-primary)" }}>{selectedLog.ip_address || "N/A"}</span>
+                  <span className="audit-77">IP Address</span>
+                  <span className="audit-78">{selectedLog.ip_address || "N/A"}</span>
                 </div>
                 <div>
-                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>Store ID</span>
-                  <strong style={{ color: "var(--text-primary)" }}>Store #{selectedLog.store_id}</strong>
+                  <span className="audit-79">Store ID</span>
+                  <strong className="audit-80">Store #{selectedLog.store_id}</strong>
                 </div>
               </div>
 
               {/* Operational Reason Callout */}
               <div
-                style={{
-                  padding: "0.875rem",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "var(--bg-surface)",
-                  border: "1px solid var(--border-default)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.25rem",
-                }}
+                className="audit-81"
               >
-                <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--brand-primary)", textTransform: "uppercase" }}>
+                <span className="audit-82">
                   Mandatory Operational Justification (PRD Rule 7)
                 </span>
-                <p style={{ fontSize: "0.8125rem", color: "var(--text-primary)", lineHeight: 1.4 }}>
+                <p className="audit-83">
                   {selectedLog.reason}
                 </p>
               </div>
 
               {/* State Diff Comparison */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="audit-84">
                 {/* Previous State */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--status-low-text)", textTransform: "uppercase" }}>
+                <div className="audit-85">
+                  <span className="audit-86">
                     Previous State (Before)
                   </span>
                   <pre
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: "0.6875rem",
-                      padding: "0.75rem",
-                      backgroundColor: "rgba(0,0,0,0.35)",
-                      border: "1px solid var(--border-subtle)",
-                      borderRadius: "var(--radius-sm)",
-                      color: "var(--text-secondary)",
-                      overflowX: "auto",
-                      maxHeight: "220px",
-                    }}
+                    className="audit-87"
                   >
                     {Object.keys(selectedLog.old_values || {}).length > 0
                       ? JSON.stringify(selectedLog.old_values, null, 2)
@@ -681,22 +611,12 @@ export default function AuditPage() {
                 </div>
 
                 {/* Committed State */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--status-high-text)", textTransform: "uppercase" }}>
+                <div className="audit-88">
+                  <span className="audit-89">
                     Committed State (After)
                   </span>
                   <pre
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: "0.6875rem",
-                      padding: "0.75rem",
-                      backgroundColor: "rgba(0,0,0,0.35)",
-                      border: "1px solid var(--border-subtle)",
-                      borderRadius: "var(--radius-sm)",
-                      color: "var(--text-primary)",
-                      overflowX: "auto",
-                      maxHeight: "220px",
-                    }}
+                    className="audit-90"
                   >
                     {Object.keys(selectedLog.new_values || {}).length > 0
                       ? JSON.stringify(selectedLog.new_values, null, 2)

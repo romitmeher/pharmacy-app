@@ -1,4 +1,5 @@
 "use client";
+import "./presentation.css";
 
 /**
  * SmartPharm — Initial Pharmacy Setup Page
@@ -64,18 +65,18 @@ function InputField({
       <label htmlFor={id} className="form-label">
         {label}
         {required && (
-          <span style={{ color: "#ff8080", marginLeft: "3px" }}>*</span>
+          <span className="login-setup-1">*</span>
         )}
       </label>
       <input
         id={id}
         type={type}
-        className="form-input"
+        
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        style={{ height: "38px", backgroundColor: "#111111", border: "1px solid #252525", color: "#fff" }}
+        className="form-input login-setup-2"
       />
     </div>
   );
@@ -169,46 +170,22 @@ export default function SetupPage() {
 
   return (
     <div
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#0a0a0a",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem 1.5rem",
-      }}
+      className="login-setup-3"
     >
-      <div style={{ width: "100%", maxWidth: "560px" }}>
+      <div className="login-setup-4">
         {/* Header */}
-        <div style={{ marginBottom: "2rem", textAlign: "center" }}>
+        <div className="login-setup-5">
           <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "10px",
-              background: "linear-gradient(135deg, #1e6ee8 0%, #3b82f6 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 1rem",
-              boxShadow: "0 0 20px rgba(30,110,232,0.3)",
-            }}
+            className="login-setup-6"
           >
             <Package size={22} color="#fff" />
           </div>
           <h1
-            style={{
-              fontSize: "1.375rem",
-              fontWeight: 700,
-              color: "#fff",
-              letterSpacing: "-0.025em",
-              marginBottom: "0.5rem",
-            }}
+            className="login-setup-7"
           >
             Set Up Your Pharmacy
           </h1>
-          <p style={{ fontSize: "0.8125rem", color: "#64748b", lineHeight: 1.5 }}>
+          <p className="login-setup-8">
             This one-time setup creates your pharmacy store record and owner account.
             This page is only available before the first login.
           </p>
@@ -217,19 +194,7 @@ export default function SetupPage() {
         {/* Success state */}
         {success && (
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              backgroundColor: "rgba(125, 255, 149, 0.08)",
-              border: "1px solid rgba(125, 255, 149, 0.25)",
-              borderRadius: "10px",
-              padding: "1rem 1.25rem",
-              marginBottom: "1.5rem",
-              color: "#7dff95",
-              fontSize: "0.875rem",
-              fontWeight: 700,
-            }}
+            className="login-setup-9"
           >
             <CheckCircle2 size={16} />
             Pharmacy configured! Redirecting to dashboard…
@@ -240,21 +205,9 @@ export default function SetupPage() {
         {error && (
           <div
             role="alert"
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "0.625rem",
-              backgroundColor: "rgba(255, 80, 80, 0.08)",
-              border: "1px solid rgba(255, 80, 80, 0.25)",
-              borderRadius: "8px",
-              padding: "0.75rem 1rem",
-              marginBottom: "1.5rem",
-              fontSize: "0.8125rem",
-              color: "#ff8080",
-              lineHeight: 1.45,
-            }}
+            className="login-setup-10"
           >
-            <AlertCircle size={15} style={{ flexShrink: 0, marginTop: "1px" }} />
+            <AlertCircle size={15} className="login-setup-11" />
             <span>{error}</span>
           </div>
         )}
@@ -263,38 +216,25 @@ export default function SetupPage() {
         <form onSubmit={handleSetup} noValidate>
           {/* Store Section */}
           <div
-            style={{
-              backgroundColor: "#111111",
-              border: "1px solid #1e293b",
-              borderRadius: "10px",
-              padding: "1.5rem",
-              marginBottom: "1rem",
-            }}
+            className="login-setup-12"
           >
             <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                marginBottom: "1.25rem",
-                paddingBottom: "0.875rem",
-                borderBottom: "1px solid #1e293b",
-              }}
+              className="login-setup-13"
             >
-              <Building2 size={14} style={{ color: "#1e6ee8" }} />
-              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              <Building2 size={14} className="login-setup-14" />
+              <span className="login-setup-15">
                 Pharmacy Store Details
               </span>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-              <div style={{ gridColumn: "1 / -1" }}>
+            <div className="login-setup-16">
+              <div className="login-setup-17">
                 <InputField id="store-name" label="Pharmacy Name" required placeholder="Apollo Pharmacy Koramangala" value={storeName} onChange={setStoreName} disabled={isPending || success} />
               </div>
               <InputField id="store-phone" label="Phone Number" placeholder="9876543210" value={storePhone} onChange={setStorePhone} disabled={isPending || success} />
               <InputField id="store-gstin" label="GSTIN" placeholder="29AAABM0000B1ZT" value={storeGstin} onChange={setStoreGstin} disabled={isPending || success} />
               <InputField id="store-license" label="Drug License Number" placeholder="DL-KA-01-000001" value={storeLicense} onChange={setStoreLicense} disabled={isPending || success} />
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div className="login-setup-18">
                 <InputField id="store-address" label="Store Address" placeholder="123, 80 Feet Road, Koramangala, Bengaluru" value={storeAddress} onChange={setStoreAddress} disabled={isPending || success} />
               </div>
             </div>
@@ -302,34 +242,21 @@ export default function SetupPage() {
 
           {/* Owner Section */}
           <div
-            style={{
-              backgroundColor: "#111111",
-              border: "1px solid #1e293b",
-              borderRadius: "10px",
-              padding: "1.5rem",
-              marginBottom: "1.5rem",
-            }}
+            className="login-setup-19"
           >
             <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                marginBottom: "1.25rem",
-                paddingBottom: "0.875rem",
-                borderBottom: "1px solid #1e293b",
-              }}
+              className="login-setup-20"
             >
-              <User size={14} style={{ color: "#1e6ee8" }} />
-              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              <User size={14} className="login-setup-21" />
+              <span className="login-setup-22">
                 Owner Account
               </span>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div className="login-setup-23">
               <InputField id="owner-name" label="Full Name" required placeholder="Rajesh Kumar" value={ownerName} onChange={setOwnerName} disabled={isPending || success} />
               <InputField id="owner-phone" label="Mobile Number" placeholder="9876543210" value={ownerPhone} onChange={setOwnerPhone} disabled={isPending || success} />
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div className="login-setup-24">
                 <InputField id="owner-email" label="Email Address" required type="email" placeholder="owner@pharmacy.com" value={ownerEmail} onChange={setOwnerEmail} disabled={isPending || success} />
               </div>
               <InputField id="owner-username" label="Username" required placeholder="rajesh_owner" value={ownerUsername} onChange={setOwnerUsername} disabled={isPending || success} />
@@ -349,8 +276,8 @@ export default function SetupPage() {
               alignItems: "center",
               justifyContent: "center",
               gap: "0.5rem",
-              backgroundColor: isPending || success ? "#1a3f7a" : "#1e6ee8",
-              color: "#fff",
+              backgroundColor: isPending || success ? "var(--brand-hover)" : "var(--brand-primary)",
+              color: "var(--text-inverse)",
               border: "none",
               borderRadius: "8px",
               fontSize: "0.875rem",
@@ -362,15 +289,7 @@ export default function SetupPage() {
             {isPending ? (
               <>
                 <span
-                  style={{
-                    width: "14px",
-                    height: "14px",
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    borderTopColor: "#fff",
-                    borderRadius: "50%",
-                    animation: "spin 0.6s linear infinite",
-                    display: "inline-block",
-                  }}
+                  className="login-setup-25"
                 />
                 Creating pharmacy…
               </>
@@ -379,16 +298,10 @@ export default function SetupPage() {
             )}
           </button>
 
-          <div style={{ textAlign: "center", fontSize: "0.8125rem", color: "#475569" }}>
+          <div className="login-setup-26">
             <Link
               href="/login"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.375rem",
-                color: "#64748b",
-                textDecoration: "none",
-              }}
+              className="login-setup-27"
             >
               <ArrowLeft size={13} />
               Back to Login

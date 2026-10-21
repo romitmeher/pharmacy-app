@@ -63,6 +63,7 @@ export interface OCRResult {
 }
 
 export interface ExtractedEntities {
+  strength_inferred?: boolean;
   brand_name: string | null;
   generic_name: string | null;
   strength: string | null;
@@ -107,6 +108,7 @@ export interface MatchResult {
 }
 
 export interface RecognitionPipelineResponse {
+  barcode?: string | null;
   photo_model?: { status: string; agrees_with_ocr: boolean; experimental: boolean; device: string } | null;
   success: boolean;
   quality: QualityAssessment;
@@ -116,6 +118,27 @@ export interface RecognitionPipelineResponse {
   match_result: MatchResult | null;
   human_verification_required: boolean;
   error_message?: string;
+}
+
+export interface StockingRead {
+  raw_text: string;
+  extracted: { brand_name?: string | null; strength?: string | null; batch_number?: string | null;
+    expiry_date?: string | null; mrp?: number | null; brand_candidates?: string[] };
+}
+export interface StockingSearch {
+  catalog: Medicine[];
+  remembered: Medicine | null;
+  references: { id: number; name: string; composition: string; manufacturer: string; pack: string; source: string; url: string }[];
+  web: { status: string; results: { title: string; url: string; snippet: string }[]; search_url: string } | null;
+}
+export async function stockingRequest<T>(step: "read" | "search" | "confirm", payload: object): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}/api/vision/stocking/${step}`, {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+    body: JSON.stringify(payload), signal: AbortSignal.timeout(90000),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || "Stocking assistant failed.");
+  return json;
 }
 
 export interface VerifyPayload {
@@ -1093,6 +1116,7 @@ export interface OfflinePackBatch {
 }
 
 export interface OfflinePackMedicine {
+  barcodes?: string[];
   id: number;
   brand_name: string;
   generic_name: string;
@@ -1609,6 +1633,7 @@ export interface MedicineAlias {
 }
 
 export interface Medicine {
+  barcodes?: string[];
   id: number;
   store_id: number;
   brand_name: string;
@@ -1638,6 +1663,46 @@ export interface MedicineListResponse {
   page: number;
   per_page: number;
   pages: number;
+}
+
+export async function saveMedicineBarcode(id: number, barcode: string, remove = false): Promise<Medicine> {
+  const res = await fetch(`${API_BASE_URL}/api/medicines/${id}/barcodes`, {
+    method: remove ? "DELETE" : "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+    body: JSON.stringify({ barcode }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || "Could not save barcode.");
+  return json.medicine;
+}
+
+export async function decodeBarcodePhoto(file: File): Promise<string> {
+  if (file.size > 8 * 1024 * 1024) throw new Error("Use a barcode photo smaller than 8 MB.");
+  type Detector = { detect(image: ImageBitmap): Promise<{ rawValue: string }[]> };
+  const NativeDetector = (globalThis as unknown as { BarcodeDetector?: new (options: { formats: string[] }) => Detector }).BarcodeDetector;
+  if (NativeDetector) {
+    let bitmap: ImageBitmap | undefined;
+    try {
+      bitmap = await createImageBitmap(file);
+      const values = await new NativeDetector({ formats: ["ean_13", "ean_8", "code_128", "qr_code"] }).detect(bitmap);
+      const unique = [...new Set(values.map(value => value.rawValue).filter(Boolean))];
+      if (unique.length > 1) throw new Error("Show only one barcode at a time.");
+      if (unique.length === 1) return unique[0];
+    } catch (error) {
+      if (error instanceof Error && error.message === "Show only one barcode at a time.") throw error;
+    } finally { bitmap?.close(); }
+  }
+  const image_base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("Could not read barcode photo.")); reader.readAsDataURL(file);
+  });
+  const response = await fetch(`${API_BASE_URL}/api/medicines/barcode-image`, {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+    body: JSON.stringify({ image_base64 }), signal: AbortSignal.timeout(15000),
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.message || "Could not read barcode.");
+  return json.barcode;
 }
 
 export interface CreateMedicinePayload {
@@ -2703,9 +2768,9 @@ export interface CreateReturnPayload {
 /**
  * Fetch line items eligible for return from an original sale invoice.
  */
-export async function getEligibleReturnItems(saleId: number): Promise<EligibleReturnItemsData> {
+export async function getEligibleReturnItems(saleId: number | string): Promise<EligibleReturnItemsData> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE_URL}/api/returns/eligible-items/${saleId}`, {
+  const res = await fetch(`${API_BASE_URL}/api/returns/eligible-items/${encodeURIComponent(String(saleId).trim())}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json();

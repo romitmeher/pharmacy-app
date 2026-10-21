@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import BrandMark from "@/components/BrandMark";
+import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -104,7 +105,15 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+function subscribeMobile(notify: () => void) {
+  const query = window.matchMedia('(max-width: 768px)'); query.addEventListener('change', notify);
+  return () => query.removeEventListener('change', notify);
+}
+const mobileSnapshot = () => window.matchMedia('(max-width: 768px)').matches;
+const desktopSnapshot = () => false;
+
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const mobile = useSyncExternalStore(subscribeMobile, mobileSnapshot, desktopSnapshot);
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -120,54 +129,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const initials = getInitials(displayName);
 
   return (
-    <aside className={`sidebar ${isOpen ? "mobile-open" : ""}`}>
+    <aside inert={mobile && !isOpen} className={`sidebar ${isOpen ? "mobile-open" : ""}`}>
       {/* Brand Header */}
       <div
-        style={{
-          height: "var(--header-height)",
-          minHeight: "var(--header-height)",
-          maxHeight: "var(--header-height)",
-          padding: "0 1.25rem",
-          borderBottom: "1px solid var(--border-subtle)",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          backgroundColor: "var(--bg-sidebar)",
-          boxSizing: "border-box",
-        }}
+        className="sidebar-1"
       >
         <div
-          style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "#252525",
-            border: "1px solid #393939",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--brand-primary)",
-          }}
+          className="sidebar-2"
         >
-          <Package size={16} />
+          <BrandMark />
         </div>
         <div>
           <div
-            style={{
-              fontSize: "0.875rem",
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              lineHeight: 1.2,
-            }}
+            className="sidebar-3"
           >
             SmartPharm
           </div>
           <div
-            style={{
-              fontSize: "0.6875rem",
-              color: "var(--text-muted)",
-              marginTop: "2px",
-            }}
+            className="sidebar-4"
           >
             Pharmacy OS • Store #{user?.store_id ?? "—"}
           </div>
@@ -175,20 +154,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       {/* Navigation Links */}
-      <nav
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "1rem 0.75rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "1.25rem",
-        }}
+      <nav id="main-navigation" aria-label="Main navigation"
+        className="sidebar-5"
       >
         {navSections.map((section) => (
           <div key={section.title}>
             <div className="sidebar-section-title">{section.title}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <div className="sidebar-6">
               {section.items.filter((item) => !item.roles || item.roles.includes(user?.role ?? "")).map((item) => {
                 const isActive =
                   item.href === "/"
@@ -200,6 +172,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? "page" : undefined}
                     onClick={() => onClose?.()}
                     className={`sidebar-link ${isActive ? "active" : ""}`}
                   >
@@ -217,88 +190,39 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Footer / User Session */}
       <div
-        style={{
-          minHeight: "56px",
-          padding: "0.625rem 1.25rem",
-          borderTop: "1px solid var(--border-subtle)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: "0.75rem",
-          backgroundColor: "var(--bg-sidebar)",
-          boxSizing: "border-box",
-          flexShrink: 0,
-        }}
+        className="sidebar-7"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", minWidth: 0 }}>
+        <div className="sidebar-8">
           {/* Avatar */}
           <div
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "50%",
-              backgroundColor: "#1e3a5f",
-              border: "1px solid #1e6ee8",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.6875rem",
-              fontWeight: 700,
-              color: "#87d1ff",
-              flexShrink: 0,
-            }}
+            className="sidebar-9"
           >
             {initials}
           </div>
           {/* Name + Role */}
-          <div style={{ minWidth: 0 }}>
+          <div className="sidebar-10">
             <div
-              style={{
-                color: "var(--text-primary)",
-                fontWeight: 700,
-                lineHeight: 1.2,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                maxWidth: "130px",
-              }}
+              className="sidebar-11"
             >
               {displayName}
             </div>
-            <div style={{ color: "var(--text-muted)", fontSize: "0.6875rem" }}>
+            <div className="sidebar-12">
               {displayRole}
             </div>
           </div>
         </div>
 
         {/* Online dot + Logout */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+        <div className="sidebar-13">
           <div
-            style={{
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              backgroundColor: "var(--status-high-text)",
-            }}
+            className="sidebar-14"
             title="Online"
           />
           <button
             id="sidebar-logout-btn"
             onClick={handleLogout}
             title="Sign out"
-            style={{
-              width: "26px",
-              height: "26px",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "var(--radius-sm)",
-              background: "transparent",
-              border: "1px solid transparent",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              transition: "background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease",
-            }}
+            className="sidebar-15"
             onMouseEnter={(e) => {
               const btn = e.currentTarget;
               btn.style.backgroundColor = "rgba(255,80,80,0.1)";

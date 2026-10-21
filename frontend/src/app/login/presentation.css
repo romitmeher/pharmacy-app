@@ -1,0 +1,32 @@
+.login-1 { display: flex; min-height: var(--view-value-107); background-color: var(--bg-app); }
+.login-2 { width: var(--view-value-108); min-width: var(--view-value-109); background: var(--bg-surface-elevated); border-right: 1px solid var(--bg-surface-elevated); display: flex; flex-direction: column; padding: var(--view-value-110); position: relative; overflow: hidden; }
+@media (max-width: 768px) { .login-2 { min-width: 0; } }
+.login-3 { position: absolute; inset: 0; background-image: none; background-size: var(--view-value-111); pointer-events: none; }
+.login-4 { display: flex; align-items: center; gap: var(--view-value-1); position: relative; }
+.login-5 { width: var(--view-value-70); height: var(--view-value-70); border-radius: var(--view-value-112); background: var(--brand-subtle); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px var(--brand-subtle); }
+.login-6 { font-size: var(--view-value-5); font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.login-7 { font-size: var(--view-value-8); color: var(--text-secondary); margin-top: var(--view-value-113); }
+.login-8 { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; }
+.login-9 { font-size: var(--view-value-8); font-weight: 700; color: var(--brand-primary); letter-spacing: var(--view-value-114); text-transform: uppercase; margin-bottom: var(--view-value-36); }
+.login-10 { font-size: var(--view-value-13); font-weight: 700; color: var(--text-primary); line-height: 1.15; letter-spacing: var(--view-value-115); margin-bottom: var(--view-value-36); }
+.login-11 { color: var(--brand-primary); }
+.login-12 { font-size: var(--view-value-17); color: var(--text-secondary); line-height: 1.65; max-width: var(--view-value-10); }
+.login-13 { display: flex; flex-direction: column; gap: var(--view-value-1); margin-top: var(--view-value-63); }
+.login-14 { display: flex; align-items: center; gap: var(--view-value-27); font-size: var(--view-value-1); color: var(--text-secondary); }
+.login-15 { color: var(--brand-primary); display: inline-flex; }
+.login-16 { font-size: var(--view-value-8); color: var(--text-secondary); position: relative; }
+.login-17 { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--view-value-116); background-color: var(--bg-app); }
+.login-18 { width: 100%; max-width: var(--view-value-117); }
+.login-19 { margin-bottom: var(--view-value-63); }
+.login-20 { font-size: var(--view-value-2); font-weight: 700; color: var(--text-primary); letter-spacing: var(--view-value-118); margin-bottom: var(--view-value-6); }
+.login-21 { font-size: var(--view-value-33); color: var(--text-secondary); }
+.login-22 { display: flex; align-items: flex-start; gap: var(--view-value-27); background-color: var(--status-low-bg); border: 1px solid var(--status-low-bg); border-radius: var(--view-value-112); padding: var(--view-value-66); margin-bottom: var(--view-value-2); font-size: var(--view-value-33); color: var(--status-low-text); line-height: 1.45; }
+.login-23 { flex-shrink: 0; margin-top: var(--view-value-113); }
+.login-24 { display: flex; flex-direction: column; gap: var(--view-value-36); }
+.login-25 { height: var(--view-value-119); background-color: var(--bg-app); border: 1px solid var(--bg-surface-elevated); color: var(--text-primary); }
+.login-26 { position: relative; }
+.login-27 { height: var(--view-value-119); background-color: var(--bg-app); border: 1px solid var(--bg-surface-elevated); color: var(--text-primary); padding-right: var(--view-value-120); }
+.login-28 { position: absolute; right: var(--view-value-1); top: var(--view-value-11); transform: var(--view-value-12); background: none; border: none; color: var(--text-secondary); cursor: pointer; display: inline-flex; padding: 0; }
+.login-29 { width: var(--view-value-121); height: var(--view-value-121); border: var(--view-value-122); border-top-color: var(--text-primary); border-radius: var(--view-value-11); animation: var(--view-value-123); display: inline-block; }
+.login-30 { margin-top: var(--view-value-63); padding-top: var(--view-value-2); border-top: var(--view-value-124); text-align: center; font-size: var(--view-value-33); color: var(--text-secondary); }
+.login-31 { color: var(--brand-primary); text-decoration: none; font-weight: 700; }
