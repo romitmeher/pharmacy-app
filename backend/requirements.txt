@@ -14,9 +14,6 @@ pytest-flask>=1.3,<2.0
 opencv-python-headless>=4.10
 pillow>=10.0
 numpy>=1.24
-ultralytics>=8.0
-paddlepaddle>=3.0
-paddleocr>=2.8
 
 # Machine Learning & AI Vector Database (Phase 4 & 5)
 scikit-learn>=1.4.0
@@ -27,3 +24,7 @@ google-genai>=0.1.0
 
 
 
+
+# Distributor PDF extraction and production WSGI server (Windows/Linux)
+pypdfium2>=4.30,<6.0
+waitress>=3.0,<4.0

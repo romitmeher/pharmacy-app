@@ -15,6 +15,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import func
 
 from app.extensions import db
+from app.services.stock_lock import lock_stores, locked_inventory
 from app.models.store import Store
 from app.models.medicine import Medicine
 from app.models.batch import Batch
@@ -112,7 +113,7 @@ def get_or_create_customer(store_id: int, customer_data: dict) -> Customer:
     return customer
 
 
-def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
+def create_sale(store_id: int, user_id: int, data: dict, commit: bool = True) -> Sale:
     """Create a POS sale transaction with atomic FEFO stock deduction and payment logging."""
     if not data:
         raise ValidationError("Request body cannot be empty.")
@@ -120,6 +121,9 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
     items_data = data.get("items", [])
     if not items_data or not isinstance(items_data, list):
         raise ValidationError("Sale must include at least one line item.")
+
+    # Lock before customer/Sale inserts acquire foreign-key parent locks.
+    lock_stores(store_id)
 
     # 1. Customer resolution
     customer = None
@@ -130,6 +134,7 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
         if not customer:
             raise NotFoundError(f"Customer {data['customer_id']} not found.")
 
+    # Invoice numbering and stock writes remain under the shared store lock.
     today = date.today()
     invoice_number = _generate_invoice_number(store_id)
 
@@ -163,13 +168,15 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
             raise ValidationError(f"Quantity for {medicine.brand_name} must be greater than 0.")
 
         item_discount_pct = _to_decimal(item.get("discount_percentage", 0.0))
+        if not item_discount_pct.is_finite() or not 0 <= item_discount_pct <= 100:
+            raise ValidationError("Item discount must be between 0 and 100 percent.")
         item_tax_pct = _to_decimal(medicine.gst_percentage or 0.0)
 
         batch_id = item.get("batch_id")
 
         # Case A: Explicit batch selected by cashier
         if batch_id:
-            batch = Batch.query.filter_by(id=batch_id, store_id=store_id, medicine_id=medicine_id).first()
+            batch = Batch.query.filter_by(id=batch_id, store_id=store_id, medicine_id=medicine_id).populate_existing().with_for_update().first()
             if not batch:
                 raise NotFoundError(
                     f"Batch {batch_id} not found for medicine '{medicine.brand_name}'."
@@ -183,7 +190,7 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
                 )
 
             # Check stock
-            available_stock = sum(inv.quantity_available for inv in batch.inventory)
+            available_stock = sum(inv.quantity_available for inv in locked_inventory(batch.id, batch.store_id))
             if available_stock < qty_requested:
                 raise ValidationError(
                     f"Insufficient stock for '{medicine.brand_name}' (Batch {batch.batch_number}). "
@@ -222,13 +229,14 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
             eligible_batches = (
                 Batch.query.filter_by(medicine_id=medicine.id, store_id=store_id)
                 .filter(Batch.expiry_date >= today)
-                .order_by(Batch.expiry_date.asc())
+                .order_by(Batch.expiry_date.asc(), Batch.id.asc())
+                .populate_existing().with_for_update()
                 .all()
             )
 
             # Check total unexpired stock
             total_unexpired = sum(
-                sum(inv.quantity_available for inv in b.inventory)
+                sum(inv.quantity_available for inv in locked_inventory(b.id, b.store_id))
                 for b in eligible_batches
             )
             if total_unexpired < qty_requested:
@@ -242,7 +250,7 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
                 if remaining_to_deduct <= 0:
                     break
 
-                batch_stock = sum(inv.quantity_available for inv in batch.inventory)
+                batch_stock = sum(inv.quantity_available for inv in locked_inventory(batch.id, batch.store_id))
                 if batch_stock <= 0:
                     continue
 
@@ -275,6 +283,8 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
 
     # 3. Bill Totals
     bill_discount = _to_decimal(data.get("discount_amount", 0.0))
+    if not bill_discount.is_finite() or bill_discount < 0 or bill_discount > subtotal - total_item_discount:
+        raise ValidationError("Bill discount must be between zero and the remaining subtotal.")
     final_discount = total_item_discount + bill_discount
     final_total = max(Decimal("0.0"), subtotal - final_discount + total_tax)
 
@@ -312,7 +322,10 @@ def create_sale(store_id: int, user_id: int, data: dict) -> Sale:
     else:
         sale.payment_status = PaymentStatus.UNPAID
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return sale
 
 
@@ -320,7 +333,7 @@ def _deduct_batch_inventory(batch: Batch, quantity_to_deduct: int):
     """Deduct quantity from an inventory record belonging to a batch."""
     remaining = quantity_to_deduct
     # Prioritize inventory records that have stock
-    for inv in batch.inventory:
+    for inv in locked_inventory(batch.id, batch.store_id):
         if inv.quantity_available <= 0:
             continue
         take = min(remaining, inv.quantity_available)
@@ -397,7 +410,10 @@ def list_sales(
 
 def refund_sale(store_id: int, sale_id: int, reason: str, user_id: int) -> Sale:
     """Refund a sale and restore inventory stock to the respective batches."""
-    sale = get_sale(store_id, sale_id)
+    lock_stores(store_id)
+    sale = Sale.query.filter_by(id=sale_id, store_id=store_id).populate_existing().with_for_update().first()
+    if not sale:
+        raise NotFoundError("Sale not found.")
 
     if sale.payment_status == PaymentStatus.REFUNDED:
         raise ConflictError(f"Sale {sale.invoice_number} has already been refunded.")
@@ -405,17 +421,21 @@ def refund_sale(store_id: int, sale_id: int, reason: str, user_id: int) -> Sale:
     if not reason or not reason.strip():
         raise ValidationError("A refund reason is required.")
 
-    # Restore stock for each item
-    for item in sale.items:
-        batch = item.batch
-        if batch and batch.inventory:
-            # Add back to the first inventory record of the batch
-            batch.inventory[0].quantity_available += item.quantity
-
-    sale.payment_status = PaymentStatus.REFUNDED
-    sale.notes = f"{sale.notes or ''}\n[Refunded on {datetime.now(timezone.utc).isoformat()} by User {user_id}]: {reason.strip()}".strip()
-    db.session.commit()
+    # Route legacy full-refund requests through the same return ledger so a
+    # partial return followed by a full refund cannot restore stock twice.
+    from app.services.sale_return_service import get_eligible_return_items, create_sale_return
+    eligible = get_eligible_return_items(store_id, sale_id)
+    remaining = [
+        {"sale_item_id": item["sale_item_id"],
+         "quantity_returned": item["quantity_eligible_for_return"],
+         "restock_condition": "restocked_to_inventory"}
+        for item in eligible["items"] if item["quantity_eligible_for_return"] > 0
+    ]
+    if not remaining:
+        raise ConflictError("No returnable items remain on this sale.")
+    create_sale_return(store_id, sale_id, user_id, remaining, reason=reason)
     return sale
+
 
 
 def serialize_sale(sale: Sale, detailed: bool = True) -> dict:

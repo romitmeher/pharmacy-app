@@ -17,6 +17,7 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
+from flask import current_app, has_app_context
 
 from app.models.medicine import Medicine, MedicineAlias
 
@@ -93,12 +94,11 @@ class MedicineVectorIndex:
         if not PGVECTOR_AVAILABLE:
             return None
 
-        # Check environment or Flask config
-        pg_url = os.environ.get(
-            "PGVECTOR_URL",
-            "postgres://avnadmin:AVNS_jWnLiFzWQSNAEIsQDtV@pg-d4845a8-romitmeher2-24a7.l.aivencloud.com:21080/defaultdb?sslmode=require"
-        )
-        ssl_ca = os.environ.get("PGVECTOR_SSL_CA", "VETca.pem")
+        if has_app_context() and current_app.testing:
+            return None
+        config = current_app.config if has_app_context() else os.environ
+        pg_url = config.get("PGVECTOR_URL", "")
+        ssl_ca = config.get("PGVECTOR_SSL_CA", "")
 
         if not pg_url:
             return None
@@ -110,7 +110,7 @@ class MedicineVectorIndex:
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 ca_path = os.path.join(base_dir, ssl_ca)
 
-            connect_kwargs = {}
+            connect_kwargs = {"connect_timeout": 5}
             if ca_path and os.path.exists(ca_path):
                 connect_kwargs["sslrootcert"] = ca_path
 
@@ -141,7 +141,7 @@ class MedicineVectorIndex:
             register_vector(conn)
             return conn
         except Exception as e:
-            logger.debug(f"pgvector connection not available: {e}")
+            logger.debug("pgvector connection not available (%s)", type(e).__name__)
             return None
 
     def compute_text_embedding(self, text: str) -> np.ndarray:
@@ -410,15 +410,13 @@ class MedicineVectorIndex:
                 logger.warning(f"pgvector query fallback to in-memory: {e}")
 
         # 2. In-memory vector index fallback
-        if not self.documents:
+        if not any(d.store_id == store_id for d in self.documents):
             try:
                 self.index_store_catalog(store_id=store_id)
             except Exception as e:
                 logger.warning(f"Auto-indexing store catalog failed: {e}")
 
         store_docs = [d for d in self.documents if d.store_id == store_id]
-        if not store_docs:
-            store_docs = self.documents  # Fallback to all documents
 
         results: List[VectorSearchResult] = []
         for doc in store_docs:

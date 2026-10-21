@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+from app.vision.data_paths import DATA_ROOT
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
@@ -90,9 +91,9 @@ class PrescriptionImageVectorIndexer:
     into Aiven PostgreSQL pgvector cloud database.
     """
 
-    HANDWRITING_DATA_DIR = r"c:\Users\user\Desktop\pharmacy app\data\HAND WRITHING"
-    ACTUAL_MEDICINE_DATA_DIR = r"c:\Users\user\Desktop\pharmacy app\data\Medicine_data"
-    REFERENCE_DATA_DIR = r"c:\Users\user\Desktop\pharmacy app\data\reference_images"
+    HANDWRITING_DATA_DIR = str(DATA_ROOT / 'HAND WRITHING')
+    ACTUAL_MEDICINE_DATA_DIR = str(DATA_ROOT / 'Medicine_data')
+    REFERENCE_DATA_DIR = str(DATA_ROOT / 'reference_images')
 
     def _ensure_pg_table(self, conn):
         """Creates medicine_image_vector_embeddings table in PostgreSQL."""

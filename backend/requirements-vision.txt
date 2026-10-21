@@ -1,0 +1,6 @@
+# Install after requirements.txt to enable local package detection and OCR.
+# Model weights are downloaded by the libraries on first use.
+-r requirements.txt
+ultralytics>=8.0
+paddlepaddle>=3.0
+paddleocr>=2.8

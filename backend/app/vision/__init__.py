@@ -10,6 +10,11 @@ Explainable Confidence & Human Verification Candidate Payload.
 
 from dataclasses import dataclass
 import io
+import os
+import hashlib
+import time
+from collections import OrderedDict
+from threading import Lock
 import logging
 from typing import Any, Dict, Optional, Union
 import cv2
@@ -25,6 +30,26 @@ from app.vision.matcher import MatchResult, default_medicine_matcher
 logger = logging.getLogger(__name__)
 
 
+_ocr_cache = OrderedDict()
+_ocr_cache_lock = Lock()
+
+
+def _packaging_ocr(image):
+    digest = hashlib.sha256(image.tobytes()).digest()
+    cache_key = (image.shape, digest)
+    with _ocr_cache_lock:
+        cached = _ocr_cache.get(cache_key)
+        if cached and time.monotonic() - cached[0] < 300:
+            _ocr_cache.move_to_end(cache_key)
+            return cached[1]
+        result = default_ocr_engine.run_ocr(image)
+        if result.full_text:
+            _ocr_cache[cache_key] = (time.monotonic(), result)
+            while len(_ocr_cache) > 32:
+                _ocr_cache.popitem(last=False)
+        return result
+
+
 @dataclass
 class VisionRecognitionPipelineResult:
     """Consolidated result from the full SmartPharm computer vision pipeline."""
@@ -36,6 +61,7 @@ class VisionRecognitionPipelineResult:
     match_result: Optional[MatchResult]
     human_verification_required: bool = True
     error_message: Optional[str] = None
+    photo_model: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> dict:
         return {
@@ -47,6 +73,7 @@ class VisionRecognitionPipelineResult:
             "match_result": self.match_result.to_dict() if self.match_result else None,
             "human_verification_required": self.human_verification_required,
             "error_message": self.error_message,
+            "photo_model": self.photo_model,
         }
 
 
@@ -128,18 +155,23 @@ def recognize_medicine_image(
         )
 
     # Step 2: Package / Blister Detection
-    detection = detect_package_roi(image)
+    if os.environ.get("SMARTPHARM_PACKAGE_DETECTION", "false").lower() == "true":
+        detection = detect_package_roi(image)
+    else:
+        height, width = image.shape[:2]
+        detection = DetectionResult("full_frame", 0.0, [0, 0, width, height], False)
+
     roi_img = detection.cropped_roi if detection.cropped_roi is not None else image
 
     # Step 3: Text Detection & OCR
     if ocr_override is not None:
         ocr_res = ocr_override
     else:
-        ocr_res = default_ocr_engine.run_ocr(roi_img)
+        ocr_res = _packaging_ocr(roi_img)
         # If cropped ROI found no text, fallback to entire original image
         if not ocr_res.full_text and detection.cropped_roi is not None:
             logger.info("OCR on cropped ROI found no text; falling back to full image.")
-            ocr_res = default_ocr_engine.run_ocr(image)
+            ocr_res = _packaging_ocr(image)
 
     # Step 4: Entity Extraction
     extracted = default_entity_extractor.extract(ocr_res)
@@ -147,11 +179,26 @@ def recognize_medicine_image(
     # Step 5: Stage 1 Database Fuzzy Matching
     match_result = default_medicine_matcher.match(extracted, store_id=store_id)
 
+    # Photo evidence supports grounded OCR identity; it never identifies a drug
+    # by colour alone or promotes an uncertain match.
+    if match_result.top_candidate and not match_result.low_confidence:
+        try:
+            from app.vision.photo_library import reference_similarity
+            candidate = match_result.top_candidate
+            similarity = reference_similarity(roi_img, candidate.name, candidate.strength)
+            if similarity is not None:
+                candidate.score_breakdown["photo_reference_similarity"] = round(similarity * 100, 1)
+        except Exception as error:
+            logger.debug("Optional local photo reference unavailable: %s", type(error).__name__)
+
     # Step 6: Stage 2 Visual Embedding Similarity Search & Weighted Fusion
     from app.vision.visual_indexer import default_visual_indexer
     visual_matches = default_visual_indexer.search_similar(roi_img, top_k=5)
 
-    if visual_matches and match_result and match_result.top_candidate:
+    if visual_matches and match_result and match_result.top_candidate and not match_result.low_confidence:
+        visual_matches = [match for match in visual_matches if match.medicine_id == match_result.top_candidate.medicine_id]
+
+    if visual_matches and match_result and match_result.top_candidate and visual_matches[0].medicine_id == match_result.top_candidate.medicine_id:
         top_vis = visual_matches[0]
         vis_score_pts = top_vis.similarity_score * 100.0
 
@@ -177,6 +224,13 @@ def recognize_medicine_image(
             else None
         )
 
+    photo_model = None
+    if match_result.top_candidate and not match_result.low_confidence:
+        from flask import current_app, has_app_context
+        if not has_app_context() or not current_app.config.get("TESTING"):
+            from app.vision.photo_classifier import photo_model_evidence
+            photo_model = photo_model_evidence(roi_img, match_result.top_candidate)
+
     return VisionRecognitionPipelineResult(
         success=True,
         quality=quality,
@@ -185,4 +239,5 @@ def recognize_medicine_image(
         extracted_entities=extracted,
         match_result=match_result,
         human_verification_required=True,  # PRD Rule 9: Human verification is mandatory
+        photo_model=photo_model,
     )

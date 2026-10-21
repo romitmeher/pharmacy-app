@@ -25,6 +25,8 @@ backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+from app.vision.data_paths import DATA_ROOT
+
 from app.vision.ocr_engine import default_ocr_engine
 from app.vision.extractor import default_entity_extractor
 from app.vision.matcher import default_medicine_matcher
@@ -40,7 +42,7 @@ class MedicinePackagingOCRIndexer:
     and PostgreSQL pgvector indexing for actual medicine packaging images.
     """
 
-    MEDICINE_DATA_DIR = r"c:\Users\user\Desktop\pharmacy app\data\Medicine_data"
+    MEDICINE_DATA_DIR = str(DATA_ROOT / 'Medicine_data')
 
     def _ensure_pg_columns(self, conn):
         """Ensure medicine_image_vector_embeddings table has ocr_text and extracted_entities_json columns."""
@@ -122,7 +124,8 @@ class MedicinePackagingOCRIndexer:
                 match_res = default_medicine_matcher.match(entities, store_id=store_id)
                 match_dict = match_res.to_dict()
 
-                label_name = match_res.matched_medicine_name or entities.detected_brand_name or fname.split(".")[0]
+                candidate = match_res.top_candidate
+                label_name = candidate.name if candidate else entities.brand_name or fname.split(".")[0]
 
                 # 6. Push to Aiven PostgreSQL pgvector
                 with conn.cursor() as cur:
@@ -159,8 +162,8 @@ class MedicinePackagingOCRIndexer:
                     "label": label_name,
                     "ocr_confidence": round(ocr_res.avg_confidence, 3),
                     "ocr_text_length": len(ocr_res.full_text),
-                    "matched_medicine": match_res.matched_medicine_name,
-                    "confidence_score": round(match_res.confidence_score, 3),
+                    "matched_medicine": candidate.name if candidate else None,
+                    "confidence_score": round(candidate.confidence_score, 3) if candidate else 0.0,
                 })
 
                 if processed_count % batch_size == 0:

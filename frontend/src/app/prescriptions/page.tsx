@@ -88,15 +88,15 @@ export default function PrescriptionsPage() {
       setPrescriptions(res.items || []);
       setTotalCount(res.total || 0);
       setTotalPages(res.pages || 1);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load prescriptions.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "Failed to load prescriptions.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPrescriptionsList();
+    void Promise.resolve().then(() => fetchPrescriptionsList());
   }, [page, searchQuery, statusFilter]);
 
   // AI OCR Prescription Scan
@@ -127,8 +127,8 @@ export default function PrescriptionsPage() {
       } else {
         setActionError("No clinical medicines could be recognized. Please check input.");
       }
-    } catch (err: any) {
-      setActionError(err?.message || "AI scanning failed.");
+    } catch (err: unknown) {
+      setActionError((err instanceof Error ? err.message : "") || "AI scanning failed.");
     } finally {
       setIsScanningAI(false);
     }
@@ -174,8 +174,8 @@ export default function PrescriptionsPage() {
           resetUploadForm();
           fetchPrescriptionsList();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to save prescription.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to save prescription.");
       }
     });
   };
@@ -209,8 +209,8 @@ export default function PrescriptionsPage() {
           setShowVerifyModal(false);
           fetchPrescriptionsList();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to sign off prescription.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to sign off prescription.");
       }
     });
   };

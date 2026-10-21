@@ -9,6 +9,7 @@ export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    void Promise.resolve().then(() => {
     // Check saved theme or system preference
     const savedTheme = localStorage.getItem("smartpharm-theme") as "dark" | "light" | null;
     if (savedTheme) {
@@ -18,6 +19,7 @@ export default function ThemeToggle() {
       document.documentElement.setAttribute("data-theme", "dark");
     }
     setMounted(true);
+    });
   }, []);
 
   const toggleTheme = () => {

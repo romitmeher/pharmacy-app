@@ -284,3 +284,30 @@ def test_sync_api_endpoints(client, owner_token, sync_seed_data):
     )
     assert res_resolve.status_code == 200
     assert res_resolve.get_json()["status"] == "success"
+
+
+def test_pos_pack_excludes_unstocked_registry_and_uses_bulk_queries(db, sync_seed_data):
+    from sqlalchemy import event
+    store_id = sync_seed_data["store"].id
+    med_id = sync_seed_data["medicine"].id
+    db.session.add(Medicine(store_id=store_id, brand_name="Registry only", is_active=True))
+    for index in range(8):
+        batch = Batch(store_id=store_id, medicine_id=med_id, batch_number=f"BULK-{index}",
+                      expiry_date=datetime.date.today() + datetime.timedelta(days=30), quantity_received=1)
+        db.session.add(batch)
+        db.session.flush()
+        db.session.add(Inventory(store_id=store_id, batch_id=batch.id, quantity_available=1))
+    db.session.commit()
+    db.session.expire_all()
+    queries = []
+    def record(_connection, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            queries.append(statement)
+    event.listen(db.engine, "before_cursor_execute", record)
+    try:
+        pack = generate_offline_pack(store_id, in_stock_only=True)
+    finally:
+        event.remove(db.engine, "before_cursor_execute", record)
+    assert pack["total_medicines"] == 1
+    assert pack["total_active_batches"] == 9
+    assert len(queries) <= 5

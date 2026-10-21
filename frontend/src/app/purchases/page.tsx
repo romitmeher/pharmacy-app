@@ -78,6 +78,9 @@ export default function PurchasesPage() {
   const [showVerifyDeliveryModal, setShowVerifyDeliveryModal] = useState<boolean>(false);
   const [discrepancyReport, setDiscrepancyReport] = useState<DeliveryDiscrepancyReport | null>(null);
   const [verifyingDelivery, setVerifyingDelivery] = useState<boolean>(false);
+  const [deliveryCounts, setDeliveryCounts] = useState<ActualScanPayload[]>([]);
+  const [verifiedDeliveryId, setVerifiedDeliveryId] = useState<number | null>(null);
+
 
   const handleScanOcrInvoice = async () => {
     if (!rawOcrInputText.trim()) {
@@ -92,37 +95,49 @@ export default function PurchasesPage() {
       setShowOcrModal(false);
       setRawOcrInputText("");
       loadData();
-    } catch (err: any) {
-      setActionError(err?.message || "Failed to parse distributor invoice OCR.");
+    } catch (err: unknown) {
+      setActionError((err instanceof Error ? err.message : "") || "Failed to parse distributor invoice OCR.");
     } finally {
       setOcrParsing(false);
     }
   };
 
   const handleRunDeliveryVerification = async (inv: PurchaseInvoiceRecord) => {
-    setSelectedInvoice(inv);
     setVerifyingDelivery(true);
     setDiscrepancyReport(null);
-    setShowVerifyDeliveryModal(true);
-
+    setVerifiedDeliveryId(null);
+    setActionError(null);
     try {
-      // Build actual scan items from invoice lines as expected baseline for comparison
-      const actualScans: ActualScanPayload[] = (inv.items || []).map((it) => ({
-        medicine_name: it.medicine_name || it.raw_medicine_name || "",
-        batch_number: it.batch_number,
-        expiry_date: it.expiry_date,
-        actual_quantity: it.quantity, // Default to matched, user can adjust in matrix
-        mrp: it.mrp || undefined,
-        medicine_id: it.medicine_id,
-      }));
+      const detail = (await getPurchase(inv.id)).invoice;
+      setSelectedInvoice(detail);
+      setDeliveryCounts((detail.items || []).map((item) => ({
+        medicine_name: item.medicine_name || item.raw_medicine_name || "",
+        batch_number: item.batch_number,
+        expiry_date: item.expiry_date,
+        actual_quantity: 0,
+        mrp: item.mrp || undefined,
+        medicine_id: item.medicine_id,
+      })));
+      setShowVerifyDeliveryModal(true);
+    } catch (error: unknown) {
+      setActionError(error instanceof Error ? error.message : "Cannot load invoice for counting.");
+    } finally { setVerifyingDelivery(false); }
+  };
 
-      const res = await verifyPhysicalDelivery(inv.id, actualScans);
-      setDiscrepancyReport(res.report);
-    } catch (err: any) {
-      setActionError(err?.message || "Failed to verify delivery matrix.");
-    } finally {
-      setVerifyingDelivery(false);
+  const compareDelivery = async () => {
+    if (!selectedInvoice) return;
+    if (deliveryCounts.some((line) => !Number.isInteger(line.actual_quantity) || line.actual_quantity < 0 || !line.batch_number.trim() || !line.expiry_date)) {
+      setActionError("Enter a whole received quantity, batch and expiry for each line."); return;
     }
+    setVerifyingDelivery(true);
+    setActionError(null);
+    try {
+      const result = await verifyPhysicalDelivery(selectedInvoice.id, deliveryCounts);
+      setDiscrepancyReport(result.report);
+      setVerifiedDeliveryId(selectedInvoice.id);
+    } catch (error: unknown) {
+      setActionError(error instanceof Error ? error.message : "Cannot compare delivery.");
+    } finally { setVerifyingDelivery(false); }
   };
 
   // New Draft State
@@ -172,15 +187,15 @@ export default function PurchasesPage() {
       if (locRes.locations && locRes.locations.length > 0) {
         setAcceptLocationId(locRes.locations[0].id);
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to load purchase invoices.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "Failed to load purchase invoices.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    void Promise.resolve().then(() => loadData());
   }, [page, statusFilter, supplierFilter]);
 
   // Handle open create modal
@@ -223,7 +238,7 @@ export default function PurchasesPage() {
     setDraftItems(updated);
   };
 
-  const handleItemChange = (index: number, field: string, value: any) => {
+  const handleItemChange = (index: number, field: string, value: string | number) => {
     const updated = [...draftItems];
     updated[index] = { ...updated[index], [field]: value };
     setDraftItems(updated);
@@ -275,8 +290,8 @@ export default function PurchasesPage() {
           setShowCreateModal(false);
           loadData();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to create invoice draft.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to create invoice draft.");
       }
     });
   };
@@ -297,6 +312,12 @@ export default function PurchasesPage() {
       try {
         await acceptPurchaseInvoice(selectedInvoice.id, {
           location_id: Number(acceptLocationId) || undefined,
+          received_items: verifiedDeliveryId === selectedInvoice.id ? (selectedInvoice.items || []).map((item, index) => ({
+            item_id: item.id,
+            received_quantity: deliveryCounts[index].actual_quantity,
+            batch_number: deliveryCounts[index].batch_number,
+            expiry_date: deliveryCounts[index].expiry_date,
+          })) : undefined,
         });
 
         setActionSuccess(
@@ -307,8 +328,8 @@ export default function PurchasesPage() {
           setSelectedInvoice(null);
           loadData();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to accept purchase invoice.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to accept purchase invoice.");
       }
     });
   };
@@ -320,8 +341,8 @@ export default function PurchasesPage() {
       try {
         await cancelPurchaseInvoice(invoiceId, "Cancelled by Pharmacist");
         loadData();
-      } catch (err: any) {
-        alert(err?.message || "Failed to cancel invoice.");
+      } catch (err: unknown) {
+        alert((err instanceof Error ? err.message : "") || "Failed to cancel invoice.");
       }
     });
   };
@@ -1262,7 +1283,7 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
                     Physical Delivery Discrepancy Matrix
                   </h2>
                   <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-                    PRD Rule 12: Compares Invoiced Items vs Physical Camera Scans before inventory booking
+                    Enter the quantities, batch numbers and expiry dates physically received before booking stock.
                   </p>
                 </div>
               </div>
@@ -1272,6 +1293,19 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
             </div>
 
             <div className="modal-body">
+              {actionError && <p role="alert" style={{ color: "var(--status-low-text)" }}>{actionError}</p>}
+              <p>Count every line independently. Quantities start at zero until you enter the received stock.</p>
+              <div className="table-container"><table className="data-table">
+                <thead><tr><th>Medicine</th><th>Expected</th><th>Received</th><th>Actual batch</th><th>Actual expiry</th></tr></thead>
+                <tbody>{deliveryCounts.map((line, index) => <tr key={index}>
+                  <td>{line.medicine_name}</td><td>{selectedInvoice.items?.[index]?.quantity}</td>
+                  <td><input aria-label={`Received quantity ${index + 1}`} className="form-input" type="number" min="0" step="1" value={line.actual_quantity} disabled={verifyingDelivery} onChange={(event) => { setDeliveryCounts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, actual_quantity: Number(event.target.value) } : row)); setVerifiedDeliveryId(null); setDiscrepancyReport(null); }} /></td>
+                  <td><input aria-label={`Received batch ${index + 1}`} className="form-input" value={line.batch_number} disabled={verifyingDelivery} onChange={(event) => { setDeliveryCounts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, batch_number: event.target.value } : row)); setVerifiedDeliveryId(null); setDiscrepancyReport(null); }} /></td>
+                  <td><input aria-label={`Received expiry ${index + 1}`} className="form-input" type="date" value={line.expiry_date} disabled={verifyingDelivery} onChange={(event) => { setDeliveryCounts((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, expiry_date: event.target.value } : row)); setVerifiedDeliveryId(null); setDiscrepancyReport(null); }} /></td>
+                </tr>)}</tbody>
+              </table></div>
+              <button type="button" className="btn btn-secondary" disabled={verifyingDelivery || !deliveryCounts.length} onClick={compareDelivery}>Compare received stock</button>
+
               {verifyingDelivery ? (
                 <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-muted)", fontSize: "0.875rem" }}>
                   Analyzing physical delivery scans against invoice expected quantities...
@@ -1373,6 +1407,7 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
                   setShowVerifyDeliveryModal(false);
                   handleOpenAccept(selectedInvoice);
                 }}
+                disabled={verifyingDelivery || verifiedDeliveryId !== selectedInvoice.id}
                 className="btn btn-primary"
               >
                 Proceed to Inward Stock Booking

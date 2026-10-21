@@ -14,6 +14,8 @@ import os
 import logging
 from typing import Any, List, Optional, Tuple
 import numpy as np
+import cv2
+from threading import Lock
 
 os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
@@ -59,12 +61,18 @@ class OCREngine:
     Supports angle classification (0/90/180/270 degrees) common on medicine blister strips.
     """
 
-    def __init__(self, use_angle_cls: bool = True, lang: str = "en"):
+    def __init__(self, use_angle_cls: bool = False, lang: str = "en"):
         self.use_angle_cls = use_angle_cls
         self.lang = lang
         self._ocr_instance: Optional[Any] = None
+        self._initialization_lock = Lock()
+        self._prediction_lock = Lock()
 
     def _get_engine(self) -> Any:
+        with self._initialization_lock:
+            return self._initialize_engine()
+
+    def _initialize_engine(self) -> Any:
         """Lazy loader for PaddleOCR to avoid heavy import overhead at app startup."""
         if self._ocr_instance is None:
             try:
@@ -72,11 +80,17 @@ class OCREngine:
                 # Initialize PaddleOCR CPU-safe by default
                 try:
                     self._ocr_instance = PaddleOCR(
+                        use_doc_orientation_classify=False,
+                        use_doc_unwarping=False,
                         use_textline_orientation=self.use_angle_cls,
+                        enable_mkldnn=False,
+                        cpu_threads=4,
+                        text_detection_model_name=os.environ.get("OCR_DETECTION_MODEL", "PP-OCRv5_mobile_det"),
+                        text_recognition_model_name=os.environ.get("OCR_RECOGNITION_MODEL", "en_PP-OCRv5_mobile_rec"),
                         lang=self.lang,
                     )
-                except Exception:
-                    self._ocr_instance = PaddleOCR(lang=self.lang)
+                except TypeError:
+                    self._ocr_instance = PaddleOCR(lang=self.lang, use_angle_cls=self.use_angle_cls, use_gpu=False)
 
 
                 logger.info("PaddleOCR engine initialized successfully.")
@@ -103,13 +117,18 @@ class OCREngine:
             logger.warning("PaddleOCR engine not active; returning empty result.")
             return OCRResult(full_text="", lines=[], word_boxes=[], avg_confidence=0.0)
 
+        largest_side = max(image.shape[:2])
+        if largest_side > 1600:
+            image = cv2.resize(image, None, fx=1600 / largest_side, fy=1600 / largest_side)
         raw_results = None
         try:
-            if hasattr(engine, "predict"):
-                raw_results = engine.predict(image)
-            else:
-                raw_results = engine.ocr(image)
-        except Exception:
+            with self._prediction_lock:
+                if hasattr(engine, "predict"):
+                    raw_results = list(engine.predict(image))
+                else:
+                    raw_results = engine.ocr(image)
+        except Exception as prediction_error:
+            logger.warning("PaddleOCR prediction failed: %s", prediction_error)
             try:
                 raw_results = engine.ocr(image)
             except Exception as err:
@@ -165,7 +184,11 @@ class OCREngine:
             if hasattr(page, "get") or hasattr(page, "keys"):
                 texts = page.get("rec_texts") or page.get("text") or []
                 scores = page.get("rec_scores") or page.get("score") or []
-                boxes = page.get("dt_polys") or page.get("boxes") or []
+                boxes = page.get("dt_polys")
+                if boxes is None:
+                    boxes = page.get("boxes", [])
+                if hasattr(boxes, "tolist"):
+                    boxes = boxes.tolist()
                 for t, s, b in zip(texts, scores, boxes):
                     c_txt = str(t).strip()
                     if c_txt:

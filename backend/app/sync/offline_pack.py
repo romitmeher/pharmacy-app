@@ -14,6 +14,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from app.extensions import db
+from sqlalchemy import select
 from app.models.store import Store
 from app.models.medicine import Medicine
 from app.models.batch import Batch
@@ -28,7 +29,7 @@ def _serialize_num(val):
     return float(val)
 
 
-def generate_offline_pack(store_id: int) -> dict:
+def generate_offline_pack(store_id: int, in_stock_only: bool = False) -> dict:
     """
     Build a self-contained offline dataset for a store terminal.
     Includes active medicines, available unexpired batches with stock, and locations.
@@ -56,7 +57,14 @@ def generate_offline_pack(store_id: int) -> dict:
     }
 
     # 2. Fetch active medicines
-    medicines = Medicine.query.filter_by(store_id=store_id, is_active=True).order_by(Medicine.brand_name.asc()).all()
+    medicine_query = Medicine.query.filter_by(store_id=store_id, is_active=True)
+    if in_stock_only:
+        # POS needs dispensable stock, not every imported registry entry.
+        stocked_ids = (select(Batch.medicine_id).join(Inventory, Inventory.batch_id == Batch.id)
+                       .where(Batch.store_id == store_id, Inventory.store_id == store_id,
+                              Batch.expiry_date >= today, Inventory.quantity_available > 0))
+        medicine_query = medicine_query.filter(Medicine.id.in_(stocked_ids))
+    medicines = medicine_query.order_by(Medicine.brand_name.asc()).all()
 
     # 3. Fetch active inventory & batches
     # Filter batches with expiry >= today
@@ -67,13 +75,19 @@ def generate_offline_pack(store_id: int) -> dict:
         ).all()
     )
 
-    # Map inventory by batch_id
+    # Fetch stock in one query instead of a remote round-trip for every batch.
+    inventory_by_batch = {}
+    inventories = (Inventory.query.join(Batch, Inventory.batch_id == Batch.id)
+                   .filter(Inventory.store_id == store_id, Batch.store_id == store_id,
+                           Batch.expiry_date >= today).all())
+    for inventory in inventories:
+        inventory_by_batch.setdefault(inventory.batch_id, []).append(inventory)
     batch_inventory_map = {}
     for b in batches:
         # Sum available inventory
         total_available = 0
         loc_name = "Unassigned"
-        for inv in b.inventory:
+        for inv in inventory_by_batch.get(b.id, []):
             if inv.store_id == store_id:
                 total_available += (inv.quantity_available or 0)
                 if inv.location_id and inv.location_id in loc_map:

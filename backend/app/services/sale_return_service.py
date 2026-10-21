@@ -9,11 +9,12 @@ Strict adherence to PRD Rules 7, 8, 14, and 22:
 """
 
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Any, Optional, Tuple
 
 from app.extensions import db
-from app.models.sale import Sale, SaleItem, PaymentStatus
+from app.services.stock_lock import lock_stores
+from app.models.sale import Sale, SaleItem, PaymentStatus, PaymentMethod
 from app.models.sale_return import Return, ReturnItem, ReturnStatus, RestockCondition
 from app.models.inventory import Inventory
 from app.models.batch import Batch
@@ -46,12 +47,34 @@ def _generate_return_number(store_id: int) -> str:
     return f"{prefix}{seq:04d}"
 
 
+def refundable_line_total(sale, item):
+    """Allocate bill discounts across tax-inclusive lines, preserving invoice cents."""
+    lines = sorted(sale.items, key=lambda line: line.id)
+    gross = sum((Decimal(str(line.total_price)) for line in lines), Decimal("0"))
+    if gross <= 0:
+        return Decimal("0.00")
+    # Cash refunds cannot exceed tender actually collected (credit debt is not cash).
+    collected = sum((Decimal(str(payment.amount)) for payment in sale.payments
+                     if payment.payment_method != PaymentMethod.CREDIT), Decimal("0"))
+    refundable = min(Decimal(str(sale.total_amount)), collected)
+    allocated = Decimal("0.00")
+    cumulative = Decimal("0.00")
+    for line in lines:
+        cumulative += Decimal(str(line.total_price))
+        through_line = (refundable * cumulative / gross).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        amount = through_line - allocated
+        if line.id == item.id:
+            return amount
+        allocated = through_line
+    return Decimal("0.00")
+
+
 def get_eligible_return_items(store_id: int, sale_id: int) -> Dict[str, Any]:
     """
     Retrieve line items from an original sale eligible for return.
     Calculates previous return history to determine remaining refundable quantities.
     """
-    sale = Sale.query.filter_by(id=sale_id, store_id=store_id).first()
+    sale = Sale.query.filter_by(id=sale_id, store_id=store_id).with_for_update().first()
     if not sale:
         raise NotFoundError(f"Sale invoice #{sale_id} not found in this store.")
 
@@ -78,7 +101,7 @@ def get_eligible_return_items(store_id: int, sale_id: int) -> Dict[str, Any]:
             "quantity_sold": int(item.quantity),
             "quantity_already_returned": int(returned_units),
             "quantity_eligible_for_return": int(remaining_returnable),
-            "unit_price": float(item.unit_price),
+            "unit_price": float(refundable_line_total(sale, item) / item.quantity),
             "total_line_amount": float(item.total_price),
         })
 
@@ -118,9 +141,15 @@ def create_sale_return(
     if not reason or not reason.strip():
         raise ValidationError("A clear operational reason is required for processing returns.")
 
-    sale = Sale.query.filter_by(id=sale_id, store_id=store_id).first()
+    lock_stores(store_id)
+    sale = Sale.query.filter_by(id=sale_id, store_id=store_id).populate_existing().with_for_update().first()
     if not sale:
         raise NotFoundError(f"Original sale invoice #{sale_id} not found.")
+
+    if sale.payment_status == PaymentStatus.REFUNDED:
+        raise ConflictError("This sale has already been fully refunded.")
+    if refund_method.lower() not in ("cash", "upi", "card", "credit"):
+        raise ValidationError("Invalid refund method.")
 
     return_num = _generate_return_number(store_id)
     return_record = Return(
@@ -140,18 +169,24 @@ def create_sale_return(
 
     for item_input in items_data:
         sale_item_id = item_input.get("sale_item_id")
-        qty_return = int(item_input.get("quantity_returned", 0))
+        try:
+            raw_quantity = Decimal(str(item_input.get("quantity_returned", 0)))
+            if not raw_quantity.is_finite() or raw_quantity != raw_quantity.to_integral_value():
+                raise ValueError()
+            qty_return = int(raw_quantity)
+        except (ValueError, ArithmeticError):
+            raise ValidationError("Quantity returned must be a whole number.")
         cond_str = item_input.get("restock_condition", RestockCondition.RESTOCKED_TO_INVENTORY.value)
 
         try:
             restock_cond = RestockCondition(cond_str)
         except ValueError:
-            restock_cond = RestockCondition.RESTOCKED_TO_INVENTORY
+            raise ValidationError("Invalid restock condition.")
 
         if qty_return <= 0:
             raise ValidationError("Quantity returned must be greater than zero.")
 
-        sale_item = SaleItem.query.filter_by(id=sale_item_id, sale_id=sale.id).first()
+        sale_item = SaleItem.query.filter_by(id=sale_item_id, sale_id=sale.id).populate_existing().with_for_update().first()
         if not sale_item:
             raise NotFoundError(f"Sale line item #{sale_item_id} not found in this sale.")
 
@@ -168,7 +203,13 @@ def create_sale_return(
                 f"Only {remaining} units remaining from original purchase of {sale_item.quantity}."
             )
 
-        line_refund = (sale_item.unit_price or Decimal("0.0")) * qty_return
+        entitlement = refundable_line_total(sale, sale_item)
+        previously_refunded = db.session.query(
+            db.func.coalesce(db.func.sum(ReturnItem.refund_amount), 0)
+        ).filter(ReturnItem.sale_item_id == sale_item.id).scalar()
+        cumulative_refund = (entitlement * Decimal(prev_returned + qty_return) /
+                             Decimal(sale_item.quantity)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        line_refund = cumulative_refund - Decimal(str(previously_refunded))
         total_refund += line_refund
 
         return_item = ReturnItem(
@@ -177,7 +218,7 @@ def create_sale_return(
             medicine_id=sale_item.medicine_id,
             batch_id=sale_item.batch_id,
             quantity_returned=qty_return,
-            unit_price=sale_item.unit_price,
+            unit_price=(entitlement / sale_item.quantity).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
             refund_amount=line_refund,
             restock_condition=restock_cond,
         )
@@ -189,7 +230,7 @@ def create_sale_return(
             inv = Inventory.query.filter_by(
                 store_id=store_id,
                 batch_id=sale_item.batch_id,
-            ).first()
+            ).populate_existing().with_for_update().first()
 
             if inv:
                 inv.quantity_available += qty_return
@@ -198,7 +239,6 @@ def create_sale_return(
                 # Re-create inventory on first active location or shelf
                 inv = Inventory(
                     store_id=store_id,
-                    medicine_id=sale_item.medicine_id,
                     batch_id=sale_item.batch_id,
                     quantity_available=qty_return,
                     quantity_reserved=0,

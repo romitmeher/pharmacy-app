@@ -11,6 +11,7 @@ import csv
 import difflib
 import logging
 import os
+from app.vision.data_paths import DATA_ROOT
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
@@ -60,9 +61,9 @@ class HandwritingDatasetEvaluator:
     """
 
     DATASET_PATHS = [
-        r"c:\Users\user\Desktop\pharmacy app\data\HAND WRITHING\RxHandBD_BDHandwritten_Merged",
-        r"c:\Users\user\Desktop\pharmacy app\data\HAND WRITHING\BD Handwritten Prescription Dataset",
-        r"c:\Users\user\Desktop\pharmacy app\data\HAND WRITHING\RxHandBDMain",
+        str(DATA_ROOT / 'HAND WRITHING/RxHandBD_BDHandwritten_Merged'),
+        str(DATA_ROOT / 'HAND WRITHING/BD Handwritten Prescription Dataset'),
+        str(DATA_ROOT / 'HAND WRITHING/RxHandBDMain'),
     ]
 
     def __init__(
@@ -108,6 +109,7 @@ class HandwritingDatasetEvaluator:
         dataset_name: str = "RxHandBD_BDHandwritten_Merged",
         max_samples: int = 50,
         split: str = "train",
+        store_id: int = 1,
     ) -> Dict[str, Any]:
         """
         Runs handwriting evaluation on ground truth prescription image pairs.
@@ -168,12 +170,12 @@ class HandwritingDatasetEvaluator:
                     predicted_text = ocr_res.full_text.strip()
                     ocr_conf = ocr_res.avg_confidence
 
-            # If image file not available or empty, evaluate fuzzy text resolution on ground truth label
-            eval_query = predicted_text if predicted_text else label
+            # Missing recognition is an OCR miss; never use the answer as the query.
+            eval_query = predicted_text
 
             # Calculate CER and sequence similarity against Ground Truth
-            cer = compute_character_error_rate(label, predicted_text) if predicted_text else 0.0
-            sim = difflib.SequenceMatcher(None, label.lower(), predicted_text.lower()).ratio() if predicted_text else 1.0
+            cer = compute_character_error_rate(label, predicted_text)
+            sim = difflib.SequenceMatcher(None, label.lower(), predicted_text.lower()).ratio()
 
             if predicted_text.lower() == label.lower():
                 exact_matches += 1
@@ -183,7 +185,7 @@ class HandwritingDatasetEvaluator:
 
             # Database Catalog Entity Resolution
             entities = self.extractor.extract(eval_query)
-            match_res = self.matcher.match(entities)
+            match_res = self.matcher.match(entities, store_id=store_id)
             top_med = match_res.top_candidate
 
             if top_med and top_med.confidence_score >= 50.0:

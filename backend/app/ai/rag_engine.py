@@ -463,7 +463,9 @@ class PharmacyRAGEngine:
                 )
 
                 # Optional Google Gemini LLM synthesis if API key is provided
-                gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+                from flask import current_app, has_app_context
+                config = current_app.config if has_app_context() else os.environ
+                gemini_key = "" if has_app_context() and current_app.testing else config.get("GEMINI_API_KEY", "").strip()
                 if gemini_key:
                     try:
                         from google import genai

@@ -7,6 +7,7 @@ All sensitive values come from environment variables.
 
 import os
 from dotenv import load_dotenv
+from sqlalchemy.engine import URL, make_url
 
 load_dotenv()
 
@@ -24,15 +25,17 @@ class Config:
     DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
     DB_SSL_CA = os.environ.get("DB_SSL_CA", "")
 
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        "?charset=utf8mb4"
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or URL.create(
+        "mysql+pymysql", username=DB_USER, password=DB_PASSWORD,
+        host=DB_HOST, port=int(DB_PORT), database=DB_NAME,
+        query={"charset": "utf8mb4"},
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # SSL configuration for Aiven / cloud MySQL
     SQLALCHEMY_ENGINE_OPTIONS = {}
-    if DB_SSL_CA:
+    _database_url = make_url(SQLALCHEMY_DATABASE_URI)
+    if _database_url.get_backend_name() == "mysql" and DB_SSL_CA:
         _ssl_ca_path = DB_SSL_CA if os.path.isabs(DB_SSL_CA) else os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             DB_SSL_CA,
@@ -53,7 +56,7 @@ class Config:
                     }
                 }
             }
-    elif DB_HOST not in ("localhost", "127.0.0.1", "test_db"):
+    elif _database_url.get_backend_name() == "mysql" and _database_url.host not in ("localhost", "127.0.0.1", "test_db"):
         SQLALCHEMY_ENGINE_OPTIONS = {
             "connect_args": {
                 "ssl": {
@@ -84,18 +87,16 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """Testing environment configuration.
 
-    Uses a separate test database to avoid polluting development data.
+    Uses an in-memory database and disables optional remote AI services.
     """
 
     TESTING = True
-    DB_NAME = os.environ.get("TEST_DB_NAME", "smartpharm_test")
-    SQLALCHEMY_DATABASE_URI = (
-        f"mysql+pymysql://{Config.DB_USER}:{Config.DB_PASSWORD}"
-        f"@{Config.DB_HOST}:{Config.DB_PORT}/{DB_NAME}"
-        "?charset=utf8mb4"
-    )
-    # Disable SSL connect_args for local test DB — tests use localhost/127.0.0.1.
+    # Tests are local and deterministic even when a developer .env contains cloud credentials.
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_ENGINE_OPTIONS = {}
+    PGVECTOR_URL = ""
+    GEMINI_API_KEY = ""
+
 
 
 class ProductionConfig(Config):

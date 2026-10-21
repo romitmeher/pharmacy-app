@@ -19,9 +19,32 @@ from datetime import datetime, timezone
 from app.extensions import db
 from app.models.sync_transaction import SyncTransaction, SyncStatus
 from app.models.sale import Sale
+from app.models.store import Store
+from app.services.audit_service import log_audit_event
 from app.services.sales_service import create_sale
 from app.services.inventory_service import adjust_stock
 from app.utils.errors import ValidationError, NotFoundError, ConflictError
+
+
+def _locked_receipt(store_id: int, client_tx_id: str):
+    """Reacquire the store lock after rollback before reading/updating a receipt."""
+    Store.query.filter_by(id=store_id).populate_existing().with_for_update().first()
+    return SyncTransaction.query.filter_by(
+        store_id=store_id, client_tx_id=client_tx_id
+    ).populate_existing().first()
+
+
+def _successful_receipt(receipt):
+    # A success acknowledgement must always reference the durable financial record.
+    if receipt is None or receipt.applied_sale_id is None:
+        return None
+    return {
+        "client_tx_id": receipt.client_tx_id,
+        "status": "already_synced",
+        "applied_sale_id": receipt.applied_sale_id,
+        "synced_at": receipt.synced_at.isoformat() if receipt.synced_at else None,
+        "message": "Transaction was already synced to cloud database.",
+    }
 
 
 def replay_offline_transaction(store_id: int, user_id: int, item: dict) -> dict:
@@ -36,28 +59,20 @@ def replay_offline_transaction(store_id: int, user_id: int, item: dict) -> dict:
             "error": "Missing client_tx_id for offline transaction.",
         }
 
-    # 1. Idempotency Check
-    existing = SyncTransaction.query.filter_by(
-        store_id=store_id, client_tx_id=client_tx_id
-    ).first()
-
-    if existing:
-        if existing.status == SyncStatus.SYNCED:
-            return {
-                "client_tx_id": client_tx_id,
-                "status": "already_synced",
-                "applied_sale_id": existing.applied_sale_id,
-                "synced_at": existing.synced_at.isoformat() if existing.synced_at else None,
-                "message": "Transaction was already synced to cloud database.",
-            }
-        elif existing.status == SyncStatus.CONFLICT:
-            return {
-                "client_tx_id": client_tx_id,
-                "status": "conflict",
-                "applied_sale_id": existing.applied_sale_id,
-                "conflict_reason": existing.conflict_reason,
-                "message": "Transaction previously flagged with stock/data conflict.",
-            }
+    existing = _locked_receipt(store_id, client_tx_id)
+    acknowledged = _successful_receipt(existing)
+    if acknowledged:
+        return acknowledged
+    if existing and existing.status in (SyncStatus.CONFLICT, SyncStatus.SYNCED):
+        # Older reviewed/write-off records may have no financial sale attached.
+        # Never acknowledge them as synced: the terminal must retain the receipt.
+        return {
+            "client_tx_id": client_tx_id,
+            "status": "conflict",
+            "applied_sale_id": existing.applied_sale_id,
+            "conflict_reason": existing.conflict_reason or "No completed sale is attached; manager review is required.",
+            "message": "Transaction requires reconciliation before it can be synced.",
+        }
 
     # Parse client timestamp
     raw_ts = item.get("client_timestamp")
@@ -72,20 +87,23 @@ def replay_offline_transaction(store_id: int, user_id: int, item: dict) -> dict:
     else:
         client_ts = datetime.now(timezone.utc)
 
-    sale_data = item.get("sale_data") or {}
+    sale_data = dict(item.get("sale_data") or {})
     tx_type = item.get("tx_type", "OFFLINE_SALE")
 
-    # 2. Create SyncTransaction record in pending state
-    sync_tx = SyncTransaction(
-        store_id=store_id,
-        user_id=user_id,
-        client_tx_id=client_tx_id,
-        tx_type=tx_type,
-        payload_json=json.dumps(item),
-        status=SyncStatus.PENDING,
-        client_timestamp=client_ts,
-    )
-    db.session.add(sync_tx)
+    # Reuse a retryable record: a UUID is a durable transaction identity.
+    sync_tx = existing
+    if sync_tx is None:
+        sync_tx = SyncTransaction(
+            store_id=store_id, user_id=user_id, client_tx_id=client_tx_id,
+            tx_type=tx_type, payload_json=json.dumps(item), status=SyncStatus.PENDING,
+            client_timestamp=client_ts,
+        )
+        db.session.add(sync_tx)
+    else:
+        # Preserve the original transaction, never replace its contents on retry.
+        original = json.loads(sync_tx.payload_json)
+        sale_data = dict(original.get("sale_data") or {})
+        sync_tx.status = SyncStatus.PENDING
     db.session.flush()
 
     # 3. Attempt to apply the sale transaction
@@ -94,12 +112,15 @@ def replay_offline_transaction(store_id: int, user_id: int, item: dict) -> dict:
         notes = sale_data.get("notes", "") or ""
         sale_data["notes"] = f"{notes} [Offline Sync: {client_tx_id}]".strip()
 
-        sale = create_sale(store_id=store_id, user_id=user_id, data=sale_data)
+        sale = create_sale(store_id=store_id, user_id=user_id, data=sale_data, commit=False)
 
         # Mark successfully synced
         sync_tx.status = SyncStatus.SYNCED
         sync_tx.applied_sale_id = sale.id
         sync_tx.synced_at = datetime.now(timezone.utc)
+        log_audit_event(store_id, "sync_transaction", sync_tx.id, "SALE_SYNCED",
+                        f"Sale received from terminal: {client_tx_id}",
+                        new_values={"sale_id": sale.id}, user_id=user_id)
         db.session.commit()
 
         return {
@@ -116,9 +137,10 @@ def replay_offline_transaction(store_id: int, user_id: int, item: dict) -> dict:
         db.session.rollback()
 
         # Re-fetch or re-create the sync_tx since rollback cleared session
-        sync_tx = SyncTransaction.query.filter_by(
-            store_id=store_id, client_tx_id=client_tx_id
-        ).first()
+        sync_tx = _locked_receipt(store_id, client_tx_id)
+        acknowledged = _successful_receipt(sync_tx)
+        if acknowledged:
+            return acknowledged
 
         if not sync_tx:
             sync_tx = SyncTransaction(
@@ -148,9 +170,10 @@ def replay_offline_transaction(store_id: int, user_id: int, item: dict) -> dict:
     except Exception as exc:
         db.session.rollback()
         # Save as failed
-        sync_tx = SyncTransaction.query.filter_by(
-            store_id=store_id, client_tx_id=client_tx_id
-        ).first()
+        sync_tx = _locked_receipt(store_id, client_tx_id)
+        acknowledged = _successful_receipt(sync_tx)
+        if acknowledged:
+            return acknowledged
 
         if not sync_tx:
             sync_tx = SyncTransaction(
@@ -262,7 +285,8 @@ def resolve_sync_conflict(store_id: int, user_id: int, sync_id: int, resolution:
     Resolve a flagged sync conflict with manager sign-off.
     Resolutions: 'WRITE_OFF', 'MANUAL_INVENTORY_ADJUSTED', 'DISMISSED'.
     """
-    sync_tx = SyncTransaction.query.filter_by(id=sync_id, store_id=store_id).first()
+    Store.query.filter_by(id=store_id).populate_existing().with_for_update().first()
+    sync_tx = SyncTransaction.query.filter_by(id=sync_id, store_id=store_id).populate_existing().first()
     if not sync_tx:
         raise NotFoundError(f"SyncTransaction with ID {sync_id} not found.")
 
@@ -273,10 +297,23 @@ def resolve_sync_conflict(store_id: int, user_id: int, sync_id: int, resolution:
             "message": "Transaction is not in conflict status.",
         }
 
-    resolution_note = f"Resolved via {resolution}. Manager Notes: {notes or 'None'}"
+    if resolution not in ("WRITE_OFF", "MANUAL_INVENTORY_ADJUSTED", "DISMISSED"):
+        raise ValidationError("Invalid conflict resolution.")
+    if not notes or not notes.strip():
+        raise ValidationError("Manager notes are required to resolve a conflict.")
+    log_audit_event(store_id, "sync_transaction", sync_tx.id, "SYNC_CONFLICT_REVIEWED",
+                    notes, old_values={"status": sync_tx.status.value},
+                    new_values={"resolution": resolution, "applied_sale_id": sync_tx.applied_sale_id},
+                    user_id=user_id)
+    # Only a replay that actually creates a Sale may be reported as synced.
+    if resolution == "MANUAL_INVENTORY_ADJUSTED":
+        sync_tx.status = SyncStatus.FAILED
+        sync_tx.conflict_reason = f"Inventory adjusted; retry authorized. {notes}"
+        db.session.commit()
+        return replay_offline_transaction(store_id, sync_tx.user_id, json.loads(sync_tx.payload_json))
+    resolution_note = f"Reviewed via {resolution}; sale remains unapplied. Manager Notes: {notes}"
     sync_tx.conflict_reason = f"{sync_tx.conflict_reason or ''} | [{resolution_note}]"
-    sync_tx.status = SyncStatus.SYNCED
-    sync_tx.synced_at = datetime.now(timezone.utc)
+    sync_tx.status = SyncStatus.CONFLICT
 
     db.session.commit()
 
@@ -285,5 +322,5 @@ def resolve_sync_conflict(store_id: int, user_id: int, sync_id: int, resolution:
         "client_tx_id": sync_tx.client_tx_id,
         "status": sync_tx.status.value,
         "resolution": resolution,
-        "message": "Conflict successfully resolved and logged.",
+        "message": "Manager review logged. The receipt remains in conflict until a real sale is applied.",
     }

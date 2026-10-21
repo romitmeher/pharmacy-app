@@ -13,9 +13,10 @@ from decimal import Decimal
 from typing import List, Dict, Any, Optional
 
 from app.extensions import db
+from app.services.stock_lock import lock_stores, locked_inventory
 from app.models.store import Store
-from app.models.user import User
-from app.models.medicine import Medicine
+from app.models.user import User, UserRole
+from app.models.medicine import Medicine, Ingredient, MedicineAlias
 from app.models.batch import Batch
 from app.models.inventory import Inventory
 from app.models.location import Location
@@ -24,7 +25,15 @@ from app.models.supplier import Supplier
 from app.models.purchase import PurchaseInvoice, PurchaseItem
 from app.models.stock_transfer import StockTransfer, StockTransferItem, TransferStatus
 from app.services.audit_service import log_audit_event
-from app.utils.errors import ValidationError, NotFoundError, ConflictError
+from app.utils.errors import ValidationError, NotFoundError, ConflictError, AuthorizationError
+
+
+def _authorize_branch_action(user_id, store_id):
+    user = db.session.get(User, user_id)
+    if not user or not user.is_active or user.role not in (UserRole.OWNER, UserRole.MANAGER):
+        raise AuthorizationError("Only owners and branch managers can move branch stock.")
+    if user.role != UserRole.OWNER and user.store_id != store_id:
+        raise AuthorizationError("This action must be performed by the responsible branch.")
 
 
 def _generate_transfer_number(source_store_id: int) -> str:
@@ -38,7 +47,7 @@ def _generate_transfer_number(source_store_id: int) -> str:
         ).count()
         + 1
     )
-    return f"{prefix}-{count:05d}"
+    return f"{prefix}-{source_store_id}-{count:05d}"
 
 
 def get_network_stores() -> List[Dict[str, Any]]:
@@ -243,6 +252,8 @@ def create_stock_transfer(
     """
     Initiate an inter-store stock transfer request in DRAFT status (PRD Rule 8 & 22: zero initial inventory mutation).
     """
+    _authorize_branch_action(user_id, source_store_id)
+    Store.query.filter_by(id=source_store_id).with_for_update().first()
     if source_store_id == destination_store_id:
         raise ValidationError("Source store and destination store cannot be the same.")
 
@@ -301,23 +312,37 @@ def create_stock_transfer(
     return transfer
 
 
+def _lock_transfer(transfer_id):
+    preliminary = db.session.get(StockTransfer, transfer_id)
+    if preliminary is None:
+        raise NotFoundError(f"StockTransfer #{transfer_id} not found.")
+    stores = (preliminary.source_store_id, preliminary.destination_store_id)
+    lock_stores(*stores)
+    transfer = (StockTransfer.query.filter_by(id=transfer_id).populate_existing()
+                .with_for_update().first())
+    if transfer is None or stores != (transfer.source_store_id, transfer.destination_store_id):
+        raise ConflictError("Transfer changed while acquiring branch locks. Retry.")
+    return transfer
+
+
 def dispatch_stock_transfer(transfer_id: int, user_id: int) -> StockTransfer:
     """
     Confirm dispatch from source store: decrements available stock and transitions to IN_TRANSIT.
     """
-    transfer = db.session.get(StockTransfer, transfer_id)
+    transfer = _lock_transfer(transfer_id)
     if not transfer:
         raise NotFoundError(f"StockTransfer #{transfer_id} not found.")
 
+    _authorize_branch_action(user_id, transfer.source_store_id)
     if transfer.status != TransferStatus.DRAFT:
         raise ConflictError(f"Transfer is in '{transfer.status.value}' state; only DRAFT transfers can be dispatched.")
 
     # Atomic deduction at source store
     for item in transfer.items:
-        batch = db.session.get(Batch, item.batch_id)
+        batch = Batch.query.filter_by(id=item.batch_id).populate_existing().with_for_update().first()
         qty_needed = item.quantity
 
-        for inv in batch.inventory:
+        for inv in locked_inventory(batch.id, transfer.source_store_id):
             if inv.store_id == transfer.source_store_id and inv.quantity_available > 0:
                 deduct = min(inv.quantity_available, qty_needed)
                 inv.quantity_available -= deduct
@@ -356,25 +381,46 @@ def receive_stock_transfer(
     """
     Confirm physical receipt at destination store: creates/books inventory and sets status to RECEIVED.
     """
-    transfer = db.session.get(StockTransfer, transfer_id)
+    transfer = _lock_transfer(transfer_id)
     if not transfer:
         raise NotFoundError(f"StockTransfer #{transfer_id} not found.")
 
+    _authorize_branch_action(user_id, transfer.destination_store_id)
     if transfer.status != TransferStatus.IN_TRANSIT:
         raise ConflictError(
             f"Transfer is in '{transfer.status.value}' state; only IN_TRANSIT transfers can be received."
         )
 
     dest_store_id = transfer.destination_store_id
+    if destination_location_id is not None:
+        location = Location.query.filter_by(id=destination_location_id, store_id=dest_store_id, is_active=True).first()
+        if not location:
+            raise ValidationError("Destination location must be active and belong to the receiving branch.")
 
     for item in transfer.items:
         source_med = db.session.get(Medicine, item.medicine_id)
-        source_batch = db.session.get(Batch, item.batch_id)
+        source_batch = Batch.query.filter_by(id=item.batch_id).populate_existing().with_for_update().first()
 
-        # 1. Resolve or clone Medicine in destination store
-        dest_med = Medicine.query.filter_by(
-            store_id=dest_store_id, brand_name=source_med.brand_name, is_active=True
-        ).first()
+        # Brand alone is not a medicine identity: different strengths, routes or
+        # compositions must never share the received batch. Unknown composition
+        # is not evidence of equivalence with a populated composition either.
+        def composition(medicine):
+            return sorted(
+                ((ingredient.name or "").strip().casefold(),
+                 (ingredient.strength or "").strip().casefold(),
+                 (ingredient.unit or "").strip().casefold())
+                for ingredient in medicine.ingredients
+            )
+
+        candidates = Medicine.query.filter_by(
+            store_id=dest_store_id, brand_name=source_med.brand_name,
+            generic_name=source_med.generic_name, manufacturer=source_med.manufacturer,
+            strength=source_med.strength, dosage_form=source_med.dosage_form,
+            route=source_med.route, is_prescription_only=source_med.is_prescription_only,
+            storage_requirements=source_med.storage_requirements, is_active=True,
+        ).populate_existing().with_for_update().all()
+        source_composition = composition(source_med)
+        dest_med = next((candidate for candidate in candidates if composition(candidate) == source_composition), None)
 
         if not dest_med:
             dest_med = Medicine(
@@ -384,21 +430,37 @@ def receive_stock_transfer(
                 manufacturer=source_med.manufacturer,
                 strength=source_med.strength,
                 dosage_form=source_med.dosage_form,
+                route=source_med.route,
                 category=source_med.category,
+                is_prescription_only=source_med.is_prescription_only,
+                storage_requirements=source_med.storage_requirements,
                 mrp=source_med.mrp,
                 selling_price=source_med.selling_price,
+                hsn_code=source_med.hsn_code,
                 gst_percentage=source_med.gst_percentage,
                 is_active=True,
             )
+            dest_med.ingredients = [
+                Ingredient(name=ingredient.name, strength=ingredient.strength, unit=ingredient.unit)
+                for ingredient in source_med.ingredients
+            ]
             db.session.add(dest_med)
             db.session.flush()
+
+        # Aliases supplement an already verified identity; never use aliases to
+        # merge distinct medicines. Copy missing aliases without duplicating them.
+        aliases = {(alias.alias_name, alias.alias_type) for alias in dest_med.aliases}
+        for alias in source_med.aliases:
+            if (alias.alias_name, alias.alias_type) not in aliases:
+                dest_med.aliases.append(MedicineAlias(alias_name=alias.alias_name, alias_type=alias.alias_type))
+                aliases.add((alias.alias_name, alias.alias_type))
 
         # 2. Resolve or clone Batch in destination store
         dest_batch = Batch.query.filter_by(
             store_id=dest_store_id,
             medicine_id=dest_med.id,
             batch_number=source_batch.batch_number,
-        ).first()
+        ).populate_existing().with_for_update().first()
 
         if not dest_batch:
             dest_batch = Batch(
@@ -420,7 +482,7 @@ def receive_stock_transfer(
             store_id=dest_store_id,
             batch_id=dest_batch.id,
             location_id=destination_location_id,
-        ).first()
+        ).populate_existing().with_for_update().first()
 
         if not dest_inv:
             dest_inv = Inventory(

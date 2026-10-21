@@ -18,6 +18,7 @@ from decimal import Decimal
 from sqlalchemy import func
 
 from app.extensions import db
+from app.services.stock_lock import lock_stores
 from app.models.medicine import Medicine
 from app.models.batch import Batch
 from app.models.inventory import Inventory
@@ -52,6 +53,7 @@ def _parse_decimal(val, field_name: str) -> Decimal:
 
 def create_batch(store_id: int, data: dict) -> Batch:
     """Create a new batch for a medicine and initialize its inventory record."""
+    lock_stores(store_id)
     if not data:
         raise ValidationError("Request data cannot be empty.")
 
@@ -160,15 +162,17 @@ def adjust_stock(
     new_quantity: int,
     reason: str,
     user_id: int = None,
+    commit: bool = True,
 ) -> Inventory:
     """Explicitly adjust stock for an inventory record with an audit reason."""
+    lock_stores(store_id)
     if new_quantity < 0:
         raise ValidationError("Stock quantity cannot be negative.")
 
     if not reason or not reason.strip():
         raise ValidationError("A reason is required for manual stock adjustments.")
 
-    inventory = Inventory.query.filter_by(id=inventory_id, store_id=store_id).first()
+    inventory = Inventory.query.filter_by(id=inventory_id, store_id=store_id).populate_existing().with_for_update().first()
     if not inventory:
         raise NotFoundError(f"Inventory record with ID {inventory_id} not found.")
 
@@ -188,7 +192,10 @@ def adjust_stock(
         user_id=user_id,
     )
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return inventory
 
 
@@ -200,6 +207,7 @@ def transfer_stock(
     quantity: int,
 ) -> dict:
     """Transfer physical stock of a batch from one location to another."""
+    lock_stores(store_id)
     if quantity <= 0:
         raise ValidationError("Transfer quantity must be greater than 0.")
 
@@ -214,7 +222,7 @@ def transfer_stock(
     # Find source inventory
     source_inv = Inventory.query.filter_by(
         batch_id=batch_id, store_id=store_id, location_id=source_location_id
-    ).first()
+    ).populate_existing().with_for_update().first()
     if not source_inv or source_inv.quantity_available < quantity:
         available = source_inv.quantity_available if source_inv else 0
         raise ValidationError(
@@ -224,7 +232,7 @@ def transfer_stock(
     # Find or create target inventory
     target_inv = Inventory.query.filter_by(
         batch_id=batch_id, store_id=store_id, location_id=target_location_id
-    ).first()
+    ).populate_existing().with_for_update().first()
 
     if not target_inv:
         target_inv = Inventory(

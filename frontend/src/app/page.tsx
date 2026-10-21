@@ -82,7 +82,7 @@ export default function DashboardPage() {
       // ML Insights
       setStockOutRisks(stockOutRes.predictions || []);
       setReorderRecs(reorderRes.recommendations || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Graceful fallback
     } finally {
       setLoadingMetrics(false);
@@ -91,10 +91,10 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadDashboardData();
+    void Promise.resolve().then(() => loadDashboardData());
   }, []);
 
-  // 1-Click ML Reorder Draft Order Generation (PRD Rule 18)
+  // 1-Click ML Reorder Draft Order Generation (Reorder planning)
   const handleGenerateMlReorderPo = (rec: ReorderRecommendationItem) => {
     if (!rec.preferred_supplier_id) {
       alert("No preferred supplier configured for this medicine.");
@@ -119,8 +119,8 @@ export default function DashboardPage() {
           `Draft PO #${res.invoice_number} created for ${rec.brand_name}! Pending physical verification.`
         );
         setTimeout(() => setActionSuccess(null), 4000);
-      } catch (err: any) {
-        alert(err?.message || "Failed to generate reorder draft PO.");
+      } catch (err: unknown) {
+        alert((err instanceof Error ? err.message : "") || "Failed to generate reorder draft PO.");
       }
     });
   };
@@ -270,10 +270,10 @@ export default function DashboardPage() {
                   Stock-Out Probability Predictions
                 </h3>
               </div>
-              <span className="status-badge low">XGBoost ML</span>
+              <span className="status-badge low">Demand estimate</span>
             </div>
             <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
-              PRD Rule 17: Evaluates Current Stock + Predicted Demand + Supplier Lead Time.
+              Estimates availability using stock, recent demand and supplier lead time.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "240px", overflowY: "auto" }}>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
                   Smart Reorder Recommendations
                 </h3>
               </div>
-              <span className="status-badge high">PRD Rule 18</span>
+              <span className="status-badge high">Reorder planning</span>
             </div>
             <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
               Forecasted Demand + Safety Stock + Lead Time - Current Inventory - Open POs.
@@ -385,7 +385,7 @@ export default function DashboardPage() {
           <div className="card">
             <div className="card-title">Core Operational Modules</div>
             <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: "1.25rem" }}>
-              Vision-first pharmacy workflows conforming to Phase 1-5 foundations.
+              Daily pharmacy workflows, from receiving stock to dispensing.
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>

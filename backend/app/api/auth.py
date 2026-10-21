@@ -238,3 +238,124 @@ def _serialize_store(store):
         "updated_at": store.updated_at.isoformat() if store.updated_at else None,
     }
 
+
+def _staff_fields(data, creating=False):
+    """Validate staff input before any user or audit record is changed."""
+    import re
+    allowed = {"full_name", "email", "username", "phone", "password", "role", "is_active"}
+    if not isinstance(data, dict) or not data or set(data) - allowed:
+        raise ValidationError("Provide only staff name, email, username, phone, password, role and active status.")
+    fields = {}
+    for field, limit in (("full_name", 200), ("email", 200), ("username", 100), ("phone", 20)):
+        if field not in data and not (creating and field != "phone"):
+            continue
+        value = data.get(field, "")
+        if field == "phone" and value is None:
+            fields[field] = None
+            continue
+        if not isinstance(value, str) or len(value.strip()) > limit or (field != "phone" and not value.strip()):
+            raise ValidationError(f"{field} must be valid text up to {limit} characters.")
+        fields[field] = value.strip() or None
+    if "email" in fields:
+        fields["email"] = fields["email"].lower()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", fields["email"]):
+            raise ValidationError("A valid staff email is required.")
+    if "role" in data or creating:
+        try:
+            fields["role"] = UserRole(data.get("role"))
+        except (ValueError, TypeError):
+            raise ValidationError("Select a valid staff role.")
+        allowed_roles = {UserRole.PHARMACIST, UserRole.CASHIER, UserRole.INVENTORY_STAFF}
+        if g.current_user.role == UserRole.OWNER:
+            allowed_roles.add(UserRole.MANAGER)
+        if fields["role"] not in allowed_roles:
+            from app.utils.errors import AuthorizationError
+            raise AuthorizationError("You cannot assign this role.")
+    if "is_active" in data:
+        if not isinstance(data["is_active"], bool):
+            raise ValidationError("is_active must be a boolean.")
+        fields["is_active"] = data["is_active"]
+    if "password" in data or creating:
+        password = data.get("password")
+        if not isinstance(password, str) or len(password) < 8 or len(password.encode("utf-8")) > 72:
+            raise ValidationError("Password must be at least 8 characters and at most 72 UTF-8 bytes.")
+        fields["password"] = password
+    return fields
+
+
+def _validate_staff_identifiers(fields, user_id=None):
+    from sqlalchemy import func
+    # Shared with branch provisioning: serialize globally unique logins across
+    # this installation's chain, despite the original store-scoped indexes.
+    Store.query.order_by(Store.id.asc()).with_for_update().first()
+    for field in ("email", "username"):
+        if field not in fields:
+            continue
+        query = User.query.filter(func.lower(getattr(User, field)) == fields[field].lower())
+        if user_id is not None:
+            query = query.filter(User.id != user_id)
+        if query.with_for_update().first():
+            raise ConflictError(f"Staff {field} is already in use.")
+
+
+@auth_bp.route("/users", methods=["GET"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def list_store_staff():
+    """List accounts only within the actor's current store."""
+    users = User.query.filter_by(store_id=g.current_store_id).order_by(User.full_name.asc(), User.id.asc()).all()
+    return jsonify({"users": [_serialize_user(user) for user in users]}), 200
+
+
+@auth_bp.route("/users", methods=["POST"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def create_store_staff():
+    from app.services.audit_service import log_audit_event
+    fields = _staff_fields(request.get_json(silent=True), creating=True)
+    _validate_staff_identifiers(fields)
+    password = fields.pop("password")
+    try:
+        user = User(store_id=g.current_store_id, **fields)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+        log_audit_event(g.current_store_id, "user", user.id, "STAFF_CREATED", "Store staff account created", user_id=g.current_user.id, new_values={"role": user.role.value, "is_active": user.is_active})
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify({"message": "Staff account created.", "user": _serialize_user(user)}), 201
+
+
+@auth_bp.route("/users/<int:user_id>", methods=["PATCH"])
+@login_required
+@role_required(UserRole.OWNER, UserRole.MANAGER)
+def update_store_staff(user_id):
+    from app.utils.errors import AuthorizationError
+    from app.services.audit_service import log_audit_event
+    # Use the same lock order as creation and branch provisioning.
+    Store.query.order_by(Store.id.asc()).with_for_update().first()
+    target = User.query.filter_by(id=user_id, store_id=g.current_store_id).with_for_update().first()
+    if target is None:
+        raise NotFoundError("Staff member not found in your store.")
+    if target.id == g.current_user.id or target.role == UserRole.OWNER:
+        raise AuthorizationError("Owner and self accounts cannot be changed through team management.")
+    if g.current_user.role == UserRole.MANAGER and target.role == UserRole.MANAGER:
+        raise AuthorizationError("Managers cannot change manager accounts.")
+    fields = _staff_fields(request.get_json(silent=True))
+    _validate_staff_identifiers(fields, target.id)
+    previous = {"role": target.role.value, "is_active": target.is_active}
+    password = fields.pop("password", None)
+    try:
+        for field, value in fields.items():
+            setattr(target, field, value)
+        if password is not None:
+            target.set_password(password)
+        log_audit_event(g.current_store_id, "user", target.id, "STAFF_UPDATED", "Store staff access or profile updated", user_id=g.current_user.id, old_values=previous, new_values={"role": target.role.value, "is_active": target.is_active, "changed_fields": list(fields) + (["password_reset"] if password else [])})
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return jsonify({"message": "Staff account updated.", "user": _serialize_user(target)}), 200
+

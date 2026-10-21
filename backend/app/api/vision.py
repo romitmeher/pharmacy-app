@@ -233,6 +233,7 @@ def evaluate_handwriting():
         dataset_name=dataset_name,
         max_samples=max_samples,
         split=split,
+        store_id=g.current_store_id,
     )
 
     return jsonify({
@@ -296,7 +297,7 @@ def ocr_actual_medicines():
     max_images = data.get("max_images", 500)
 
     from app.vision.medicine_ocr_trainer import default_medicine_ocr_indexer
-    result = default_medicine_ocr_indexer.process_actual_medicine_ocr(max_images=max_images)
+    result = default_medicine_ocr_indexer.process_actual_medicine_ocr(max_images=max_images, store_id=g.current_store_id)
     return jsonify(result), 200
 
 

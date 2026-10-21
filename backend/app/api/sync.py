@@ -36,7 +36,7 @@ def get_offline_pack():
     store_id = g.current_user.store_id
     client_hash = request.args.get("hash")
 
-    pack = generate_offline_pack(store_id=store_id)
+    pack = generate_offline_pack(store_id=store_id, in_stock_only=request.args.get("in_stock_only", "false").lower() == "true")
     if client_hash and pack.get("version_hash") == client_hash:
         return jsonify({
             "status": "not_modified",

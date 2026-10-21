@@ -12,10 +12,12 @@ Strict compliance with SmartPharm PRD:
 """
 
 from dataclasses import dataclass, field
+from datetime import date
 import difflib
 import logging
 from typing import Any, Dict, List, Optional
 from sqlalchemy import or_, func
+from sqlalchemy.orm import selectinload
 
 from app.models.medicine import Medicine, MedicineAlias
 from app.models.batch import Batch
@@ -97,7 +99,7 @@ def _string_similarity(str1: Optional[str], str2: Optional[str]) -> float:
         return 0.98
 
     # Containment check
-    if s1 in s2 or s2 in s1 or (t1 and t1 in t2) or (t2 and t2 in t1):
+    if (t1 and t2) and (set(t1.split()) <= set(t2.split()) or set(t2.split()) <= set(t1.split())):
         return 0.92
 
     ratio_raw = difflib.SequenceMatcher(None, s1, s2).ratio()
@@ -136,7 +138,10 @@ class MedicineMatcher:
         """
         # Step 1: Candidate retrieval queries
         # Search candidate medicines by brand or alias
-        search_terms = []
+        names = list(dict.fromkeys([name.strip() for name in [entities.brand_name, *entities.brand_candidates] if name and name.strip()]))
+        if not names:
+            return MatchResult(None, [], True, self.PRD_LOW_CONFIDENCE_WARNING, ["Manual name search"])
+        search_terms = list(names)
         if entities.brand_name:
             search_terms.append(entities.brand_name.strip())
         if entities.manufacturer:
@@ -153,16 +158,23 @@ class MedicineMatcher:
                 conditions.append(Medicine.brand_name.ilike(like_pattern))
                 conditions.append(Medicine.generic_name.ilike(like_pattern))
                 conditions.append(Medicine.manufacturer.ilike(like_pattern))
+                conditions.append(Medicine.aliases.any(MedicineAlias.alias_name.ilike(like_pattern)))
             candidates_query = candidates_query.filter(or_(*conditions))
 
-        candidate_meds = candidates_query.limit(25).all()
+        candidate_meds = candidates_query.options(selectinload(Medicine.aliases)).limit(100).all()
 
         # If strict term query yielded no candidates, fetch wider active pool if brand is present
         if not candidate_meds and entities.brand_name:
             fallback_query = Medicine.query.filter(Medicine.is_active == True)  # noqa: E712
             if store_id:
                 fallback_query = fallback_query.filter(Medicine.store_id == store_id)
-            candidate_meds = fallback_query.limit(50).all()
+            tokens = [token for name in names for token in re.findall(r"[a-zA-Z]{4,}", name)
+                      if token.lower() not in {"tablet", "tablets", "capsule", "capsules", "injection"}]
+            if not tokens:
+                return MatchResult(None, [], True, self.PRD_LOW_CONFIDENCE_WARNING, names)
+            fallback_query = fallback_query.filter(or_(*[
+                Medicine.brand_name.ilike(f"%{token}%") for token in tokens]))
+            candidate_meds = fallback_query.options(selectinload(Medicine.aliases)).limit(50).all()
 
         scored_candidates: List[MatchCandidate] = []
 
@@ -170,10 +182,23 @@ class MedicineMatcher:
             breakdown: Dict[str, float] = {}
 
             # 1. Brand name similarity (0 - 40 pts)
-            brand_sim = _string_similarity(entities.brand_name, med.brand_name)
-            # Check aliases if any
-            alias_sims = [_string_similarity(entities.brand_name, a.alias_name) for a in med.aliases] if hasattr(med, "aliases") and med.aliases else [0.0]
-            best_name_sim = max(brand_sim, max(alias_sims, default=0.0))
+            best_name_sim = max(
+                (_string_similarity(name, target) for name in names
+                 for target in [med.brand_name, *(alias.alias_name for alias in med.aliases)]),
+                default=0.0,
+            )
+            # OCR quality, packaging colour and batch-like text are not identity.
+            if best_name_sim < 0.72:
+                continue
+            if entities.strength and med.strength:
+                detected_numbers = re.findall(r"\d+(?:\.\d+)?", entities.strength)
+                medicine_numbers = re.findall(r"\d+(?:\.\d+)?", med.strength)
+                if detected_numbers and medicine_numbers and detected_numbers != medicine_numbers:
+                    continue
+                detected_units = re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", entities.strength.lower())
+                medicine_units = re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", med.strength.lower())
+                if detected_units and medicine_units and detected_units != medicine_units:
+                    continue
             brand_pts = round(best_name_sim * 40.0, 2)
             breakdown["brand_score"] = brand_pts
 
@@ -241,15 +266,6 @@ class MedicineMatcher:
 
             # Check active inventory stock if store_id is given
             active_stock = 0
-            if store_id:
-                med_batch_ids = [b.id for b in Batch.query.filter(Batch.medicine_id == med.id, Batch.store_id == store_id).all()]
-                if med_batch_ids:
-                    inv_items = Inventory.query.filter(
-                        Inventory.batch_id.in_(med_batch_ids),
-                        Inventory.store_id == store_id,
-                    ).all()
-                    active_stock = sum(item.quantity_available for item in inv_items)
-
 
             dosage_str = med.dosage_form.value if hasattr(med.dosage_form, "value") else str(med.dosage_form or "")
 
@@ -275,6 +291,17 @@ class MedicineMatcher:
         # Sort candidates descending by confidence score
         scored_candidates.sort(key=lambda c: c.confidence_score, reverse=True)
 
+        if store_id and scored_candidates:
+            ids = [candidate.medicine_id for candidate in scored_candidates[:max_candidates]]
+            rows = (Inventory.query.with_entities(Batch.medicine_id, func.sum(Inventory.quantity_available))
+                    .join(Batch, Inventory.batch_id == Batch.id)
+                    .filter(Inventory.store_id == store_id, Batch.store_id == store_id,
+                            Batch.medicine_id.in_(ids), Batch.expiry_date >= date.today())
+                    .group_by(Batch.medicine_id).all())
+            stock = dict(rows)
+            for candidate in scored_candidates[:max_candidates]:
+                candidate.active_stock = int(stock.get(candidate.medicine_id, 0))
+
         top = scored_candidates[0] if scored_candidates else None
         alternatives = scored_candidates[1:max_candidates] if len(scored_candidates) > 1 else []
 
@@ -294,7 +321,7 @@ class MedicineMatcher:
             fallbacks.append("Manual name search")
 
         return MatchResult(
-            top_candidate=top,
+            top_candidate=None if low_confidence else top,
             alternatives=alternatives,
             low_confidence=low_confidence,
             warning_message=warning_message,

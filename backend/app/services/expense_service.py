@@ -18,7 +18,7 @@ from sqlalchemy import func
 from app.extensions import db
 from app.models.expense import Expense, ExpenseCategory, ExpensePaymentMethod
 from app.models.sale import Sale, SaleItem, PaymentStatus
-from app.models.sale_return import Return, ReturnStatus
+from app.models.sale_return import Return, ReturnStatus, RestockCondition
 from app.models.batch import Batch
 from app.services.audit_service import log_audit_event
 from app.utils.errors import ValidationError, NotFoundError
@@ -69,7 +69,7 @@ def record_expense(
         raise ValidationError("Expense amount is required.")
     try:
         amount_dec = Decimal(str(raw_amount))
-        if amount_dec <= 0:
+        if not amount_dec.is_finite() or amount_dec <= 0:
             raise ValidationError("Expense amount must be strictly greater than zero.")
     except Exception:
         raise ValidationError("Invalid numeric amount format.")
@@ -245,7 +245,7 @@ def get_store_pnl_summary(
     total_bills = len(sales)
 
     for s in sales:
-        gross_sales += Decimal(str(s.subtotal or s.total_amount))
+        gross_sales += Decimal(str(s.subtotal if s.subtotal is not None else s.total_amount))
         total_discounts += Decimal(str(s.discount_amount or 0))
 
         for item in s.items:
@@ -263,7 +263,29 @@ def get_store_pnl_summary(
     # Aggregate Returns
     total_refunds = Decimal("0.00")
     for r in returns:
-        total_refunds += Decimal(str(r.total_refund_amount or 0))
+        # Reverse the returned line's own tax, including its share of the bill
+        # discount. Invoice-average GST is wrong for mixed-rate medicine baskets.
+        line_sum = sum((Decimal(str(line.total_price)) for line in r.sale.items), Decimal("0"))
+        invoice_total = Decimal(str(r.sale.total_amount or 0))
+        for returned in r.items:
+            original = returned.sale_item
+            line_total = Decimal(str(original.total_price))
+            gross = Decimal(str(original.unit_price)) * original.quantity
+            pretax_line = gross * (1 - Decimal(str(original.discount_percentage or 0)) / 100)
+            original_tax = line_total - pretax_line
+            discounted_line = line_total * invoice_total / line_sum if line_sum > 0 else Decimal("0")
+            pretax_ratio = max(Decimal("0"), (discounted_line - original_tax) / discounted_line) if discounted_line > 0 else Decimal("0")
+            total_refunds += Decimal(str(returned.refund_amount or 0)) * pretax_ratio
+        # Only goods restored to sellable inventory reverse cost of goods sold.
+        for returned in r.items:
+            if returned.restock_condition == RestockCondition.RESTOCKED_TO_INVENTORY:
+                if returned.batch and returned.batch.purchase_price is not None:
+                    unit_cost = Decimal(str(returned.batch.purchase_price))
+                elif returned.medicine and returned.medicine.mrp:
+                    unit_cost = Decimal(str(returned.medicine.mrp)) * Decimal("0.70")
+                else:
+                    unit_cost = Decimal("0")
+                cogs -= unit_cost * returned.quantity_returned
 
     # Net Revenue
     net_revenue = gross_sales - total_discounts - total_refunds

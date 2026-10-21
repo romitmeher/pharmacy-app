@@ -61,15 +61,15 @@ export default function SalesReturnsPage() {
     try {
       const res = await getSaleReturns(1, 20);
       setRecentReturns(res.data || []);
-    } catch (err: any) {
-      setErrorMessage(err?.message || "Failed to load recent return records.");
+    } catch (err: unknown) {
+      setErrorMessage((err instanceof Error ? err.message : "") || "Failed to load recent return records.");
     } finally {
       setLoadingHistory(false);
     }
   };
 
   useEffect(() => {
-    loadHistory();
+    void Promise.resolve().then(() => loadHistory());
   }, []);
 
   // Search invoice
@@ -91,7 +91,7 @@ export default function SalesReturnsPage() {
       const data = await getEligibleReturnItems(saleId);
       setEligibleData(data);
       // Pre-fill quantities as 0
-      const initial: Record<number, any> = {};
+      const initial: typeof selectedItems = {};
       data.items.forEach((item) => {
         initial[item.sale_item_id] = {
           quantity: 0,
@@ -99,8 +99,8 @@ export default function SalesReturnsPage() {
         };
       });
       setSelectedItems(initial);
-    } catch (err: any) {
-      setErrorMessage(err?.message || "Invoice not found or ineligible for return.");
+    } catch (err: unknown) {
+      setErrorMessage((err instanceof Error ? err.message : "") || "Invoice not found or ineligible for return.");
     } finally {
       setLoadingEligible(false);
     }
@@ -175,8 +175,8 @@ export default function SalesReturnsPage() {
         setReturnReason("");
         setSaleIdInput("");
         loadHistory();
-      } catch (err: any) {
-        setErrorMessage(err?.message || "Failed to process return.");
+      } catch (err: unknown) {
+        setErrorMessage((err instanceof Error ? err.message : "") || "Failed to process return.");
       }
     });
   };
@@ -361,7 +361,7 @@ export default function SalesReturnsPage() {
                               onChange={(e) =>
                                 handleConditionChange(
                                   item.sale_item_id,
-                                  e.target.value as any
+                                  e.target.value as typeof sel.restockCondition
                                 )
                               }
                               className="form-input"

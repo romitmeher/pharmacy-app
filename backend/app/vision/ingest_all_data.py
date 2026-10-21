@@ -22,6 +22,8 @@ backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+from app.vision.data_paths import DATA_ROOT
+
 from app import create_app
 from app.extensions import db
 from app.models.medicine import Medicine, MedicineAlias, DosageForm
@@ -33,7 +35,7 @@ from app.vision.dataset_loader import parse_dosage_form_from_text, parse_strengt
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("ingest_all_data")
 
-DATA_DIR = r"c:\Users\user\Desktop\pharmacy app\data"
+DATA_DIR = str(DATA_ROOT)
 
 
 def clean_string(val: Optional[str], max_len: int = 255) -> Optional[str]:

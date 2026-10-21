@@ -36,6 +36,7 @@ def test_evaluate_dataset_samples(db, sample_store):
     assert "total_evaluated" in eval_res
     assert eval_res["total_evaluated"] == 5
     assert "medicine_catalog_resolution_rate_pct" in eval_res
+    assert all(item["character_error_rate"] == 1.0 for item in eval_res["sample_results"])
 
 
 def test_api_handwriting_endpoints(client, pharmacist_token):
@@ -59,3 +60,14 @@ def test_api_handwriting_endpoints(client, pharmacist_token):
     assert body2["status"] == "success"
     assert body2["data"]["total_evaluated"] == 3
 
+
+
+@pytest.fixture(autouse=True)
+def handwriting_dataset(tmp_path, monkeypatch):
+    """Use a tiny dataset independent of private training files."""
+    from app.vision.handwriting_evaluator import HandwritingDatasetEvaluator
+    directory = tmp_path / "RxHandBD_BDHandwritten_Merged"
+    directory.mkdir()
+    (directory / "Train").mkdir()
+    (directory / "Train.csv").write_text("Images,Labels\n" + "".join(f"sample-{i}.png,Crocin 650\n" for i in range(5)))
+    monkeypatch.setattr(HandwritingDatasetEvaluator, "DATASET_PATHS", [str(directory)])

@@ -86,7 +86,7 @@ export default function AuditPage() {
   };
 
   useEffect(() => {
-    fetchAuditData(1);
+    void Promise.resolve().then(() => fetchAuditData(1));
   }, [selectedEntity, selectedAction, startDate, endDate]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {

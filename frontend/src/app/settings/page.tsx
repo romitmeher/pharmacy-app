@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 
 import ThemeToggle from "@/components/ThemeToggle";
+import { useAuth } from "@/context/AuthContext";
+import { clearCachedPack } from "@/lib/offlineQueue";
 import {
   getStoreProfile,
   updateStoreProfile,
@@ -38,6 +40,7 @@ import {
 type SettingsTab = "store" | "user" | "pos" | "system";
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>("store");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,7 +124,7 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    loadData();
+    void Promise.resolve().then(() => loadData());
   }, []);
 
   // Save store settings
@@ -714,15 +717,19 @@ export default function SettingsPage() {
                       Clear Local Browser Cache
                     </strong>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
-                      Resets local storage cached catalog and forces fresh sync from backend API
+                      Refreshes the medicine catalog. Saved bills and your login are preserved.
                     </div>
                   </div>
 
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm("Reset local terminal cache? This will refresh your medicine catalog cache.")) {
-                        localStorage.clear();
-                        window.location.reload();
+                        try {
+                          if (user) await clearCachedPack(user);
+                          window.location.reload();
+                        } catch (error: unknown) {
+                          setStatusMessage({ type: "error", text: error instanceof Error ? error.message : "Cannot clear catalog cache." });
+                        }
                       }
                     }}
                     className="btn btn-secondary"

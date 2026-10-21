@@ -12,6 +12,7 @@ import sys
 import json
 import logging
 import datetime
+from flask import current_app, has_app_context
 from typing import Any, Dict
 
 # Ensure backend path is in sys.path
@@ -49,8 +50,8 @@ def train_all_models(store_id: int = 1) -> Dict[str, Any]:
         "results": {},
     }
 
-    app = create_app()
-    with app.app_context():
+    application = current_app._get_current_object() if has_app_context() else create_app()
+    with application.app_context():
         # 1. Train & Index Catalog Text Vector Embeddings (pgvector)
         logger.info("=== STEP 1/5: Indexing Catalog Text Vector Embeddings into Aiven PostgreSQL pgvector ===")
         try:

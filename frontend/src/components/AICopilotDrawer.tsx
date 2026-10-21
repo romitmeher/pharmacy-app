@@ -60,12 +60,12 @@ export default function AICopilotDrawer() {
             data: res,
           },
         ]);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setMessages((prev) => [
           ...prev,
           {
             sender: "copilot",
-            text: "Sorry, I encountered an issue retrieving real-time database insights: " + (err?.message || "Unknown error"),
+            text: "Sorry, I encountered an issue retrieving real-time database insights: " + ((err instanceof Error ? err.message : "") || "Unknown error"),
           },
         ]);
       }

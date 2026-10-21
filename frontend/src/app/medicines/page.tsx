@@ -118,15 +118,15 @@ export default function MedicinesCatalogPage() {
       setMedicines(res.items || []);
       setTotalCount(res.total || 0);
       setTotalPages(res.pages || 1);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load medicines from catalog.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "Failed to load medicines from catalog.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCatalog();
+    void Promise.resolve().then(() => fetchCatalog());
   }, [page, searchQuery, categoryFilter, rxFilter]);
 
   const handleOpenCreate = () => {
@@ -227,8 +227,8 @@ export default function MedicinesCatalogPage() {
           setShowCreateModal(false);
           fetchCatalog();
         }, 800);
-      } catch (err: any) {
-        setSubmitError(err?.message || "Failed to register medicine.");
+      } catch (err: unknown) {
+        setSubmitError((err instanceof Error ? err.message : "") || "Failed to register medicine.");
       }
     });
   };

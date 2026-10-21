@@ -64,15 +64,15 @@ export default function SuppliersPage() {
         search: searchQuery.trim() || undefined,
       });
       setSuppliers(res.suppliers || []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load suppliers.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "Failed to load suppliers.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadSuppliersList();
+    void Promise.resolve().then(() => loadSuppliersList());
   }, [activeFilter, searchQuery]);
 
   const handleOpenCreate = () => {
@@ -136,8 +136,8 @@ export default function SuppliersPage() {
             loadSuppliersList();
           }, 700);
         }
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to save supplier profile.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to save supplier profile.");
       }
     });
   };
@@ -148,8 +148,8 @@ export default function SuppliersPage() {
       try {
         await deleteSupplier(supId);
         loadSuppliersList();
-      } catch (err: any) {
-        alert(err?.message || "Failed to deactivate supplier.");
+      } catch (err: unknown) {
+        alert((err instanceof Error ? err.message : "") || "Failed to deactivate supplier.");
       }
     });
   };

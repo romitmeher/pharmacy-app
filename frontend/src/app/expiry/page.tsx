@@ -52,15 +52,15 @@ export default function ExpiryManagementPage() {
     try {
       const res = await getExpiryReport();
       setReport(res);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load regulatory expiry audit report.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "Failed to load regulatory expiry audit report.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadExpiryData();
+    void Promise.resolve().then(() => loadExpiryData());
   }, []);
 
   const items = report?.items || [];
@@ -117,8 +117,8 @@ export default function ExpiryManagementPage() {
           setAdjustingItem(null);
           loadExpiryData();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to adjust inventory.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to adjust inventory.");
       }
     });
   };

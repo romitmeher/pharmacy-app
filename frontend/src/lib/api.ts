@@ -5,15 +5,12 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
 
-// Standard development/demonstration JWT token for store #1 (owner/pharmacist)
-const DEFAULT_DEV_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic3RvcmVfaWQiOjEsInJvbGUiOiJvd25lciIsImlhdCI6MTc4OTYzNzY3NSwiZXhwIjoyMTA0OTk3Njc1fQ.1XVIWaxzwlZ4fth3bbJhdAsxujpyViJVAOHsDivGbf0";
-
 export function getAuthToken(): string {
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem("smartpharm_jwt_token");
     if (stored) return stored;
   }
-  return DEFAULT_DEV_TOKEN;
+  return "";
 }
 
 export function setAuthToken(token: string): void {
@@ -110,6 +107,7 @@ export interface MatchResult {
 }
 
 export interface RecognitionPipelineResponse {
+  photo_model?: { status: string; agrees_with_ocr: boolean; experimental: boolean; device: string } | null;
   success: boolean;
   quality: QualityAssessment;
   detection: DetectionResult | null;
@@ -397,7 +395,7 @@ export async function verifyPhysicalDelivery(
  */
 export async function confirmDelivery(
   payload: ConfirmDeliveryPayload
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE_URL}/api/distributor/confirm-delivery`, {
     method: "POST",
@@ -423,7 +421,7 @@ export interface GroundedFact {
   category: string;
   record_id: number | null;
   summary: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
 }
 
 export interface CopilotResponseData {
@@ -447,8 +445,8 @@ export interface AIInteractionRecord {
   user_query: string;
   detected_intent?: string | null;
   response_text: string;
-  retrieved_context?: Record<string, any> | null;
-  citations?: any[] | null;
+  retrieved_context?: Record<string, unknown> | null;
+  citations?: unknown[] | null;
   latency_ms?: number | null;
   is_helpful?: boolean | null;
   feedback_notes?: string | null;
@@ -1132,27 +1130,7 @@ export interface OfflineQueueItem {
   client_tx_id: string;
   client_timestamp: string;
   tx_type: string;
-  sale_data: {
-    items: Array<{
-      medicine_id: number;
-      batch_id: number;
-      medicine_name?: string;
-      batch_number?: string;
-      quantity: number;
-      discount_percentage?: number;
-      unit_price?: number;
-    }>;
-    payments: Array<{
-      payment_method: string;
-      amount: number;
-      transaction_reference?: string;
-    }>;
-    customer?: {
-      name?: string;
-      phone?: string;
-    };
-    notes?: string;
-  };
+  sale_data: CreateSalePayload;
 }
 
 export interface SyncReplayResult {
@@ -1204,8 +1182,11 @@ export interface SyncStatusSummary {
  */
 export async function getOfflinePack(hash?: string): Promise<{ status: string; data?: OfflinePackData; version_hash?: string }> {
   const token = getAuthToken();
-  const url = hash ? `${API_BASE_URL}/api/sync/offline-pack?hash=${encodeURIComponent(hash)}` : `${API_BASE_URL}/api/sync/offline-pack`;
+  const query = new URLSearchParams({ in_stock_only: "true" });
+  if (hash) query.set("hash", hash);
+  const url = `${API_BASE_URL}/api/sync/offline-pack?${query}`;
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(90000),
     headers: { Authorization: `Bearer ${token}` },
   });
   const json = await res.json();
@@ -1957,7 +1938,7 @@ export async function adjustStock(
  */
 export async function transferStock(
   payload: TransferStockPayload
-): Promise<{ message: string; [key: string]: any }> {
+): Promise<{ message: string; [key: string]: unknown }> {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE_URL}/api/inventory/transfer`, {
     method: "POST",
@@ -2368,7 +2349,10 @@ export async function acceptPurchaseInvoice(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(payload || {}),
+    body: JSON.stringify({
+      default_location_id: payload?.location_id,
+      items: payload?.received_items,
+    }),
   });
   const json = await res.json();
   if (!res.ok) {
@@ -2550,8 +2534,8 @@ export interface AuditLogEntry {
   entity_type: string;
   entity_id: string;
   action: string;
-  old_values: Record<string, any>;
-  new_values: Record<string, any>;
+  old_values: Record<string, unknown>;
+  new_values: Record<string, unknown>;
   reason: string;
   ip_address?: string | null;
   created_at: string;

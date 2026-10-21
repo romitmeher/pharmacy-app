@@ -66,7 +66,7 @@ def _setup_sale_for_return(client, owner_token):
             "payments": [
                 {
                     "payment_method": "cash",
-                    "amount": 900.0,
+                    "amount": 1000.0,
                 }
             ],
         },

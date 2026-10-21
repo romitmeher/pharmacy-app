@@ -328,3 +328,54 @@ def test_api_pharmacist_verify(client, pharmacist_token, vision_seed_data):
     assert data["batch_number"] == "CRO-2026-X1"
     assert data["is_existing_batch"] is True
     assert data["verified_quantity"] == 2
+
+
+def test_missing_ocr_identity_never_returns_arbitrary_medicine(vision_seed_data):
+    from app.vision.extractor import ExtractedEntities
+    result = default_medicine_matcher.match(
+        ExtractedEntities(batch_number="ABC123", confidence=0.99),
+        store_id=vision_seed_data["store"].id)
+    assert result.low_confidence
+    assert result.top_candidate is None
+
+
+def test_conflicting_strength_is_not_a_packaging_match(vision_seed_data):
+    from app.vision.extractor import ExtractedEntities
+    result = default_medicine_matcher.match(
+        ExtractedEntities(brand_name="Crocin 650", strength="150 mg", confidence=0.99),
+        store_id=vision_seed_data["store"].id)
+    assert result.low_confidence
+    assert result.top_candidate is None
+
+
+def test_strength_units_cannot_be_interchanged(vision_seed_data):
+    from app.vision.extractor import ExtractedEntities
+    result = default_medicine_matcher.match(
+        ExtractedEntities(brand_name="Crocin 650", strength="650mcg", confidence=0.99),
+        store_id=vision_seed_data["store"].id)
+    assert result.top_candidate is None
+
+
+def test_alias_retrieval_does_not_depend_on_first_fifty_medicines(vision_seed_data, db):
+    from app.vision.extractor import ExtractedEntities
+    med = vision_seed_data["medicine"]
+    db.session.add(MedicineAlias(medicine_id=med.id, alias_name="SpecialScanBrand"))
+    db.session.commit()
+    result = default_medicine_matcher.match(
+        ExtractedEntities(brand_name="SpecialScanBrand", strength="650 mg", confidence=0.99),
+        store_id=vision_seed_data["store"].id)
+    assert result.top_candidate.medicine_id == med.id
+
+
+def test_partial_word_is_not_a_strong_brand_match():
+    from app.vision.matcher import _string_similarity
+    assert _string_similarity("art", "paracetamol") < 0.72
+
+
+def test_white_product_background_is_not_foil_glare():
+    image = np.full((400, 400, 3), 255, dtype=np.uint8)
+    cv2.rectangle(image, (100, 80), (300, 320), (170, 180, 200), -1)
+    cv2.putText(image, "MEDICINE", (105, 200), cv2.FONT_HERSHEY_SIMPLEX, .7, (0, 0, 0), 2)
+    quality = assess_image_quality(image)
+    assert quality.is_acceptable
+    assert not quality.is_glare

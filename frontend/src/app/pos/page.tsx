@@ -1,35 +1,36 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
-import Link from "next/link";
+import Image from "next/image";
+import React, { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import {
   ShoppingBag,
-  Package,
-  Bookmark,
   CheckCircle2,
   AlertTriangle,
-  FileText,
-  CreditCard,
-  User,
-  Percent,
   Search,
   Plus,
   Minus,
   Trash2,
   Printer,
   Receipt,
-  RotateCcw,
   X,
   History,
   Camera,
   Upload,
+  Mic,
 } from "lucide-react";
 
+import { startSpeechRecognition, isSpeechRecognitionSupported, SpeechController } from "@/lib/speechRecognition";
+import { useAuth } from "@/context/AuthContext";
+import { catalogFromPack, getCachedPack, getPendingQueue, refreshOfflineCatalog, reserveOfflineSale, recordSyncResults, QueuedSale } from "@/lib/offlineQueue";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
-  getMedicines,
-  getBatches,
-  createSale,
+  getAuthToken,
+  getOfflinePack,
+  getSyncStatus,
+  resolveSyncConflict,
+  SyncConflictItem,
+  replaySyncQueue,
+  getSale,
   getSales,
   recognizeMedicine,
   Medicine,
@@ -49,10 +50,29 @@ interface CartItem {
 }
 
 export default function POSTerminalPage() {
+  const { user, token } = useAuth();
+  const [online, setOnline] = useState(true);
+  const [queue, setQueue] = useState<QueuedSale[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncBusy = useRef(false);
+  const checkoutBusy = useRef(false);
+  const [serverConflicts, setServerConflicts] = useState<SyncConflictItem[]>([]);
+  const [conflictNotes, setConflictNotes] = useState<Record<number, string>>({});
+  const [resolvingId, setResolvingId] = useState<number | null>(null);
+  const [listening, setListening] = useState(false);
+  const speech = useRef<SpeechController | null>(null);
+  const canResolveConflicts = user?.role === "owner" || user?.role === "manager";
+
+
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [batches, setBatches] = useState<BatchItem[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  const assertCurrentSession = useCallback(() => {
+    if (!token || getAuthToken() !== token) throw new Error("The signed-in account changed in another tab. Reload before billing or syncing.");
+  }, [token]);
 
   // POS Cart State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -89,8 +109,8 @@ export default function POSTerminalPage() {
       try {
         const res = await recognizeMedicine(base64);
         setCvResult(res);
-      } catch (err: any) {
-        setErrorMessage(err?.message || "Failed to process packaging image.");
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : "Failed to process packaging image.");
       } finally {
         setCvRecognizing(false);
       }
@@ -99,10 +119,14 @@ export default function POSTerminalPage() {
   };
 
   const handleAddCvMatchedMedicine = (medId: number) => {
+    if (cvResult?.match_result?.low_confidence || cvResult?.match_result?.top_candidate?.medicine_id !== medId) return;
     const med = medicines.find((m) => m.id === medId);
     if (med) {
       handleAddToCart(med);
       setSuccessMessage(`Verified & Added ${med.brand_name} to cart via Camera Recognition.`);
+      setShowCameraModal(false);
+    } else {
+      setErrorMessage("This medicine has no available stock in the current catalog. Refresh stock or select another medicine.");
       setShowCameraModal(false);
     }
   };
@@ -111,26 +135,132 @@ export default function POSTerminalPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Load medicines & stock batches
-  const loadCatalog = async () => {
+  const showCachedCatalog = useCallback(async () => {
+    if (!user) return;
+    const records = getPendingQueue(user);
+    setQueue(records);
+    const pack = await getCachedPack(user);
+    if (pack) {
+      const catalog = catalogFromPack(pack, records);
+      setMedicines(catalog.medicines);
+      setBatches(catalog.batches);
+      return true;
+    }
+    setMedicines([]);
+    setBatches([]);
+    return false;
+  }, [user]);
+
+  const loadCatalog = useCallback(async () => {
+    if (!user) return;
     setLoadingCatalog(true);
+    let downloadedCatalog: ReturnType<typeof catalogFromPack> | null = null;
     try {
-      const [medRes, batchRes] = await Promise.all([
-        getMedicines({ per_page: 100 }),
-        getBatches({ has_stock: true }),
-      ]);
-      setMedicines(medRes.items || []);
-      setBatches(batchRes.batches || []);
-    } catch (err: any) {
-      setErrorMessage(err?.message || "Failed to load medicine catalog.");
+      assertCurrentSession();
+      if (!navigator.onLine) {
+        if (!(await showCachedCatalog())) setErrorMessage("Connect once to download this account's medicine catalog before offline billing.");
+        return;
+      }
+      await refreshOfflineCatalog(user, async () => {
+        const response = await getOfflinePack();
+        if (!response.data) throw new Error("No catalog snapshot was returned.");
+        downloadedCatalog = catalogFromPack(response.data, getPendingQueue(user));
+        return response.data;
+      });
+      await showCachedCatalog();
+      setErrorMessage(null);
+      setSyncError(null);
+    } catch (error) {
+      if (downloadedCatalog) {
+        const loaded = downloadedCatalog as ReturnType<typeof catalogFromPack>;
+        setMedicines(loaded.medicines);
+        setBatches(loaded.batches);
+        setErrorMessage("Catalog loaded online, but offline storage is unavailable. Retry sync before billing.");
+        setSyncError(error instanceof Error ? error.message : "Offline catalog could not be saved.");
+        return;
+      }
+      try {
+        if (!(await showCachedCatalog())) setErrorMessage("Connect once to download this account's medicine catalog before offline billing.");
+      } catch (cacheError) {
+        setErrorMessage(cacheError instanceof Error ? cacheError.message : "Cannot read the offline catalog.");
+      }
+      if (!(error instanceof TypeError)) setSyncError(error instanceof Error ? error.message : "Catalog refresh failed.");
     } finally {
       setLoadingCatalog(false);
     }
-  };
+  }, [user, showCachedCatalog, assertCurrentSession]);
+
+  const syncQueuedSales = useCallback(async () => {
+    if (!user || syncBusy.current || !navigator.onLine) return;
+    syncBusy.current = true;
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      assertCurrentSession();
+      const pending = getPendingQueue(user).filter((item) => item.sync_status !== "synced");
+      const summary = pending.length ? await replaySyncQueue(pending) : null;
+      if (summary) {
+        recordSyncResults(user, summary.results);
+        const confirmed = summary.results.filter((result) => result.status === "synced" || result.status === "already_synced");
+        if (confirmed.length) setSuccessMessage(`${confirmed.length} saved bill${confirmed.length === 1 ? "" : "s"} confirmed and synchronized.`);
+      }
+      await loadCatalog();
+      try { setServerConflicts((await getSyncStatus()).recent_conflicts); }
+      catch { /* Health refresh can retry separately; confirmed sale outcomes remain available. */ }
+      return summary;
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Sync failed. Local sales are preserved.");
+    } finally {
+      try { await showCachedCatalog(); }
+      catch (error) { setSyncError(error instanceof Error ? error.message : "Cannot read the local sales ledger."); }
+      syncBusy.current = false;
+      setSyncing(false);
+    }
+  }, [user, loadCatalog, showCachedCatalog, assertCurrentSession]);
 
   useEffect(() => {
-    loadCatalog();
-  }, []);
+    const onOnline = () => { setOnline(true); void syncQueuedSales(); };
+    const onOffline = () => setOnline(false);
+    const onStorage = () => { void showCachedCatalog().catch((error: unknown) => setSyncError(error instanceof Error ? error.message : "Cannot read catalog.")); };
+    queueMicrotask(() => { setOnline(navigator.onLine); if (navigator.onLine) void syncQueuedSales(); else void loadCatalog(); });
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [loadCatalog, syncQueuedSales, showCachedCatalog]);
+
+  const handleResolveConflict = async (conflict: SyncConflictItem) => {
+    const explanation = (conflictNotes[conflict.id] || "").trim();
+    if (!explanation) { setSyncError("Enter manager notes explaining the stock correction before retrying."); return; }
+    setResolvingId(conflict.id);
+    setSyncError(null);
+    try {
+      assertCurrentSession();
+      const result = await resolveSyncConflict(conflict.id, "MANUAL_INVENTORY_ADJUSTED", explanation);
+      if (result.status !== "synced" && result.status !== "already_synced") setSyncError(result.message || "The sale still requires review.");
+      await syncQueuedSales();
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Could not reconcile the sale.");
+    } finally { setResolvingId(null); }
+  };
+
+  const handleVoiceSearch = () => {
+    if (speech.current) { speech.current.abort(); speech.current = null; setListening(false); return; }
+    if (!isSpeechRecognitionSupported()) { setErrorMessage("Voice search is unavailable in this browser. Type the medicine name instead."); return; }
+    setListening(true);
+    speech.current = startSpeechRecognition(
+      (transcript) => { setSearchQuery(transcript); setSuccessMessage(`Voice search: ${transcript}. Review the results and choose a medicine to add.`); },
+      (message) => { setErrorMessage(message); setListening(false); speech.current = null; },
+      () => { setListening(false); speech.current = null; },
+    );
+    if (!speech.current) setListening(false);
+  };
+
+  useEffect(() => () => { speech.current?.abort(); }, []);
 
   // Filter medicines based on search
   const filteredMedicines = medicines.filter((m) => {
@@ -151,8 +281,19 @@ export default function POSTerminalPage() {
 
   // Add item to cart (Automatic FEFO Batch candidate selection)
   const handleAddToCart = (medicine: Medicine) => {
-    const totalStock = getMedicineStock(medicine.id);
-    const existing = cart.find((item) => item.medicine.id === medicine.id);
+    const medBatches = batches
+      .filter((batch) => batch.medicine_id === medicine.id && batch.total_available > 0)
+      .sort((a, b) => a.expiry_date.localeCompare(b.expiry_date));
+    const fefoBatch = medBatches.find((batch) => {
+      const inCart = cart.filter((item) => item.batch?.id === batch.id).reduce((sum, item) => sum + item.quantity, 0);
+      return batch.total_available > inCart;
+    });
+    const totalStock = fefoBatch?.total_available || 0;
+    if (!fefoBatch || totalStock <= 0) {
+      setErrorMessage(`No unexpired stock is available for ${medicine.brand_name}.`);
+      return;
+    }
+    const existing = cart.find((item) => item.medicine.id === medicine.id && item.batch?.id === fefoBatch.id);
 
     if (existing) {
       if (existing.quantity >= totalStock && totalStock > 0) {
@@ -161,18 +302,12 @@ export default function POSTerminalPage() {
       }
       setCart(
         cart.map((item) =>
-          item.medicine.id === medicine.id
+          item.medicine.id === medicine.id && item.batch?.id === fefoBatch.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       );
     } else {
-      // Find earliest expiring batch for this medicine
-      const medBatches = batches
-        .filter((b) => b.medicine_id === medicine.id && b.total_available > 0)
-        .sort((a, b) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
-
-      const fefoBatch = medBatches[0];
       const unitPrice = fefoBatch?.mrp || medicine.selling_price || medicine.mrp || 0;
 
       setCart([
@@ -222,7 +357,7 @@ export default function POSTerminalPage() {
   );
 
   const itemDiscounts = cart.reduce(
-    (sum, item) => sum + (item.unit_price * item.quantity * (item.discount_pct / 100)),
+    (sum, item) => sum + Math.round(item.unit_price * item.quantity * item.discount_pct) / 100,
     0
   );
 
@@ -230,9 +365,10 @@ export default function POSTerminalPage() {
 
   // Simplified tax calculation matching medicine GST or standard 12%
   const estimatedTax = cart.reduce((sum, item) => {
-    const itemNet = (item.unit_price * item.quantity) * (1 - item.discount_pct / 100);
-    const taxRate = item.medicine.gst_percentage || 12;
-    return sum + (itemNet * (taxRate / 100));
+    const gross = item.unit_price * item.quantity;
+    const itemNet = gross - Math.round(gross * item.discount_pct) / 100;
+    const taxRate = item.medicine.gst_percentage ?? 0;
+    return sum + Math.round(itemNet * taxRate) / 100;
   }, 0);
 
   const grandTotal = Math.max(0, grossSubtotal - totalDiscount + estimatedTax);
@@ -242,6 +378,7 @@ export default function POSTerminalPage() {
 
   // Process Checkout
   const handleCheckout = () => {
+    if (checkoutBusy.current || !user) return;
     if (cart.length === 0) {
       setErrorMessage("Cart is empty. Please add items to bill.");
       return;
@@ -255,8 +392,17 @@ export default function POSTerminalPage() {
     }
 
     setErrorMessage(null);
+    checkoutBusy.current = true;
     startTransition(async () => {
       try {
+        assertCurrentSession();
+        const currentCatalog = await getCachedPack(user);
+        if (!currentCatalog) throw new Error("Download a catalog before billing.");
+        const latest = catalogFromPack(currentCatalog, getPendingQueue(user));
+        for (const item of cart) {
+          const stock = latest.batches.find((batch) => batch.id === item.batch?.id);
+          if (!stock || stock.total_available < item.quantity) throw new Error(`Stock changed for ${item.medicine.brand_name}. Refresh the cart.`);
+        }
         const payload: CreateSalePayload = {
           customer: {
             name: customerName.trim() || "Walk-in Customer",
@@ -279,9 +425,14 @@ export default function POSTerminalPage() {
           notes: notes.trim() || undefined,
         };
 
-        const res = await createSale(payload);
-        setRecentReceipt(res.sale);
-        setSuccessMessage(`Invoice ${res.sale.invoice_number} generated successfully!`);
+        const clientTxId = crypto.randomUUID();
+        await reserveOfflineSale(user, {
+          client_tx_id: clientTxId, client_timestamp: new Date().toISOString(),
+          tx_type: "OFFLINE_SALE", sale_data: payload,
+        });
+        try { await showCachedCatalog(); }
+        catch { setSyncError("Bill saved. Catalog refresh is unavailable; retry sync before the next bill."); }
+        setSuccessMessage(`Sale ${clientTxId.slice(0, 8)} saved on this terminal, awaiting server confirmation. Keep browser data until synchronized.`);
 
         // Reset cart
         setCart([]);
@@ -292,10 +443,22 @@ export default function POSTerminalPage() {
         setOrderDiscount(0);
         setNotes("");
 
-        // Refresh stock in background
-        loadCatalog();
-      } catch (err: any) {
-        setErrorMessage(err?.message || "Failed to complete transaction.");
+        const summary = await syncQueuedSales();
+        const result = summary?.results.find((item) => item.client_tx_id === clientTxId);
+        if (result?.status === "synced" || result?.status === "already_synced") {
+          setSuccessMessage(`Invoice ${result.invoice_number || result.applied_sale_id} confirmed and synchronized.`);
+          if (result.applied_sale_id) {
+            try { setRecentReceipt((await getSale(result.applied_sale_id)).sale); }
+            catch { /* Receipt fetch failure does not invalidate the confirmed sale. */ }
+          }
+        } else if (result) {
+          setSuccessMessage(null);
+          setErrorMessage(`Sale requires review: ${result.conflict_reason || result.error || result.message}. It remains in the terminal ledger below.`);
+        }
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : "Failed to complete transaction.");
+      } finally {
+        checkoutBusy.current = false;
       }
     });
   };
@@ -306,7 +469,7 @@ export default function POSTerminalPage() {
     try {
       const res = await getSales({ per_page: 25 });
       setSalesHistory(res.items || []);
-    } catch (err: any) {
+    } catch {
       setErrorMessage("Failed to load invoice history.");
     } finally {
       setLoadingHistory(false);
@@ -330,6 +493,9 @@ export default function POSTerminalPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <ThemeToggle />
+          <button className="btn btn-secondary" onClick={handleVoiceSearch} aria-pressed={listening}>
+            <Mic size={15} /> {listening ? "Stop listening" : "Voice search"}
+          </button>
           <button
             onClick={() => {
               setCvResult(null);
@@ -365,6 +531,32 @@ export default function POSTerminalPage() {
         </div>
       </header>
 
+      <section aria-label="Terminal synchronization" style={{ margin: "1rem 1.5rem 0", padding: "1rem", border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center" }}>
+          <span role="status">{online ? "Online" : "Offline — using this account's saved catalog"} · {queue.length} local sale{queue.length === 1 ? "" : "s"} awaiting synchronization or review</span>
+          <button className="btn btn-secondary" disabled={!online || syncing} onClick={() => void syncQueuedSales()}>{syncing ? "Synchronizing…" : "Sync now"}</button>
+        </div>
+        {syncError && <p role="alert" style={{ color: "var(--status-med-text)", marginTop: "0.5rem" }}>{syncError} Local records are preserved.</p>}
+        {queue.length > 0 && <details style={{ marginTop: "0.75rem" }}><summary>Review local sales</summary>
+          <p style={{ fontSize: "0.8rem", margin: "0.5rem 0" }}>Pending sales retry automatically on reconnection. Conflicts require a manager to reconcile the server sync record; do not recreate the sale.</p>
+          <ul>{queue.map((item) => <li key={item.client_tx_id} style={{ marginTop: "0.5rem", overflowWrap: "anywhere" }}>
+            {item.client_tx_id} · {new Date(item.client_timestamp).toLocaleString()} · {item.sync_status === "synced" ? "Confirmed; catalog refresh pending" : item.sync_status}
+            {item.sync_message && ` — ${item.sync_message}`}
+          </li>)}</ul>
+        </details>}
+        {canResolveConflicts && serverConflicts.length > 0 && <details style={{ marginTop: "0.75rem" }}>
+          <summary>Manager review: {serverConflicts.length} recent server conflict{serverConflicts.length === 1 ? "" : "s"}</summary>
+          {serverConflicts.map((conflict) => <div key={conflict.id} style={{ borderTop: "1px solid var(--border-default)", marginTop: "0.75rem", paddingTop: "0.75rem" }}>
+            <p style={{ overflowWrap: "anywhere" }}>{conflict.client_tx_id} — {conflict.conflict_reason}</p>
+            <p style={{ fontSize: "0.8rem", margin: "0.5rem 0" }}>Correct stock or catalog data in Inventory first, then retry the original sale. A new invoice is created only if the retry succeeds.</p>
+            <label htmlFor={`conflict-note-${conflict.id}`}>Manager reconciliation notes</label>
+            <input id={`conflict-note-${conflict.id}`} className="form-input" value={conflictNotes[conflict.id] || ""} onChange={(event) => setConflictNotes((previous) => ({ ...previous, [conflict.id]: event.target.value }))} />
+            <button className="btn btn-secondary" style={{ marginTop: "0.5rem" }} disabled={resolvingId !== null || syncing || !online || !(conflictNotes[conflict.id] || "").trim()} onClick={() => void handleResolveConflict(conflict)}>
+              {resolvingId === conflict.id ? "Retrying…" : "Retry after stock correction"}
+            </button>
+          </div>)}
+        </details>}
+      </section>
       {/* Main Terminal View */}
       <div
         className="page-body"
@@ -1107,7 +1299,10 @@ export default function POSTerminalPage() {
                 />
 
                 {cvImagePreview ? (
-                  <img
+                  <Image
+                    width={360}
+                    height={180}
+                    unoptimized
                     src={cvImagePreview}
                     alt="Packaging preview"
                     style={{ maxHeight: "180px", borderRadius: "var(--radius-sm)", margin: "0 auto", objectFit: "contain" }}
@@ -1128,7 +1323,7 @@ export default function POSTerminalPage() {
               {/* Status / OCR Pipeline Output */}
               {cvRecognizing && (
                 <div style={{ textAlign: "center", padding: "1.5rem 0", color: "var(--brand-primary)", fontSize: "0.875rem" }}>
-                  Running OpenCV packaging detection & PaddleOCR text extraction...
+                  Reading packaging text and checking medicine matches...
                 </div>
               )}
 
@@ -1154,7 +1349,7 @@ export default function POSTerminalPage() {
                   </div>
 
                   {/* Recognition Match Candidate */}
-                  {cvResult.match_result?.top_candidate ? (
+                  {cvResult.match_result?.top_candidate && !cvResult.match_result.low_confidence ? (
                     <div
                       style={{
                         padding: "1rem",
@@ -1181,11 +1376,18 @@ export default function POSTerminalPage() {
                             cvResult.match_result.top_candidate.confidence_level === "HIGH" ? "high" : "med"
                           }`}
                         >
-                          {(cvResult.match_result.top_candidate.confidence_score * 100).toFixed(0)}% Confidence
+                          {Math.max(0, Math.min(100, cvResult.match_result.top_candidate.confidence_score)).toFixed(0)}% match score
                         </span>
                       </div>
 
                       {/* Human Verification Notice */}
+                      {cvResult.photo_model && (
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                          {cvResult.photo_model.agrees_with_ocr
+                            ? "Photo model supports the text match. Confirm the name and strength on the pack."
+                            : "Photo model could not confirm this text match. Check the pack carefully."}
+                        </div>
+                      )}
                       <div
                         style={{
                           fontSize: "0.6875rem",
@@ -1211,6 +1413,15 @@ export default function POSTerminalPage() {
                   ) : (
                     <div style={{ textAlign: "center", padding: "1rem", color: "var(--status-low-text)", fontSize: "0.8125rem" }}>
                       Unable to confidently identify this medicine. Capture another image or search manually.
+                      {cvResult.ocr?.full_text && (
+                        <div style={{ marginTop: "0.75rem", color: "var(--text-secondary)", whiteSpace: "pre-wrap", maxHeight: "120px", overflowY: "auto" }}>
+                          Text read from packaging: {cvResult.ocr.full_text}
+                        </div>
+                      )}
+                      <button className="btn btn-secondary" style={{ marginTop: "0.75rem" }} onClick={() => {
+                        setSearchQuery(cvResult.extracted_entities?.brand_name || "");
+                        setShowCameraModal(false);
+                      }}>Search catalog manually</button>
                     </div>
                   )}
                 </div>

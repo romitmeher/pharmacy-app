@@ -20,6 +20,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from app.extensions import db
+from app.services.stock_lock import lock_stores
 from app.models.location import Location
 from app.models.inventory import Inventory
 from app.models.batch import Batch
@@ -113,6 +114,8 @@ class ShelfCycleCountEngine:
         apply_adjustments: bool = False,
         notes: Optional[str] = None,
     ) -> ShelfAuditReport:
+        # Preview uses locking inventory reads too, so it follows the same order.
+        lock_stores(store_id)
         location = Location.query.filter_by(id=location_id, store_id=store_id).first()
         loc_name = location.name if location else f"Location #{location_id}"
 
@@ -126,6 +129,7 @@ class ShelfCycleCountEngine:
                 Inventory.location_id == location_id,
                 Inventory.quantity_available > 0,
             )
+            .populate_existing().with_for_update()
             .all()
         )
 
@@ -196,6 +200,7 @@ class ShelfCycleCountEngine:
                         new_quantity=scanned_qty,
                         reason=f"Shelf Cycle Count Audit: {notes or 'Physical shelf variance reconciliation'}",
                         user_id=user_id,
+                        commit=False,
                     )
                     reconciled = True
 
@@ -255,6 +260,9 @@ class ShelfCycleCountEngine:
                 new_values={"net_variance_units": net_variance, "net_financial_variance": net_financial_variance},
                 user_id=user_id,
             )
+
+        if apply_adjustments:
+            db.session.commit()
 
         return ShelfAuditReport(
             location_id=location_id,

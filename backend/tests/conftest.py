@@ -158,3 +158,19 @@ def inventory_staff_token(sample_inventory_staff):
     """Generate a JWT token for the inventory staff."""
     from app.services.auth_service import create_access_token
     return create_access_token(sample_inventory_staff)
+
+
+@pytest.fixture(autouse=True)
+def isolate_optional_cloud_services(monkeypatch):
+    """Unit tests never use optional cloud services from the developer's .env."""
+    monkeypatch.setenv("PGVECTOR_URL", "")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+
+
+@pytest.fixture(autouse=True)
+def isolate_model_downloads(monkeypatch):
+    """Exercise deterministic fallbacks; unit tests never download OCR/detection models."""
+    from app.vision.ocr_engine import OCREngine
+    from app.vision import detector
+    monkeypatch.setattr(OCREngine, "_get_engine", lambda self: None)
+    monkeypatch.setattr(detector, "get_detector_model", lambda: False)

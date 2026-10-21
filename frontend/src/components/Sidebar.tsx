@@ -17,6 +17,8 @@ import {
   Settings,
   LogOut,
   RotateCcw,
+  Wallet,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -24,6 +26,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ComponentType<{ size?: number }>;
+  roles?: string[];
 }
 
 interface NavSection {
@@ -65,6 +68,9 @@ const navSections: NavSection[] = [
   {
     title: "Governance",
     items: [
+      { label: "Expenses & Profit", href: "/expenses", icon: Wallet, roles: ["owner", "manager"] },
+      { label: "Branches & Transfers", href: "/branches", icon: Building2, roles: ["owner", "manager"] },
+      { label: "Team & Access", href: "/team", icon: Users, roles: ["owner", "manager"] },
       { label: "Audit Trail", href: "/audit", icon: CheckCircle2 },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
@@ -183,7 +189,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div key={section.title}>
             <div className="sidebar-section-title">{section.title}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              {section.items.map((item) => {
+              {section.items.filter((item) => !item.roles || item.roles.includes(user?.role ?? "")).map((item) => {
                 const isActive =
                   item.href === "/"
                     ? pathname === "/"

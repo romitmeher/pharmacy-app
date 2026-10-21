@@ -103,7 +103,18 @@ def assess_image_quality(
         issues.append("Image is too dark. Please position packaging under better lighting.")
 
     # 3. Specular Glare (common on metallic / blister foil)
-    glare_pixels = np.sum(gray >= 250)
+    highlights = (gray >= 250).astype(np.uint8)
+    # Product photos often have a white studio background. Border-connected
+    # white regions are background, not evidence of glare on the package.
+    _, regions = cv2.connectedComponents(highlights, connectivity=8)
+    edges = (regions[0], regions[-1], regions[:, 0], regions[:, -1])
+    border_regions = np.unique(np.concatenate(edges))
+    # A studio background wraps around the product on at least three sides.
+    # A localized highlight that reaches one corner must still count as glare.
+    background_ids = [label for label in border_regions if label != 0
+                      and sum(np.mean(edge == label) > 0.5 for edge in edges) >= 3]
+    background = np.isin(regions, background_ids)
+    glare_pixels = np.sum((highlights != 0) & ~background)
     total_pixels = h * w
     glare_ratio = float(glare_pixels / total_pixels) if total_pixels > 0 else 0.0
     is_glare = glare_ratio > max_glare_ratio

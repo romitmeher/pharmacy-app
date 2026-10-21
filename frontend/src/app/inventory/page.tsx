@@ -87,15 +87,15 @@ export default function InventoryPage() {
       setBatches(batchRes.batches || []);
       setMedicines(medRes.items || []);
       setLocations(locRes.locations || []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load inventory batches.");
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "") || "Failed to load inventory batches.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    void Promise.resolve().then(() => loadData());
   }, []);
 
   // Filtered Batches
@@ -175,8 +175,8 @@ export default function InventoryPage() {
           setShowInwardModal(false);
           loadData();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to create batch.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to create batch.");
       }
     });
   };
@@ -218,8 +218,8 @@ export default function InventoryPage() {
           setAdjustItem(null);
           loadData();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to adjust stock.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to adjust stock.");
       }
     });
   };
@@ -261,8 +261,8 @@ export default function InventoryPage() {
           setTransferBatch(null);
           loadData();
         }, 800);
-      } catch (err: any) {
-        setActionError(err?.message || "Failed to transfer stock.");
+      } catch (err: unknown) {
+        setActionError((err instanceof Error ? err.message : "") || "Failed to transfer stock.");
       }
     });
   };

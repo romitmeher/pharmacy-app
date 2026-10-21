@@ -26,3 +26,10 @@ node_modules/
 out/
 build/
 dist/
+
+# Share templates, never real environment files.
+!**/.env.example
+backend/instance/
+backend/.venv-training/
+*.tsbuildinfo
+.eslint-*.json

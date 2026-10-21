@@ -104,6 +104,7 @@ def cancel_purchase(invoice_id):
         store_id=g.current_store_id,
         invoice_id=invoice_id,
         reason=reason,
+        user_id=g.current_user.id,
     )
     return jsonify({
         "message": f"Purchase invoice {invoice.invoice_number} cancelled.",

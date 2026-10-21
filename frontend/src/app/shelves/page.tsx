@@ -121,7 +121,7 @@ export default function ShelvesPage() {
   };
 
   useEffect(() => {
-    loadData();
+    void Promise.resolve().then(() => loadData());
   }, []);
 
   // Handle Fast Dispense Locate
