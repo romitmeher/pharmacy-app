@@ -12,6 +12,7 @@ import sqlite3
 import sys
 
 from demo_environment import demo_app, DEMO_ROOT
+from demo_credentials import get_demo_credentials
 from app.extensions import db
 from app.models.store import Store
 from app.models.user import User, UserRole
@@ -67,7 +68,7 @@ def export_batches(app):
 
 Start `start_demo.ps1` from the project folder, then open http://localhost:3000.
 
-Login: **owner@demo.test** / **DemoPharm@2026**. Other accounts: pharmacist@demo.test, cashier@demo.test, inventory_staff@demo.test (same demo password).
+Login: **owner@demo.test**. Read the installation-specific password from **backend/instance/demo-credentials.json** on this computer. Other demo accounts use the same local password. Never include this credential file in a shared scan pack.
 
 This demo uses its own SQLite database and ports 5000/3000. It does not seed or overwrite your normal store. It includes purchase receipts, stock across multiple batches and shelves, sales, expenses, low stock, near-expiry and expired stock examples. Prices, supplier identities, dates, quantities and barcode assignments are fictional demo data, not market quotations or manufacturer identifiers.
 
@@ -95,7 +96,7 @@ def main():
         store = Store(name="SmartPharm Demo — Koramangala", address="Demo address: 24, 5th Block, Bengaluru 560095",
                       phone="0000000000", email="demo@example.test")
         db.session.add(store); db.session.flush()
-        password = "DemoPharm@2026"
+        password = get_demo_credentials()["password"]
         users = []
         for role, name in [(UserRole.OWNER, "Ananya Rao"), (UserRole.PHARMACIST, "Rahul Mehta"),
                            (UserRole.CASHIER, "Priya Nair"), (UserRole.INVENTORY_STAFF, "Arjun Shah")]:
@@ -207,7 +208,7 @@ def main():
         manifest = {"demo_only": True, "created": today.isoformat(), "store": store.name,
             "medicines": len(medicines), "batches": Batch.query.count(), "suppliers": len(suppliers), "locations": len(locations),
             "available_units": sum(m["total_stock"] for m in pack["medicines"]), "sales": Sale.query.count(),
-            "purchases": PurchaseInvoice.query.count(), "login_email": "owner@demo.test", "password": password,
+            "purchases": PurchaseInvoice.query.count(), "login_email": "owner@demo.test",
             "frontend": "http://localhost:3000", "backend": "http://127.0.0.1:5000"}
         (DEMO_ROOT / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         export_batches(app)

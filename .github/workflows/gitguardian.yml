@@ -1,0 +1,37 @@
+name: GitGuardian scan
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: GitGuardian scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Fork pull requests do not receive repository secrets.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check scanner configuration
+        env:
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+        run: |
+          if [ -z "$GITGUARDIAN_API_KEY" ]; then
+            echo "::error::Add GITGUARDIAN_API_KEY in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - name: Scan commits for secrets
+        uses: GitGuardian/ggshield-action@10e9055712b4630c3d514ec16dca25c94b752b52
+        env:
+          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}

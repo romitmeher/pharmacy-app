@@ -3,13 +3,15 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import create_app
+from demo_credentials import get_demo_credentials
 
 DEMO_ROOT = Path(__file__).resolve().parents[2] / "data" / "demo"
 
 
 def demo_app(root=DEMO_ROOT):
+    credentials = get_demo_credentials(root)
     class DemoConfig:
-        SECRET_KEY = "local-demo-only-secret-key-not-for-production"
+        SECRET_KEY = credentials["secret_key"]
         SQLALCHEMY_DATABASE_URI = "sqlite:///" + str((root / "smartpharm-demo.sqlite3").resolve()).replace("\\", "/")
         SQLALCHEMY_TRACK_MODIFICATIONS = False
         SQLALCHEMY_ENGINE_OPTIONS = {}

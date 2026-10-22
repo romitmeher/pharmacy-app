@@ -11,6 +11,7 @@ Tests:
 """
 
 import datetime
+import secrets
 import pytest
 from app.models.user import User, UserRole
 from app.models.medicine import Medicine, DosageForm
@@ -403,7 +404,7 @@ def test_role_authorization_enforced(client, distributor_seed):
         full_name="Cashier User",
         role=UserRole.CASHIER,
     )
-    cashier.set_password("pass123")
+    cashier.set_password(secrets.token_urlsafe(24))
     from app.extensions import db
     db.session.add(cashier)
     db.session.commit()

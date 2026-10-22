@@ -33,3 +33,5 @@ backend/instance/
 backend/.venv-training/
 *.tsbuildinfo
 .eslint-*.json
+.next-demo/
+**/.demo-credentials.json

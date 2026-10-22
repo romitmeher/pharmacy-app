@@ -21,4 +21,4 @@ $demoFrontend = Start-Process -FilePath $demoShell -ArgumentList @('-NoProfile',
     -RedirectStandardError (Join-Path $demoData 'frontend-errors.log') -PassThru
 @{backend_pid=$demoBackend.Id;frontend_pid=$demoFrontend.Id;url='http://localhost:3000'} |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $demoData 'running.json')
-Write-Output 'Demo starting at http://localhost:3000 — owner@demo.test / DemoPharm@2026'
+Write-Output 'Demo starting at http://localhost:3000. Read the local login password from backend/instance/demo-credentials.json.'

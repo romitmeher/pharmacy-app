@@ -6,6 +6,7 @@ import tempfile
 import time
 from pathlib import Path
 from demo_environment import demo_app, DEMO_ROOT
+from demo_credentials import get_demo_credentials
 
 
 def main():
@@ -17,7 +18,7 @@ def main():
         original.backup(copy); copy.close(); original.close()
         app = demo_app(root)
         client = app.test_client()
-        login = client.post("/api/auth/login", json={"email": "owner@demo.test", "password": "DemoPharm@2026"})
+        login = client.post("/api/auth/login", json={"email": "owner@demo.test", "password": get_demo_credentials()["password"]})
         assert login.status_code == 200, login.json
         auth = {"Authorization": "Bearer " + login.json["token"]}
         checked = []

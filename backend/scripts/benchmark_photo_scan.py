@@ -4,6 +4,7 @@ import base64
 import json
 import time
 from demo_environment import demo_app, DEMO_ROOT
+from demo_credentials import get_demo_credentials
 
 
 def main():
@@ -12,7 +13,7 @@ def main():
     args = parser.parse_args()
     app = demo_app()
     client = app.test_client()
-    login = client.post("/api/auth/login", json={"email": "owner@demo.test", "password": "DemoPharm@2026"})
+    login = client.post("/api/auth/login", json={"email": "owner@demo.test", "password": get_demo_credentials()["password"]})
     auth = {"Authorization": "Bearer " + login.json["token"]}
     report = []
     for row in json.loads((DEMO_ROOT / "stock.json").read_text(encoding="utf-8")):
