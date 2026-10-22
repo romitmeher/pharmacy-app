@@ -2,7 +2,7 @@
 Unit & Integration Tests for ABDM Drug Registry v3 & Indian Medicine Dataset Loader.
 """
 
-import os
+import csv
 import pytest
 from app.models.medicine import Medicine, MedicineAlias, DosageForm
 from app.vision.dataset_loader import (
@@ -26,45 +26,48 @@ def test_parse_dosage_form_and_strength_regex():
     assert parse_strength_from_text("Clotrimazole Cream IP 1% w/w") == "1% w/w"
 
 
-def test_parse_abdm_csv_file():
-    """Verify ABDM v3 CSV parser reads data directory."""
-    data_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "data")
-    )
-    abdm_file = os.path.join(data_dir, "Product List_17_9_2026 @ 19_54_16.csv")
-    if os.path.exists(abdm_file):
-        items = parse_abdm_csv_file(abdm_file)
-        assert len(items) > 100
-        assert items[0].brand_name != ""
-        assert items[0].mrp >= 0.0
+@pytest.fixture
+def dataset_dir(tmp_path):
+    """Small deterministic registry; no downloaded or ignored files required."""
+    path = tmp_path / "Product List_17_9_2026 @ 19_54_16.csv"
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["Generic Name", "MRP", "Group Name"])
+        writer.writeheader()
+        for index in range(12):
+            writer.writerow({"Generic Name": f"Fixture{index} Tablets IP 500mg",
+                             "MRP": "25.50", "Group Name": "General"})
+    return tmp_path
 
 
-def test_load_dataset_directory_into_db(db, app):
-    """Verify dataset loader populates Medicine and MedicineAlias DB tables."""
-    data_dir = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "data")
-    )
+def test_parse_abdm_csv_file(dataset_dir):
+    items = parse_abdm_csv_file(str(dataset_dir / "Product List_17_9_2026 @ 19_54_16.csv"))
+    assert len(items) == 12
+    assert items[0].brand_name == "Fixture0"
+    assert items[0].mrp == 25.50
+
+
+def test_load_dataset_directory_into_db(db, app, sample_store, dataset_dir):
     with app.app_context():
-        res = load_dataset_directory_into_db(data_dir, store_id=1)
-        assert res["total_processed"] > 0
-        assert res["added"] > 0 or res["updated"] > 0
-
-        # Verify DB entries
-        count = Medicine.query.filter_by(store_id=1).count()
-        assert count > 10
-
-        alias_count = MedicineAlias.query.count()
-        assert alias_count > 10
+        res = load_dataset_directory_into_db(str(dataset_dir), store_id=sample_store.id)
+        assert res["total_processed"] == 12
+        assert res["added"] == 12
+        assert Medicine.query.filter_by(store_id=sample_store.id).count() == 12
+        assert MedicineAlias.query.count() >= 12
 
 
-def test_api_seed_abdm_dataset_endpoint(client, owner_token, db):
-    """Test POST /api/vision/seed-abdm-dataset endpoint."""
+def test_api_seed_abdm_dataset_endpoint(client, owner_token, db, dataset_dir, monkeypatch):
+    # Redirect the local data source while exercising the real ingestion and DB writes.
+    def load_fixture_directory(_data_dir, store_id):
+        return load_dataset_directory_into_db(str(dataset_dir), store_id=store_id)
+
+    monkeypatch.setattr("app.vision.dataset_loader.load_dataset_directory_into_db",
+                        load_fixture_directory)
     res = client.post(
         "/api/vision/seed-abdm-dataset",
         headers={"Authorization": f"Bearer {owner_token}", "Content-Type": "application/json"},
     )
     assert res.status_code == 200
-    json_data = res.get_json()
-    assert json_data["status"] == "success"
-    assert "data" in json_data
-    assert json_data["data"]["total_processed"] > 0
+    payload = res.get_json()
+    assert payload["status"] == "success"
+    assert payload["data"]["total_processed"] == 12
+    assert payload["data"]["added"] == 12

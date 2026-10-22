@@ -11,12 +11,6 @@ from pathlib import Path
 import random
 import sqlite3
 
-import torch
-from PIL import Image
-from torch import nn
-from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms
-from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
 
 
 def read_samples(root):
@@ -52,8 +46,10 @@ def split_samples(samples, seed=42):
     return train, validation, test
 
 
-class MedicinePhotos(Dataset):
+class MedicinePhotos:
     def __init__(self, rows, labels, training=False):
+        from torchvision import transforms
+
         self.rows, self.labels = rows, labels
         operations = [transforms.Resize((192, 192))]
         if training:
@@ -65,6 +61,8 @@ class MedicinePhotos(Dataset):
         return len(self.rows)
 
     def __getitem__(self, index):
+        from PIL import Image
+
         row = self.rows[index]
         with Image.open(row["path"]) as image:
             tensor = self.transform(image.convert("RGB"))
@@ -72,6 +70,8 @@ class MedicinePhotos(Dataset):
 
 
 def evaluate(model, loader, device):
+    import torch
+
     if loader is None:
         return None
     model.eval()
@@ -85,6 +85,11 @@ def evaluate(model, loader, device):
 
 
 def train(args):
+    import torch
+    from torch import nn
+    from torch.utils.data import DataLoader
+    from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
+
     torch.manual_seed(args.seed)
     random.seed(args.seed)
     torch.set_num_threads(4)
