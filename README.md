@@ -1,5 +1,9 @@
 # SmartPharm
 
+> **Copyright and academic integrity notice**
+> Copyright © 2026 Romit Meher and contributors. All rights reserved.
+> This repository is public for college assessment and portfolio review. Public visibility does not grant a license to reuse this project's original code, designs, or documentation. Do not submit this work as your own, redistribute it, or use it in another project without prior written permission from the relevant copyright holders. See [COPYRIGHT.md](COPYRIGHT.md) for details and third-party exceptions.
+
 Pharmacy management for Indian physical pharmacies. Next.js 16 / React 19 / TypeScript frontend; Flask / SQLAlchemy backend; MySQL business database. SQLite is supported for local evaluation, with optional computer vision, pgvector and Gemini integrations.
 
 ## Connected workflows
