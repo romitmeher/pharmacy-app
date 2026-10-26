@@ -1,0 +1,14 @@
+{
+  "devtoolsManifestErrors": [],
+  "devtoolsInstallabilityErrors": [],
+  "manifestAndIcons": true,
+  "installDismissalAndManualGuidance": true,
+  "installAcceptedEvent": true,
+  "onlineDeepLinkAndRefresh": true,
+  "offlineDeepLinkAndRefresh": true,
+  "noPrivatePagesOrAPIInCache": true,
+  "reconnect": true,
+  "updateBlocksOtherTabs": true,
+  "userApprovedUpdateAndOldCacheCleanup": true,
+  "javascriptErrors": []
+}

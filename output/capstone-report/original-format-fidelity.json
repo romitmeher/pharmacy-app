@@ -1,0 +1,28 @@
+{
+  "source_sha256": "276b716c634a0c0cbeb2d2a907a03d0684ddf406450024fe94da63d348fe8dd0",
+  "source_unchanged": true,
+  "original_sections_preserved": 9,
+  "styles_fonts_theme_numbering_footers_original_media_byte_identical": true,
+  "unchanged_package_parts": [
+    "[Content_Types].xml",
+    "_rels/.rels",
+    "word/footer3.xml",
+    "word/footnotes.xml",
+    "word/endnotes.xml",
+    "word/footer2.xml",
+    "word/footer1.xml",
+    "word/media/image2.jpeg",
+    "word/media/image1.png",
+    "word/theme/theme1.xml",
+    "word/webSettings.xml",
+    "docProps/custom.xml",
+    "word/styles.xml",
+    "word/numbering.xml",
+    "docProps/core.xml",
+    "word/fontTable.xml",
+    "docProps/app.xml"
+  ],
+  "added_images": 18,
+  "native_Word_field_refresh_requested": true,
+  "render_status": "Native Word/LibreOffice renderer unavailable; inspect pagination in Word before printing."
+}

@@ -1,0 +1,4 @@
+-r requirements.txt
+# 3.3.x has a confirmed PIR/oneDNN CPU regression (Paddle issue 77340).
+paddlepaddle==3.2.2
+paddleocr==3.7.0

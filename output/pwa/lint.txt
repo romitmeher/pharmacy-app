@@ -1,0 +1,110 @@
+
+> frontend@0.1.0 lint
+> eslint
+
+
+C:\Users\user\Desktop\pharmacy app\frontend\scripts\benchmark-pos.mjs
+  4:10  warning  'fileURLToPath' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\audit\page.tsx
+   6:8  warning  'Link' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+  22:3  warning  'Bookmark' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  23:3  warning  'Building2' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  24:3  warning  'MapPin' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  92:6  warning  React Hook useEffect has a missing dependency: 'fetchAuditData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\expiry\page.tsx
+  12:3  warning  'RotateCcw' is defined but never used  @typescript-eslint/no-unused-vars
+  14:3  warning  'Calendar' is defined but never used   @typescript-eslint/no-unused-vars
+  16:3  warning  'Bookmark' is defined but never used   @typescript-eslint/no-unused-vars
+  21:3  warning  'FileText' is defined but never used   @typescript-eslint/no-unused-vars
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\medicines\page.tsx
+   18:3   warning  'FileText' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   19:3   warning  'Percent' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+   78:10  warning  'formFilter' is assigned a value but never used                                                                  @typescript-eslint/no-unused-vars
+   78:22  warning  'setFormFilter' is assigned a value but never used                                                               @typescript-eslint/no-unused-vars
+  154:6   warning  React Hook useEffect has a missing dependency: 'fetchCatalog'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  202:9   warning  'handleAddAlias' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  209:9   warning  'handleRemoveAlias' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+  215:9   warning  'handleAliasChange' is assigned a value but never used                                                           @typescript-eslint/no-unused-vars
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\prescriptions\page.tsx
+   10:3   warning  'Bookmark' is defined but never used                                                                                       @typescript-eslint/no-unused-vars
+   13:3   warning  'FileText' is defined but never used                                                                                       @typescript-eslint/no-unused-vars
+   15:3   warning  'User' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+   16:3   warning  'Clock' is defined but never used                                                                                          @typescript-eslint/no-unused-vars
+   20:3   warning  'Upload' is defined but never used                                                                                         @typescript-eslint/no-unused-vars
+   23:3   warning  'ArrowRight' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+   24:3   warning  'Stethoscope' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+   35:3   warning  'getMedicines' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   38:3   warning  'Medicine' is defined but never used                                                                                       @typescript-eslint/no-unused-vars
+   42:9   warning  'router' is assigned a value but never used                                                                                @typescript-eslint/no-unused-vars
+   45:16  warning  'setPage' is assigned a value but never used                                                                               @typescript-eslint/no-unused-vars
+   46:10  warning  'totalPages' is assigned a value but never used                                                                            @typescript-eslint/no-unused-vars
+  102:6   warning  React Hook useEffect has a missing dependency: 'fetchPrescriptionsList'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\purchases\page.tsx
+    6:8   warning  'Link' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+   11:3   warning  'Check' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   14:3   warning  'Calendar' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+   15:3   warning  'Layers' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   18:3   warning  'Package' is defined but never used                                                                          @typescript-eslint/no-unused-vars
+   22:3   warning  'Clock' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+   23:3   warning  'MapPin' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   25:3   warning  'Upload' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+   40:3   warning  'confirmDelivery' is defined but never used                                                                  @typescript-eslint/no-unused-vars
+   60:16  warning  'setPage' is assigned a value but never used                                                                 @typescript-eslint/no-unused-vars
+   61:10  warning  'totalPages' is assigned a value but never used                                                              @typescript-eslint/no-unused-vars
+  212:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\returns\page.tsx
+   11:3   warning  'Receipt' is defined but never used                           @typescript-eslint/no-unused-vars
+   12:3   warning  'FileText' is defined but never used                          @typescript-eslint/no-unused-vars
+   13:3   warning  'Trash2' is defined but never used                            @typescript-eslint/no-unused-vars
+   15:3   warning  'ArrowLeft' is defined but never used                         @typescript-eslint/no-unused-vars
+   16:3   warning  'DollarSign' is defined but never used                        @typescript-eslint/no-unused-vars
+   17:3   warning  'ShieldCheck' is defined but never used                       @typescript-eslint/no-unused-vars
+   25:3   warning  'EligibleReturnItem' is defined but never used                @typescript-eslint/no-unused-vars
+   32:10  warning  'invoiceSearch' is assigned a value but never used            @typescript-eslint/no-unused-vars
+   32:25  warning  'setInvoiceSearch' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   53:10  warning  'selectedReturnDetail' is assigned a value but never used     @typescript-eslint/no-unused-vars
+   53:32  warning  'setSelectedReturnDetail' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  134:15  warning  '_' is defined but never used                                 @typescript-eslint/no-unused-vars
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\settings\page.tsx
+   5:8  warning  'Link' is defined but never used          @typescript-eslint/no-unused-vars
+  13:3  warning  'Key' is defined but never used           @typescript-eslint/no-unused-vars
+  14:3  warning  'MapPin' is defined but never used        @typescript-eslint/no-unused-vars
+  15:3  warning  'Phone' is defined but never used         @typescript-eslint/no-unused-vars
+  16:3  warning  'Mail' is defined but never used          @typescript-eslint/no-unused-vars
+  17:3  warning  'FileText' is defined but never used      @typescript-eslint/no-unused-vars
+  18:3  warning  'AlertCircle' is defined but never used   @typescript-eslint/no-unused-vars
+  20:3  warning  'Volume2' is defined but never used       @typescript-eslint/no-unused-vars
+  22:3  warning  'Settings' is defined but never used      @typescript-eslint/no-unused-vars
+  25:3  warning  'Bookmark' is defined but never used      @typescript-eslint/no-unused-vars
+  26:3  warning  'ShoppingBag' is defined but never used   @typescript-eslint/no-unused-vars
+  39:3  warning  'StoreProfile' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\shelves\page.tsx
+  19:3  warning  'AlertCircle' is defined but never used  @typescript-eslint/no-unused-vars
+  26:3  warning  'FileText' is defined but never used     @typescript-eslint/no-unused-vars
+  27:3  warning  'Building2' is defined but never used    @typescript-eslint/no-unused-vars
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\app\suppliers\page.tsx
+   6:8  warning  'Link' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  10:3  warning  'AlertTriangle' is defined but never used                                                                             @typescript-eslint/no-unused-vars
+  12:3  warning  'FileText' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  19:3  warning  'Phone' is defined but never used                                                                                     @typescript-eslint/no-unused-vars
+  20:3  warning  'Mail' is defined but never used                                                                                      @typescript-eslint/no-unused-vars
+  21:3  warning  'ShieldCheck' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  78:6  warning  React Hook useEffect has a missing dependency: 'loadSuppliersList'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\user\Desktop\pharmacy app\frontend\src\components\AICopilotDrawer.tsx
+  11:3   warning  'AlertCircle' is defined but never used            @typescript-eslint/no-unused-vars
+  13:3   warning  'CheckCircle2' is defined but never used           @typescript-eslint/no-unused-vars
+  34:10  warning  'errorMessage' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  79:14  warning  'e' is defined but never used                      @typescript-eslint/no-unused-vars
+
+✖ 81 problems (0 errors, 81 warnings)
+

@@ -1,0 +1,12 @@
+{
+  "base": "https://smartpharm-web-244760124290.asia-south1.run.app",
+  "saleSubmitted": false,
+  "hardwareEnterAndTab": true,
+  "realDecoderWithSimulatedVideo": true,
+  "noDuplicateFrameAdds": true,
+  "tracksStoppedAfterMatch": true,
+  "permissionFailureIsRecoverable": true,
+  "tracksStoppedAfterLatePermission": true,
+  "captureRoutesToPackagingPreview": true,
+  "captureStopsCamera": true
+}

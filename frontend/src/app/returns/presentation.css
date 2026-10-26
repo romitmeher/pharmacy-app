@@ -9,6 +9,10 @@
 .returns-8 { position: relative; flex: 1; }
 .returns-9 { position: absolute; left: var(--view-value-1); top: var(--view-value-11); transform: var(--view-value-12); color: var(--text-muted); }
 .returns-10 { padding-left: var(--view-value-63); height: var(--view-value-64); }
+:root .returns-8 { min-width:0; }
+:root .returns-8 .returns-10 { padding-inline-start:44px; }
+.returns-8 .returns-9 { left:14px; top:50%; pointer-events:none; }
+@media (max-width:480px) { .returns-7 { flex-direction:column; } .returns-7 .returns-11 { width:100%; } }
 .returns-11 { height: var(--view-value-64); padding: var(--view-value-65); }
 .returns-12 { padding: var(--view-value-66); border-radius: var(--radius-sm); background-color: var(--status-low-bg); border: 1px solid var(--status-low-border); color: var(--status-low-text); font-size: var(--view-value-33); display: flex; align-items: center; gap: var(--view-value-6); }
 .returns-13 { padding: var(--view-value-66); border-radius: var(--radius-sm); background-color: var(--status-high-bg); border: 1px solid var(--status-high-border); color: var(--status-high-text); font-size: var(--view-value-33); display: flex; align-items: center; gap: var(--view-value-6); }

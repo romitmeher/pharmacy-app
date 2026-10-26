@@ -187,8 +187,12 @@ class MedicineMatcher:
                       if token.lower() not in {"tablet", "tablets", "capsule", "capsules", "injection"}]
             if not tokens:
                 return MatchResult(None, [], True, self.PRD_LOW_CONFIDENCE_WARNING, names)
+            compact_brand = func.replace(func.replace(func.replace(func.lower(Medicine.brand_name), " ", ""), "-", ""), ".", "")
             fallback_query = fallback_query.filter(or_(*[
-                Medicine.brand_name.ilike(f"%{token}%") for token in tokens]))
+                condition for token in tokens for condition in (
+                    Medicine.brand_name.ilike(f"%{token}%"),
+                    compact_brand.ilike(f"%{token.lower()}%"),
+                )]))
             candidate_meds = fallback_query.options(selectinload(Medicine.aliases)).limit(50).all()
 
         scored_candidates: List[MatchCandidate] = []
@@ -208,6 +212,17 @@ class MedicineMatcher:
             if entities.strength and med.strength:
                 detected_numbers = re.findall(r"\d+(?:\.\d+)?", entities.strength)
                 medicine_numbers = re.findall(r"\d+(?:\.\d+)?", med.strength)
+                # OCR reading order can reverse the ingredients of a combination.
+                # Only ignore order for explicit combinations with one common unit.
+                detected_component_units = re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", entities.strength.lower())
+                medicine_component_units = re.findall(r"\d\s*(mcg|mg|g|ml|iu)\b", med.strength.lower())
+                if ("+" in entities.strength and "+" in med.strength
+                        and "/" not in entities.strength and "/" not in med.strength
+                        and len(set(detected_component_units + medicine_component_units)) == 1
+                        and len(detected_component_units) == len(detected_numbers)
+                        and len(medicine_component_units) == len(medicine_numbers)):
+                    detected_numbers = sorted(detected_numbers, key=float)
+                    medicine_numbers = sorted(medicine_numbers, key=float)
                 if detected_numbers and medicine_numbers and detected_numbers != medicine_numbers:
                     # Some combination brands print their total dose (625), while
                     # the verified catalog lists components (500 + 125).

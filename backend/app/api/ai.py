@@ -9,8 +9,6 @@ Routes:
 import base64
 import logging
 from flask import Blueprint, request, jsonify, g
-import numpy as np
-import cv2
 
 from app.middleware.auth import login_required, role_required
 from app.models.user import UserRole
@@ -158,33 +156,52 @@ def scan_prescription():
     """
     store_id = g.current_user.store_id
     text_content = None
+    limit = 12 * 1024 * 1024
+    if request.content_length and request.content_length > limit + 65536:
+        return jsonify({"message": "Use a prescription image smaller than 12 MB."}), 413
 
     if request.is_json:
         data = request.get_json(silent=True) or {}
         text_content = data.get("text")
+        if text_content is not None and (not isinstance(text_content, str) or len(text_content) > 20000):
+            return jsonify({"message": "Prescription text must be at most 20000 characters."}), 400
         image_b64 = data.get("image_base64")
         if image_b64:
+            if not isinstance(image_b64, str) or len(image_b64) > limit * 4 // 3 + 100:
+                return jsonify({"message": "Invalid prescription image or image larger than 12 MB."}), 400
             try:
                 if "," in image_b64:
                     image_b64 = image_b64.split(",", 1)[1]
-                img_bytes = base64.b64decode(image_b64)
-                nparr = np.frombuffer(img_bytes, np.uint8)
-                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                result = default_prescription_scanner.scan_prescription_image(img, store_id)
-                return jsonify({"status": "success", "data": result.to_dict()}), 200
-            except Exception as e:
-                logger.error(f"Error scanning prescription image: {e}")
+                img_bytes = base64.b64decode(image_b64, validate=True)
+                from app.vision import decode_image_bytes
+                img = decode_image_bytes(img_bytes)
+            except Exception:
                 return jsonify({"error": "ProcessingError", "message": "Failed to decode prescription image."}), 400
+            mode = data.get("recognition_mode", "printed")
+            if mode not in ("printed", "handwriting"):
+                return jsonify({"message": "Choose printed or handwriting recognition."}), 400
+            result = default_prescription_scanner.scan_prescription_image(img, store_id, use_handwriting=mode == "handwriting")
+            if result.engine == "handwriting_unavailable":
+                return jsonify({"message": result.warnings[0], "data": result.to_dict()}), 503
+            return jsonify({"status": "review_required", "data": result.to_dict()}), 200
 
     if not text_content and "prescription" in request.files:
         file = request.files["prescription"]
-        file_bytes = file.read()
-        nparr = np.frombuffer(file_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
+        file_bytes = file.read(limit + 1)
+        if len(file_bytes) > limit:
+            return jsonify({"message": "Use a prescription image smaller than 12 MB."}), 413
+        try:
+            from app.vision import decode_image_bytes
+            img = decode_image_bytes(file_bytes)
+        except Exception:
             return jsonify({"error": "ValidationError", "message": "Invalid prescription image format."}), 400
-        result = default_prescription_scanner.scan_prescription_image(img, store_id)
-        return jsonify({"status": "success", "data": result.to_dict()}), 200
+        mode = request.form.get("recognition_mode", "printed")
+        if mode not in ("printed", "handwriting"):
+            return jsonify({"message": "Choose printed or handwriting recognition."}), 400
+        result = default_prescription_scanner.scan_prescription_image(img, store_id, use_handwriting=mode == "handwriting")
+        if result.engine == "handwriting_unavailable":
+            return jsonify({"message": result.warnings[0], "data": result.to_dict()}), 503
+        return jsonify({"status": "review_required", "data": result.to_dict()}), 200
 
     if text_content:
         result = default_prescription_scanner.parse_prescription_text(text_content, store_id)

@@ -3,6 +3,7 @@ import "./presentation.css";
 import { VirtualTableBody } from "@/components/ui/VirtualTableBody";
 
 import React, { useState, useEffect, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -66,8 +67,17 @@ export default function PrescriptionsPage() {
   const [rawText, setRawText] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isScanningAI, setIsScanningAI] = useState<boolean>(false);
+  const [scanWarnings, setScanWarnings] = useState<string[]>([]);
+  const [recognitionMode, setRecognitionMode] = useState<"handwriting" | "printed">("handwriting");
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedFile) { queueMicrotask(() => setPreview(null)); return; }
+    const url = URL.createObjectURL(selectedFile);
+    queueMicrotask(() => setPreview(url));
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
   const [scannedItems, setScannedItems] = useState<
-    Array<{ extracted_name: string; medicine_id?: number | null; dosage_instructions?: string; quantity_prescribed?: number; is_available?: boolean }>
+    Array<{ extracted_name: string; original_text?: string; medicine_id?: number | null; dosage_instructions?: string; quantity_prescribed?: number; is_available?: boolean }>
   >([]);
 
   // Verification Form State
@@ -102,32 +112,39 @@ export default function PrescriptionsPage() {
   }, [page, searchQuery, statusFilter]);
 
   // AI OCR Prescription Scan
-  const handleRunAIScan = async () => {
-    if (!rawText.trim() && !selectedFile) {
+  const handleRunAIScan = async (mode: "image" | "text" = selectedFile ? "image" : "text") => {
+    if ((mode === "text" && !rawText.trim()) || (mode === "image" && !selectedFile)) {
       setActionError("Please paste prescription text or select an image file to scan.");
       return;
     }
 
     setIsScanningAI(true);
     setActionError(null);
+    setActionSuccess(null);
+    setScannedItems([]);
+    setScanWarnings([]);
     try {
       const scanRes = await scanDoctorPrescription(
         rawText.trim() || undefined,
-        selectedFile || undefined
+        mode === "image" ? selectedFile || undefined : undefined,
+        recognitionMode
       );
+      setScanWarnings(scanRes.warnings || []);
+      if (scanRes.raw_ocr_text) setRawText(scanRes.raw_ocr_text);
 
       if (scanRes.items && scanRes.items.length > 0) {
         const mapped = scanRes.items.map((item) => ({
-          extracted_name: item.detected_brand_or_generic || item.raw_text,
+          extracted_name: [item.detected_brand_or_generic || item.raw_text, item.strength && !(item.detected_brand_or_generic || item.raw_text).replace(/\s/g,"").toLowerCase().includes(item.strength.replace(/\s/g,"").toLowerCase()) ? item.strength : ""].filter(Boolean).join(" "),
+          original_text: item.raw_text,
           medicine_id: item.matched_medicine_id,
-          dosage_instructions: item.dosage_instructions || undefined,
-          quantity_prescribed: item.quantity_to_dispense || 1,
+          dosage_instructions: [item.dosage_instructions, item.duration].filter(Boolean).join(" · ") || undefined,
+          quantity_prescribed: item.quantity_to_dispense ?? undefined,
           is_available: item.is_available,
         }));
         setScannedItems(mapped);
-        setActionSuccess(`AI recognized ${scanRes.items.length} prescribed items with clinical catalog mapping!`);
+        setActionSuccess(`${scanRes.items.length} draft medicine rows. Review and correct each row against the original.`);
       } else {
-        setActionError("No clinical medicines could be recognized. Please check input.");
+        setActionError("No medicine names could be read reliably. The extracted text is shown below. Use the original image to enter medicine rows manually; no medicines were guessed.");
       }
     } catch (err: unknown) {
       setActionError((err instanceof Error ? err.message : "") || "AI scanning failed.");
@@ -145,18 +162,13 @@ export default function PrescriptionsPage() {
     }
 
     setActionError(null);
+    if (!scannedItems.length || scannedItems.some(item => !item.extracted_name.trim() || !item.quantity_prescribed || item.quantity_prescribed < 1 || !Number.isInteger(item.quantity_prescribed))) {
+      setActionError("Enter each medicine name and confirm a positive quantity before archiving.");
+      return;
+    }
     startTransition(async () => {
       try {
-        const itemsToSave =
-          scannedItems.length > 0
-            ? scannedItems
-            : [
-                {
-                  extracted_name: "General Consultation",
-                  quantity_prescribed: 1,
-                  is_available: true,
-                },
-              ];
+        const itemsToSave = scannedItems;
 
         const payload: SavePrescriptionPayload = {
           patient_name: patientName.trim(),
@@ -192,6 +204,7 @@ export default function PrescriptionsPage() {
     setRawText("");
     setSelectedFile(null);
     setScannedItems([]);
+    setScanWarnings([]);
     setActionError(null);
     setActionSuccess(null);
   };
@@ -592,7 +605,7 @@ export default function PrescriptionsPage() {
           Modal: Upload & AI Scan Doctor Prescription
           ===================================================================== */}
       {showUploadModal && (
-        <div className="modal-backdrop" onClick={() => !isSubmitting && setShowUploadModal(false)}>
+        <div className="modal-backdrop" onClick={() => !isSubmitting && !isScanningAI && setShowUploadModal(false)}>
           <div  onClick={(e) => e.stopPropagation()} className="modal-content prescriptions-63">
             <div className="modal-header">
               <div className="prescriptions-64">
@@ -604,11 +617,11 @@ export default function PrescriptionsPage() {
                     Capture & Digitize Prescription
                   </h2>
                   <p className="prescriptions-67">
-                    AI extraction with pharmacist clinical verification
+                    Handwriting or printed OCR draft with pharmacist verification
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowUploadModal(false)} className="btn-icon" disabled={isSubmitting} aria-label="Close dialog">
+              <button onClick={() => setShowUploadModal(false)} className="btn-icon" disabled={isSubmitting || isScanningAI} aria-label="Close dialog">
                 <X size={16} />
               </button>
             </div>
@@ -631,6 +644,8 @@ export default function PrescriptionsPage() {
                 )}
 
                 {/* Patient Information */}
+                {scanWarnings.length > 0 && <div role="status" className="prescriptions-69">{scanWarnings.map((warning,index) => <p key={index}>{warning}</p>)}</div>}
+                {preview && <Image src={preview} alt="Original prescription for comparison with the draft" width={600} height={800} unoptimized style={{width:"100%",height:"auto",maxHeight:420,objectFit:"contain"}} />}
                 <div className="prescriptions-71">
                   <div className="form-group">
                     <label className="form-label" htmlFor="prescriptions-field-1">Patient Name *</label>
@@ -695,38 +710,45 @@ export default function PrescriptionsPage() {
                 <div className="form-group">
                   <label className="form-label" htmlFor="prescriptions-field-6">Doctor Prescription Content (Paste Text or Upload Photo)</label>
                   <textarea
+                    disabled={isScanningAI || isSubmitting}
                     rows={3}
                     placeholder="e.g. Rx: Tab Augmentin 625 Duo 1 tab BD x 5 days, Tab Paracetamol 650 TDS..."
                     value={rawText}
-                    onChange={(e) => setRawText(e.target.value)}
+                    onChange={(e) => { setRawText(e.target.value); setScannedItems([]); setActionSuccess(null); }}
                     className="form-textarea" id="prescriptions-field-6"
                   />
                 </div>
 
                 {/* Image upload selector & AI run button */}
+                <label className="form-label" htmlFor="prescription-recognition-mode">Image recognition<select id="prescription-recognition-mode" className="form-select" value={recognitionMode} disabled={isScanningAI} onChange={event => setRecognitionMode(event.target.value as "handwriting" | "printed")}><option value="handwriting">Handwriting AI · Google Gemini</option><option value="printed">Printed text · local OCR only</option></select></label>
                 <div className="prescriptions-73">
                   <input
                     type="file"
+                    disabled={isScanningAI || isSubmitting}
                     accept="image/*"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    aria-label="Prescription image"
+                    onChange={(e) => { setSelectedFile(e.target.files?.[0] || null); setScannedItems([]); setScanWarnings([]); setActionSuccess(null); }}
                     className="prescriptions-74"
                   />
                   <button
                     type="button"
-                    onClick={handleRunAIScan}
+                    onClick={() => void handleRunAIScan()}
                     disabled={isScanningAI}
                     
                     className="btn btn-secondary prescriptions-75"
                   >
                     <Sparkles size={14} />
-                    <span>{isScanningAI ? "Extracting..." : "Scan with AI OCR"}</span>
+                    <span>{isScanningAI ? "Reading prescription..." : selectedFile ? recognitionMode === "handwriting" ? "Read handwriting with AI" : "Read image locally" : "Parse entered text"}</span>
                   </button>
+                  {selectedFile && rawText.trim() && <button type="button" className="btn btn-secondary" disabled={isScanningAI} onClick={() => void handleRunAIScan("text")}>Parse corrected text</button>}
                 </div>
+                <p className="form-label">{recognitionMode === "handwriting" ? "Handwriting mode sends the prescription image to Google Gemini when you select Read handwriting with AI. Choose printed mode to keep processing on this app’s server." : "Printed OCR runs on this app’s server. It does not send this image to an external AI provider."}</p>
+                <button type="button" className="btn btn-secondary" disabled={isScanningAI || isSubmitting} onClick={() => setScannedItems(items => [...items, {extracted_name:"", quantity_prescribed:undefined, medicine_id:null, is_available:false}])}><PlusCircle size={14} />Add medicine manually</button>
 
                 {/* Extracted Line Items List */}
                 {scannedItems.length > 0 && (
                   <div className="prescriptions-76">
-                    <label className="form-label">Extracted Clinical Formulations ({scannedItems.length})</label>
+                    <p className="form-label">Draft medicine rows ({scannedItems.length}) — confirm names and quantities</p>
                     <div
                       className="prescriptions-77"
                     >
@@ -735,18 +757,13 @@ export default function PrescriptionsPage() {
                           key={idx}
                           className="prescriptions-78"
                         >
-                          <div>
-                            <strong className="prescriptions-79">{it.extracted_name}</strong>
-                            {it.dosage_instructions && (
-                              <span className="prescriptions-80">
-                                ({it.dosage_instructions})
-                              </span>
-                            )}
+                          <div style={{display:"grid",gap:8,flex:1}}>
+                            {it.original_text && <p className="form-label">Read from original: {it.original_text}</p>}
+                            <label>Medicine name<input required className="form-input" aria-label={`Medicine name ${idx+1}`} value={it.extracted_name} onChange={e => setScannedItems(items => items.map((row,i) => i===idx ? {...row,extracted_name:e.target.value,medicine_id:null,is_available:false}:row))} /></label>
+                            <label>Directions as written<input className="form-input" aria-label={`Directions ${idx+1}`} value={it.dosage_instructions || ""} onChange={e => setScannedItems(items => items.map((row,i) => i===idx ? {...row,dosage_instructions:e.target.value}:row))} /></label>
+                            <label>Confirmed quantity<input required type="number" min={1} step={1} className="form-input" aria-label={`Confirmed quantity ${idx+1}`} placeholder="Confirm from original" value={it.quantity_prescribed ?? ""} onChange={e => setScannedItems(items => items.map((row,i) => i===idx ? {...row,quantity_prescribed:e.target.value ? Number(e.target.value):undefined}:row))} /></label>
                           </div>
-                          <span className="status-badge high">
-                            <span className="badge-icon"><CheckCircle2 size={10} /></span>
-                            <span>Qty: {it.quantity_prescribed}</span>
-                          </span>
+                          <button type="button" className="btn btn-secondary" aria-label={`Remove medicine ${idx+1}`} onClick={() => setScannedItems(items => items.filter((_,i) => i!==idx))}>Remove</button>
                         </div>
                       ))}
                     </div>
@@ -755,10 +772,10 @@ export default function PrescriptionsPage() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" onClick={() => setShowUploadModal(false)} className="btn btn-secondary" disabled={isSubmitting}>
+                <button type="button" onClick={() => setShowUploadModal(false)} className="btn btn-secondary" disabled={isSubmitting || isScanningAI}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting || isScanningAI || !scannedItems.length}>
                   {isSubmitting ? "Archiving..." : "Archive for Clinical Sign-off"}
                 </button>
               </div>

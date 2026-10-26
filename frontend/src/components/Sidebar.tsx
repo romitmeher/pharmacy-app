@@ -1,4 +1,5 @@
 "use client";
+import { InstallAppButton } from "@/components/PWAProvider";
 
 import BrandMark from "@/components/BrandMark";
 import React, { useSyncExternalStore } from "react";
@@ -188,6 +189,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ))}
       </nav>
 
+      <div className="pwa-sidebar"><InstallAppButton /></div>
       {/* Footer / User Session */}
       <div
         className="sidebar-7"

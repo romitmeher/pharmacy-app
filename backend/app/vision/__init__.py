@@ -63,6 +63,10 @@ class VisionRecognitionPipelineResult:
     error_message: Optional[str] = None
     photo_model: Optional[Dict[str, Any]] = None
     barcode: Optional[str] = None
+    demo_suggestion: Optional[Dict[str, Any]] = None
+    rotation_degrees: int = 0
+    recognition_engine: str = "local_ocr"
+    recognition_notice: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -76,6 +80,10 @@ class VisionRecognitionPipelineResult:
             "error_message": self.error_message,
             "photo_model": self.photo_model,
             "barcode": self.barcode,
+            "demo_suggestion": self.demo_suggestion,
+            "rotation_degrees": self.rotation_degrees,
+            "recognition_engine": self.recognition_engine,
+            "recognition_notice": self.recognition_notice,
         }
 
 
@@ -106,6 +114,37 @@ def decode_image_bytes(image_input: Union[bytes, bytearray, np.ndarray, Image.Im
 
 
 def recognize_medicine_image(
+    image_input: Union[bytes, bytearray, np.ndarray, Image.Image],
+    store_id: Optional[int] = None,
+    ocr_override: Optional[OCRResult] = None,
+) -> VisionRecognitionPipelineResult:
+    from flask import current_app, has_app_context
+    if ocr_override is None and has_app_context() and current_app.config.get("DEMO_PHOTO_REVIEW"):
+        try:
+            image = decode_image_bytes(image_input)
+            # A mapped identifier always takes precedence over a demo suggestion.
+            from app.services.barcode_service import decode_barcode_pixels, lookup
+            from app.utils.errors import ValidationError, NotFoundError
+            try:
+                code = decode_barcode_pixels(image)
+                lookup(store_id, code)
+                return _recognize_medicine_image(image, store_id, ocr_override)
+            except (ValidationError, NotFoundError):
+                pass
+            from app.vision.photo_classifier import demo_review_suggestion
+            suggestion = demo_review_suggestion(image, store_id)
+            if suggestion:
+                return VisionRecognitionPipelineResult(
+                    success=True, quality=assess_image_quality(image), detection=None, ocr=None,
+                    extracted_entities=None,
+                    match_result=MatchResult(None, [], True, suggestion["message"], [suggestion["name"]]),
+                    human_verification_required=True, demo_suggestion=suggestion)
+        except Exception:
+            logger.warning("Demo review unavailable; continuing normal scanning", exc_info=True)
+    return _recognize_medicine_image(image_input, store_id, ocr_override)
+
+
+def _recognize_medicine_image(
     image_input: Union[bytes, bytearray, np.ndarray, Image.Image],
     store_id: Optional[int] = None,
     ocr_override: Optional[OCRResult] = None,
@@ -152,7 +191,7 @@ def recognize_medicine_image(
     try:
         barcode = decode_barcode_pixels(image)
     except ValidationError as error:
-        if not error.message.startswith("No readable barcode found"):
+        if not error.message.startswith(("No readable barcode found", "Scan a barcode containing")):
             return VisionRecognitionPipelineResult(False, quality, None, None, None, None,
                                                     error_message=error.message)
     if barcode:
@@ -186,6 +225,33 @@ def recognize_medicine_image(
             error_message="Image quality is too low for reliable recognition. " + " ".join(quality.feedback),
         )
 
+    # Read difficult/small/sideways print with the approved Google connection.
+    # Exact barcodes stay local above. Provider errors fall back to local OCR.
+    recognition_notice = None
+    if ocr_override is None:
+        from flask import has_app_context
+        if has_app_context():
+            try:
+                from app.vision.packaging_vision import read_package
+                cloud_entities = read_package(image)
+                if cloud_entities:
+                    cloud_match = default_medicine_matcher.match(cloud_entities, store_id=store_id)
+                    candidate = cloud_match.top_candidate
+                    if (candidate and not cloud_match.low_confidence
+                            and (not candidate.strength or cloud_entities.strength)):
+                        height, width = image.shape[:2]
+                        return VisionRecognitionPipelineResult(
+                            success=True, quality=quality,
+                            detection=DetectionResult("full_frame", 0.0, [0, 0, width, height], False),
+                            ocr=OCRResult(cloud_entities.raw_text, cloud_entities.raw_text.splitlines(), [], 0.0),
+                            extracted_entities=cloud_entities, match_result=cloud_match,
+                            recognition_engine="google_package_transcription")
+            except Exception as error:
+                logger.warning("Package transcription unavailable (%s); using local OCR", type(error).__name__)
+                recognition_notice = ("Online photo reading reached its usage limit. Local recognition was used."
+                    if getattr(error, "code", None) == 429 else
+                    "Online photo reading is unavailable. Local recognition was used.")
+
     # Step 2: Package / Blister Detection
     if os.environ.get("SMARTPHARM_PACKAGE_DETECTION", "false").lower() == "true":
         detection = detect_package_roi(image)
@@ -195,21 +261,23 @@ def recognize_medicine_image(
 
     roi_img = detection.cropped_roi if detection.cropped_roi is not None else image
 
-    # Step 3: Text Detection & OCR
+    # Step 3: Read upright text; retry right angles only after a rejected match.
+    rotation_degrees = 0
     if ocr_override is not None:
         ocr_res = ocr_override
+        extracted = default_entity_extractor.extract(ocr_res)
+        match_result = default_medicine_matcher.match(extracted, store_id=store_id)
     else:
-        ocr_res = _packaging_ocr(roi_img)
+        from app.vision.packaging_orientation import read_packaging_orientations
+        ocr_res, extracted, match_result, rotation_degrees = read_packaging_orientations(
+            roi_img, _packaging_ocr, default_entity_extractor.extract,
+            lambda entities: default_medicine_matcher.match(entities, store_id=store_id))
         # If cropped ROI found no text, fallback to entire original image
         if not ocr_res.full_text and detection.cropped_roi is not None:
             logger.info("OCR on cropped ROI found no text; falling back to full image.")
-            ocr_res = _packaging_ocr(image)
-
-    # Step 4: Entity Extraction
-    extracted = default_entity_extractor.extract(ocr_res)
-
-    # Step 5: Stage 1 Database Fuzzy Matching
-    match_result = default_medicine_matcher.match(extracted, store_id=store_id)
+            ocr_res, extracted, match_result, rotation_degrees = read_packaging_orientations(
+                image, _packaging_ocr, default_entity_extractor.extract,
+                lambda entities: default_medicine_matcher.match(entities, store_id=store_id))
 
     # Photo evidence supports grounded OCR identity; it never identifies a drug
     # by colour alone or promotes an uncertain match.
@@ -272,4 +340,6 @@ def recognize_medicine_image(
         match_result=match_result,
         human_verification_required=True,  # PRD Rule 9: Human verification is mandatory
         photo_model=photo_model,
+        rotation_degrees=rotation_degrees,
+        recognition_notice=recognition_notice,
     )

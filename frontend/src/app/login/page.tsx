@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, ArrowRight, ShieldCheck, Mail, LockKeyhole } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 import { useAuth } from "@/context/AuthContext";
+import { InstallAppButton } from "@/components/PWAProvider";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -51,9 +52,9 @@ export default function LoginPage() {
         <section className="auth-story" aria-label="About SmartPharm">
           <Link href="/login" className="auth-brand" aria-label="SmartPharm sign in"><span className="auth-brand-mark"><BrandMark /></span><span>smartpharm<span className="auth-brand-dot">.</span></span></Link>
           <div className="auth-story-copy"><p className="auth-kicker">A LITTLE CLARITY. EVERY DAY.</p><h2><span className="login-line">Good care starts</span><span className="login-line auth-headline-accent">at your counter.</span></h2><p>From the first delivery to the last bill. A calmer way to manage your pharmacy.</p></div>
-          <div className="auth-reference">
-            <div className="auth-reference-copy"><span className="auth-reference-number">01 / THE EVERYDAY ESSENTIALS</span><h2>From shelf<br />to sale.</h2><p>Stock. Batches. Billing.<br />One connected workspace.</p><span className="auth-reference-caption">Example medicine packaging</span></div>
-            <div className="auth-package"><Image src="/images/packaging-reference.jpg" alt="Example Dolo-650 packaging" width={380} height={380} sizes="(max-width: 900px) 0px, 220px" unoptimized /></div>
+          <div className="auth-reference auth-reference-photo">
+            <Image src="/images/pharmacy-counter.png" alt="Sunlit pharmacy counter with neatly arranged medicine packaging and shelves" fill sizes="(max-width: 900px) 0px, 520px" priority />
+            <div className="auth-reference-copy"><span className="auth-reference-number">THE EVERYDAY ESSENTIALS</span><h2>From shelf to sale.</h2><p>One connected workspace.</p></div>
           </div>
           <footer className="auth-story-footer"><span>Made for your everyday practice.</span><span>SmartPharm © {new Date().getFullYear()}</span></footer>
         </section>
@@ -68,7 +69,7 @@ export default function LoginPage() {
               <div className="auth-field"><label htmlFor="login-password">Password</label><div className="auth-input-shell"><LockKeyhole size={18} aria-hidden="true" /><input id="login-password" type={showPassword ? "text" : "password"} placeholder="Enter your password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} disabled={isPending} className="auth-input auth-password" /><button type="button" className="auth-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
               <button id="login-submit-btn" type="submit" disabled={isPending} className="auth-submit"><span>{isPending ? "Authenticating…" : "Sign in to workspace"}</span><ArrowRight size={20} aria-hidden="true" /></button>
             </form>
-            <div className="auth-setup"><p>Setting up a new pharmacy?</p><Link href="/login/setup">Create your workspace <ArrowRight size={16} aria-hidden="true" /></Link></div>
+            <div className="auth-setup"><p>Setting up a new pharmacy?</p><Link href="/login/setup">Create your workspace <ArrowRight size={16} aria-hidden="true" /></Link><InstallAppButton /></div>
           </div>
           <footer className="auth-access-footer"><ShieldCheck size={16} aria-hidden="true" /><span>For authorised pharmacy staff only</span></footer>
         </section>

@@ -212,11 +212,14 @@ export default function SalesReturnsPage() {
               <div className="returns-8">
                 <Search
                   size={16}
+                  aria-hidden="true"
                   className="returns-9"
                 />
                 <input
                   type="text"
-                  placeholder="Enter numerical Sale ID (e.g. 1)..."
+                  aria-label="Sale ID"
+                  inputMode="numeric"
+                  placeholder="Enter sale ID (e.g. 1)"
                   value={saleIdInput}
                   onChange={(e) => setSaleIdInput(e.target.value)}
                   

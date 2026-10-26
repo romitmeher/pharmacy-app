@@ -1,0 +1,12 @@
+.env*
+*.pem
+venv
+.venv-training
+env
+instance
+data
+tests
+scripts
+__pycache__
+.pytest_cache
+*.log

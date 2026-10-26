@@ -135,7 +135,10 @@ class DemandForecastingEngine:
         daily_forecasts: List[DailyForecastPoint] = []
 
         # Model Family Selection (PRD Rule 16: use simplest adequate model)
-        if non_zero_days < 5:
+        # Weekly lag regression needs at least two weeks of actual selling days.
+        # A zero-padded history plus one busy week can otherwise produce unstable
+        # recursive growth and enormous reorder suggestions from tiny samples.
+        if non_zero_days < 14:
             # Sparse data: Adaptive baseline model
             model_family = "Adaptive_Moving_Average_Baseline"
             recent_window = sales_values[-14:] if len(sales_values) >= 14 else sales_values

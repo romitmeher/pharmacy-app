@@ -97,6 +97,7 @@ class ParsedInvoice:
     raw_text: str = ""
     parse_confidence: float = 0.85
     extraction_method: str = "regex_layout"
+    warnings: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -109,6 +110,7 @@ class ParsedInvoice:
             "items": [item.to_dict() for item in self.items],
             "parse_confidence": round(self.parse_confidence, 2),
             "extraction_method": self.extraction_method,
+            "warnings": self.warnings,
         }
 
 
@@ -137,6 +139,10 @@ class DistributorInvoiceParser:
     Multi-format parser for Indian pharmaceutical distributor invoices.
     Extracts distributor metadata and tabular medicine line items.
     """
+
+    def parse_image(self, image) -> ParsedInvoice:
+        from app.distributor.invoice_layout import parse_image
+        return parse_image(image, self)
 
     def parse_text(self, text: str) -> ParsedInvoice:
         """Parse raw text representation of invoice (from PDF text stream or OCR)."""

@@ -20,6 +20,17 @@ from app.vision.data_paths import DATA_ROOT
 
 
 def connect():
+    from flask import has_app_context, current_app
+    # SQLite is retained only for isolated automated tests and offline fixtures.
+    fixture = (has_app_context() and current_app.testing) or (
+        not has_app_context() and bool(os.environ.get("SMARTPHARM_STOCKING_DIR")))
+    if not fixture:
+        config = current_app.config if has_app_context() else os.environ
+        url = config.get("PGVECTOR_URL", "")
+        if not url:
+            raise ValueError("Aiven PostgreSQL (PGVECTOR_URL) is required for stocking reference memory.")
+        from app.vision.stocking_pg import PostgresStockingConnection
+        return PostgresStockingConnection(url)
     root = Path(os.environ.get("SMARTPHARM_STOCKING_DIR", str(DATA_ROOT / "stocking")))
     root.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(root / "references.sqlite3", timeout=20)
@@ -87,7 +98,12 @@ def references(query):
         return []
     c = connect()
     try:
-        rows = c.execute("SELECT rowid,name,composition,manufacturer,pack,source,url FROM reference "
+        if getattr(c, "postgres", False):
+            term = ' & '.join(t.lower() + (':*' if len(t)>=3 or t.isdigit() else '') for t in tokens)
+            rows = c.execute("SELECT id,name,composition,manufacturer,pack,source,url FROM reference "
+                "WHERE to_tsvector('simple', name) @@ to_tsquery('simple', ?) ORDER BY id LIMIT 80", (term,)).fetchall()
+        else:
+            rows = c.execute("SELECT rowid,name,composition,manufacturer,pack,source,url FROM reference "
                          "WHERE reference MATCH ? ORDER BY bm25(reference) LIMIT 80",
                          ("name : (" + " AND ".join('"' + t + '"' + ("*" if len(t) >= 3 or t.isdigit() else "") for t in tokens) + ")",)).fetchall()
         result = [dict(zip(["id", "name", "composition", "manufacturer", "pack", "source", "url"], row)) for row in rows]

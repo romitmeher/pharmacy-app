@@ -1,0 +1,298 @@
+{
+  "pages": 42,
+  "sections": [
+    [
+      "Certificate of Approval",
+      2
+    ],
+    [
+      "Declaration",
+      3
+    ],
+    [
+      "Acknowledgement",
+      4
+    ],
+    [
+      "Abstract",
+      5
+    ],
+    [
+      "Contents",
+      6
+    ],
+    [
+      "List of Figures and Abbreviations",
+      7
+    ],
+    [
+      "Introduction",
+      8
+    ],
+    [
+      "Objectives and Requirements",
+      9
+    ],
+    [
+      "Literature Review",
+      10
+    ],
+    [
+      "Document Understanding and Research Gap",
+      11
+    ],
+    [
+      "Proposed Methodology",
+      12
+    ],
+    [
+      "System Architecture",
+      13
+    ],
+    [
+      "Activity Diagram",
+      14
+    ],
+    [
+      "DFD 0 Context Diagram",
+      15
+    ],
+    [
+      "DFD 1 Major Processes",
+      16
+    ],
+    [
+      "DFD 2 POS Billing Decomposition",
+      17
+    ],
+    [
+      "System Flow",
+      18
+    ],
+    [
+      "Recognition Flowchart",
+      19
+    ],
+    [
+      "Functional Flow",
+      20
+    ],
+    [
+      "Core Data Model",
+      21
+    ],
+    [
+      "Algorithms and Transaction Rules",
+      22
+    ],
+    [
+      "Application APIs",
+      23
+    ],
+    [
+      "Recognition APIs and Integrations",
+      24
+    ],
+    [
+      "Project Planning",
+      25
+    ],
+    [
+      "Resources and Feasibility",
+      26
+    ],
+    [
+      "Verification Methodology",
+      27
+    ],
+    [
+      "Test Cases and Expected Outcomes",
+      28
+    ],
+    [
+      "Observed Results and Demonstration Data",
+      29
+    ],
+    [
+      "Sign In",
+      30
+    ],
+    [
+      "Dashboard",
+      31
+    ],
+    [
+      "POS Billing Terminal",
+      32
+    ],
+    [
+      "Inventory and Batches",
+      33
+    ],
+    [
+      "Medicine Catalogue",
+      34
+    ],
+    [
+      "Purchases and Invoices",
+      35
+    ],
+    [
+      "Prescription Workspace",
+      36
+    ],
+    [
+      "Expiry Management",
+      37
+    ],
+    [
+      "Sustainability and Impact",
+      38
+    ],
+    [
+      "Conclusion and Future Scope",
+      39
+    ],
+    [
+      "References",
+      40
+    ],
+    [
+      "Implementation Sources",
+      41
+    ],
+    [
+      "Examination and Demonstration Guide",
+      42
+    ]
+  ],
+  "figures": [
+    [
+      "Figure 3.1 System architecture",
+      13
+    ],
+    [
+      "Figure 3.2 Activity diagram for a reviewed POS sale",
+      14
+    ],
+    [
+      "Figure 3.3 DFD 0 context diagram",
+      15
+    ],
+    [
+      "Figure 3.4 DFD 1 major processes",
+      16
+    ],
+    [
+      "Figure 3.5 DFD 2 decomposition of process 3.0 billing",
+      17
+    ],
+    [
+      "Figure 3.6 System flow across deployment boundaries",
+      18
+    ],
+    [
+      "Figure 3.7 Barcode and photo recognition decision flow",
+      19
+    ],
+    [
+      "Figure 3.8 Functional flow from stocking to operational review",
+      20
+    ],
+    [
+      "Figure 3.9 Core entity relationship model",
+      21
+    ],
+    [
+      "Figure 6.1 Test-case verification and correction flow",
+      27
+    ],
+    [
+      "Figure 6.2 Sign In actual deployed frontend",
+      30
+    ],
+    [
+      "Figure 6.3 Dashboard actual deployed frontend",
+      31
+    ],
+    [
+      "Figure 6.4 POS Billing Terminal actual deployed frontend",
+      32
+    ],
+    [
+      "Figure 6.5 Inventory and Batches actual deployed frontend",
+      33
+    ],
+    [
+      "Figure 6.6 Medicine Catalogue actual deployed frontend",
+      34
+    ],
+    [
+      "Figure 6.7 Purchases and Invoices actual deployed frontend",
+      35
+    ],
+    [
+      "Figure 6.8 Prescription Workspace actual deployed frontend",
+      36
+    ],
+    [
+      "Figure 6.9 Expiry Management actual deployed frontend",
+      37
+    ]
+  ],
+  "tables": [
+    [
+      "Table 1.1 Functional requirements",
+      9
+    ],
+    [
+      "Table 2.1 Literature comparison part one",
+      10
+    ],
+    [
+      "Table 2.2 Literature comparison part two",
+      11
+    ],
+    [
+      "Table 3.1 Business API inventory",
+      23
+    ],
+    [
+      "Table 3.2 Recognition and support APIs",
+      24
+    ],
+    [
+      "Table 4.1 Suggested semester milestone chart",
+      25
+    ],
+    [
+      "Table 4.2 Project risk assessment",
+      25
+    ],
+    [
+      "Table 5.1 Software and hardware resources",
+      26
+    ],
+    [
+      "Table 6.1 Representative test cases",
+      28
+    ],
+    [
+      "Table 6.2 Prepared classroom demonstration data",
+      29
+    ],
+    [
+      "Table 7.1 Qualitative sustainability mapping",
+      38
+    ],
+    [
+      "Table R.1 Implementation evidence inventory",
+      41
+    ],
+    [
+      "Table A.1 Demonstration sequence",
+      42
+    ]
+  ],
+  "source_template_sha256": "276b716c634a0c0cbeb2d2a907a03d0684ddf406450024fe94da63d348fe8dd0"
+}

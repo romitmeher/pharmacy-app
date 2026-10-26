@@ -1,4 +1,4 @@
-"""Dedicated local demo app. Never reads a business database connection URL."""
+"""Start the shared Aiven app; retain an explicit offline fixture factory for tests."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -20,14 +20,20 @@ def demo_app(root=DEMO_ROOT):
         TESTING = False
         PGVECTOR_URL = ""
         GEMINI_API_KEY = ""
+        SMARTPHARM_PHOTO_MODEL = str(root / "paired-20261025" / "model") if (root / "paired-20261025" / "model" / "classifier.pt").is_file() else None
+        DEMO_PHOTO_REVIEW = bool(SMARTPHARM_PHOTO_MODEL)
     root.mkdir(parents=True, exist_ok=True)
     return create_app(config_class=DemoConfig)
 
 
 if __name__ == "__main__":
-    if not (DEMO_ROOT / "manifest.json").exists():
-        raise SystemExit("Build demo data first: python scripts/build_demo.py")
-    app = demo_app()
+    # The interactive app now shares Aiven with GCP. demo_app() remains only
+    # for isolated regression checks against old disposable fixture copies.
+    app = create_app()
+    from app.extensions import db
+    with app.app_context():
+        if db.engine.dialect.name != "mysql" or not app.config.get("PGVECTOR_URL"):
+            raise SystemExit("Configure Aiven MySQL and PostgreSQL before starting the app.")
     # Initialize the OCR model while the presenter logs in; do not pre-process
     # demo photos or substitute canned recognition responses.
     from threading import Thread

@@ -1,0 +1,73 @@
+{
+  "url": "http://localhost:3000",
+  "measurements": [
+    {
+      "width": 320,
+      "rootOverflow": 0,
+      "catalogOverflow": 0,
+      "mode": "grid",
+      "rows": 8,
+      "allActionsWithinWidth": true,
+      "textWraps": true
+    },
+    {
+      "width": 375,
+      "rootOverflow": 0,
+      "catalogOverflow": 0,
+      "mode": "grid",
+      "rows": 8,
+      "allActionsWithinWidth": true,
+      "textWraps": true
+    },
+    {
+      "width": 390,
+      "rootOverflow": 0,
+      "catalogOverflow": 0,
+      "mode": "grid",
+      "rows": 8,
+      "allActionsWithinWidth": true,
+      "textWraps": true
+    },
+    {
+      "width": 768,
+      "rootOverflow": 0,
+      "catalogOverflow": 0,
+      "mode": "table-row",
+      "rows": 8,
+      "allActionsWithinWidth": true,
+      "textWraps": true
+    },
+    {
+      "width": 1024,
+      "rootOverflow": 0,
+      "catalogOverflow": 0,
+      "mode": "grid",
+      "rows": 8,
+      "allActionsWithinWidth": true,
+      "textWraps": true
+    },
+    {
+      "width": 1440,
+      "rootOverflow": 0,
+      "catalogOverflow": 0,
+      "mode": "table-row",
+      "rows": 8,
+      "allActionsWithinWidth": true,
+      "textWraps": true
+    }
+  ],
+  "addToCartOnMobile": true,
+  "virtualizedCatalog": [
+    {
+      "width": 375,
+      "renderedRows": 13,
+      "overflow": 0
+    },
+    {
+      "width": 1440,
+      "renderedRows": 12,
+      "overflow": 0
+    }
+  ],
+  "saleSubmitted": false
+}

@@ -1,0 +1,11 @@
+.camera-scanner { display:grid; gap:14px; min-width:0; line-height:1.5; }
+.camera-scanner-view { position:relative; aspect-ratio:4/3; overflow:hidden; border-radius:12px; background:#14241e; }
+.camera-scanner-view video { display:block; width:100%; height:100%; object-fit:contain; }
+.camera-scanner-target { pointer-events:none; position:absolute; inset:25% 10%; border:2px solid #d8ef91; border-radius:12px; }
+.camera-scanner-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.camera-scanner-actions .btn { flex:1 1 150px; display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; }
+.camera-scanner-error { color:var(--status-low-text); background:var(--status-low-bg); padding:12px; border-radius:8px; overflow-wrap:anywhere; }
+.camera-scanner-upload { position:relative; overflow:hidden; cursor:pointer; }
+.camera-scanner-upload input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.camera-scanner-upload:focus-within { outline:2px solid var(--brand-primary); outline-offset:3px; }
+@media(max-width:480px) { .camera-scanner-actions { flex-direction:column; } .camera-scanner-actions .btn { flex-basis:auto; } }

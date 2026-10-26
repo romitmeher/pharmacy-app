@@ -1,9 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $demoWorkspace = $PSScriptRoot
 $demoData = Join-Path $demoWorkspace 'data/demo'
-if (-not (Test-Path -LiteralPath (Join-Path $demoData 'manifest.json'))) {
-    throw 'Build the demo first: backend/venv/Scripts/python.exe backend/scripts/build_demo.py'
-}
+New-Item -ItemType Directory -Path $demoData -Force | Out-Null
 foreach ($demoPort in @(5000, 3000)) {
     if (Get-NetTCPConnection -State Listen -LocalPort $demoPort -ErrorAction SilentlyContinue) {
         throw "Port $demoPort is already running. Open http://localhost:3000 if the demo is active."
@@ -21,4 +19,4 @@ $demoFrontend = Start-Process -FilePath $demoShell -ArgumentList @('-NoProfile',
     -RedirectStandardError (Join-Path $demoData 'frontend-errors.log') -PassThru
 @{backend_pid=$demoBackend.Id;frontend_pid=$demoFrontend.Id;url='http://localhost:3000'} |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $demoData 'running.json')
-Write-Output 'Demo starting at http://localhost:3000. Read the local login password from backend/instance/demo-credentials.json.'
+Write-Output 'App starting at http://localhost:3000 using Aiven MySQL and PostgreSQL. Sign in with your existing pharmacy account.'

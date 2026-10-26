@@ -1,0 +1,35 @@
+[
+  {
+    "expected": "Cyclomine",
+    "status": 200,
+    "seconds": 7.35,
+    "candidate": "Cyclomine",
+    "engine": "google_package_transcription",
+    "barcode": null,
+    "notice": null,
+    "strength": "20 mg + 325 mg",
+    "review_required": true
+  },
+  {
+    "expected": "Nu Cat Kof",
+    "status": 200,
+    "seconds": 2.79,
+    "candidate": "Nu Cat Kof",
+    "engine": "google_package_transcription",
+    "barcode": null,
+    "notice": null,
+    "strength": "10 mg + 2 mg + 5 mg",
+    "review_required": true
+  },
+  {
+    "expected": "Dromef",
+    "status": 200,
+    "seconds": 0.97,
+    "candidate": "Dromef",
+    "engine": "local_ocr",
+    "barcode": "00235066",
+    "notice": null,
+    "strength": null,
+    "review_required": true
+  }
+]

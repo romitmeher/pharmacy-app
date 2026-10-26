@@ -48,6 +48,7 @@ import {
   CreatePurchaseDraftPayload,
   DeliveryDiscrepancyReport,
   ActualScanPayload,
+  MatchedDraftData,
 } from "@/lib/api";
 
 export default function PurchasesPage() {
@@ -77,6 +78,8 @@ export default function PurchasesPage() {
   const [showOcrModal, setShowOcrModal] = useState<boolean>(false);
   const [ocrParsing, setOcrParsing] = useState<boolean>(false);
   const [rawOcrInputText, setRawOcrInputText] = useState<string>("");
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [ocrPreview, setOcrPreview] = useState<MatchedDraftData | null>(null);
 
   // Physical Delivery Verification Matrix State (PRD Rule 12)
   const [showVerifyDeliveryModal, setShowVerifyDeliveryModal] = useState<boolean>(false);
@@ -87,17 +90,22 @@ export default function PurchasesPage() {
 
 
   const handleScanOcrInvoice = async () => {
-    if (!rawOcrInputText.trim()) {
+    if (!rawOcrInputText.trim() && !invoiceFile) {
       setActionError("Please paste raw invoice OCR text or upload invoice document.");
       return;
     }
     setOcrParsing(true);
     setActionError(null);
     try {
-      const res = await scanDistributorInvoice(rawOcrInputText.trim());
+      const res = await scanDistributorInvoice(rawOcrInputText.trim(), invoiceFile || undefined);
+      if (res.status === "review_required") {
+        setOcrPreview(res.data);
+        return;
+      }
       setActionSuccess(`Distributor Draft Invoice ${res.data.invoice_number} created via OCR!`);
       setShowOcrModal(false);
       setRawOcrInputText("");
+      setInvoiceFile(null);
       loadData();
     } catch (err: unknown) {
       setActionError((err instanceof Error ? err.message : "") || "Failed to parse distributor invoice OCR.");
@@ -153,6 +161,7 @@ export default function PurchasesPage() {
   const [draftItems, setDraftItems] = useState<
     Array<{
       medicine_id: number;
+      extracted_name?: string;
       batch_number: string;
       expiry_date: string;
       quantity: number;
@@ -848,6 +857,7 @@ export default function PurchasesPage() {
                           
                           className="form-select purchases-77"
                         >
+                          <option value={0}>{item.extracted_name ? `Review OCR: ${item.extracted_name}` : "Select medicine"}</option>
                           {medicines.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.brand_name}
@@ -1133,7 +1143,7 @@ export default function PurchasesPage() {
                     Distributor Invoice OCR Parsing
                   </h2>
                   <p className="purchases-123">
-                    PRD Rule 11: Converts unstructured wholesale invoice OCR into a reviewable Purchase Draft
+                    Read a distributor bill, review the extracted rows, then prepare your purchase draft.
                   </p>
                 </div>
               </div>
@@ -1144,7 +1154,10 @@ export default function PurchasesPage() {
 
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label" htmlFor="purchases-field-5">Paste Wholesale Invoice OCR Text / Table *</label>
+                <label className="form-label" htmlFor="invoice-upload">Invoice photo or PDF</label>
+                <input id="invoice-upload" type="file" accept="image/jpeg,image/png,application/pdf" disabled={ocrParsing}
+                  onChange={(e) => { setInvoiceFile(e.target.files?.[0] || null); setOcrPreview(null); }} />
+                <label className="form-label" htmlFor="purchases-field-5">Or paste wholesale invoice text</label>
                 <textarea
                   rows={8}
                   placeholder={`Paste distributor invoice OCR text e.g.:
@@ -1160,10 +1173,35 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
                 />
               </div>
 
+              {ocrPreview && <section aria-label="Invoice review preview">
+                <h3>{ocrPreview.distributor_name} - {ocrPreview.invoice_number}</h3>
+                <p>{ocrPreview.items_count} rows · Printed total: ₹{ocrPreview.total_amount.toFixed(2)}</p>
+                <p>Nothing has been saved. Names and numbers may contain OCR errors. Check every row against the original bill.</p>
+                <div style={{ maxHeight: "320px", overflow: "auto" }}>
+                  <table className="data-table"><thead><tr><th>Text read</th><th>Batch</th><th>Expiry</th><th>Qty</th><th>Rate</th></tr></thead>
+                    <tbody>{ocrPreview.matched_draft.items.map((item, i) => <tr key={i}>
+                      <td>{item.raw_item_name}</td><td>{item.batch_number || "Review required"}</td>
+                      <td>{item.expiry_date || "Review required"}</td><td>{item.quantity || "Enter manually"}</td><td>{item.purchase_rate}</td>
+                    </tr>)}</tbody></table>
+                </div>
+                <button className="btn btn-secondary" onClick={() => {
+                  setDraftSupplierId(ocrPreview.supplier_id || 0);
+                  setDraftInvoiceNumber(ocrPreview.invoice_number);
+                  setDraftInvoiceDate(ocrPreview.matched_draft.invoice_date || "");
+                  setDraftItems(ocrPreview.matched_draft.items.map(item => ({
+                    medicine_id: 0, extracted_name: item.raw_item_name, batch_number: item.batch_number || "",
+                    expiry_date: item.expiry_date || "", quantity: item.quantity || 0,
+                    purchase_rate: item.purchase_rate || 0, mrp: item.mrp || 0,
+                  })));
+                  setShowOcrModal(false); setShowCreateModal(true);
+                  setActionSuccess("Review each extracted name, choose the exact catalog medicine, and enter quantities, missing dates and prices before saving.");
+                }}>Review and correct purchase draft</button>
+              </section>}
+
               <div
                 className="purchases-125"
               >
-                <strong>Human-in-the-Loop Protocol:</strong> Scanning creates a DRAFT purchase invoice. Physical stock will NOT be added to inventory until verified upon delivery.
+                <strong>Review required:</strong> Invoice photos open a preview before saving. Physical stock changes only after the purchase and delivery are reviewed and accepted.
               </div>
             </div>
 
@@ -1171,7 +1209,7 @@ LINE 2: Amoxicillin 250mg | BATCH: AMX-404 | EXP: 2027-08-31 | QTY: 50 | RATE: 4
               <button onClick={() => setShowOcrModal(false)} className="btn btn-secondary" disabled={ocrParsing}>
                 Cancel
               </button>
-              <button onClick={handleScanOcrInvoice} className="btn btn-primary" disabled={ocrParsing || !rawOcrInputText.trim()}>
+              <button onClick={handleScanOcrInvoice} className="btn btn-primary" disabled={ocrParsing || (!rawOcrInputText.trim() && !invoiceFile)}>
                 {ocrParsing ? "Parsing Table..." : "Extract Purchase Draft"}
               </button>
             </div>

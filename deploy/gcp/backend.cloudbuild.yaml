@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: sh
+    args: [-c, 'docker pull "${_CACHE_IMAGE}" || true']
+  - name: gcr.io/cloud-builders/docker
+    args: [build, --cache-from, '${_CACHE_IMAGE}', -t, '${_IMAGE}', -t, '${_CACHE_IMAGE}', backend]
+images: ['${_IMAGE}', '${_CACHE_IMAGE}']
+substitutions:
+  _CACHE_IMAGE: asia-south1-docker.pkg.dev/midyear-forest-455216-c9/smartpharm/backend:cache
+timeout: 1800s
+options:
+  machineType: E2_HIGHCPU_8

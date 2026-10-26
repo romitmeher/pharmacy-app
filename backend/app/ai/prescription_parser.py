@@ -38,13 +38,13 @@ class PrescribedMedicineItem:
     strength: Optional[str] = None
     dosage_instructions: Optional[str] = None
     duration: Optional[str] = None
-    quantity_to_dispense: int = 10
+    quantity_to_dispense: Optional[int] = None
     matched_medicine_id: Optional[int] = None
     matched_brand_name: Optional[str] = None
     matched_mrp: Optional[float] = None
     is_available: bool = False
     available_units: int = 0
-    confidence: float = 0.85
+    confidence: Optional[float] = None
     alternative_candidates: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -60,7 +60,8 @@ class PrescribedMedicineItem:
             "matched_mrp": self.matched_mrp,
             "is_available": self.is_available,
             "available_units": self.available_units,
-            "confidence": round(self.confidence, 2),
+            "confidence": self.confidence,
+            "requires_review": True,
             "alternative_candidates": self.alternative_candidates,
         }
 
@@ -74,6 +75,8 @@ class PrescriptionExtractionResult:
     raw_ocr_text: str = ""
     is_fully_dispensable: bool = False
     notes: str = ""
+    warnings: List[str] = field(default_factory=list)
+    engine: str = "local_text"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -84,6 +87,9 @@ class PrescriptionExtractionResult:
             "notes": self.notes,
             "items": [it.to_dict() for it in self.items],
             "raw_ocr_text": self.raw_ocr_text,
+            "warnings": self.warnings,
+            "engine": self.engine,
+            "requires_verification": True,
         }
 
 
@@ -100,13 +106,18 @@ class PrescriptionScanner:
         for line in lines:
             # Skip header lines like "Rx", "Dr. Name", "Clinic", "Date:"
             lower_l = line.lower()
-            if any(h in lower_l for h in ["dr.", "clinic", "hospital", "patient", "age", "date:", "weight", "reg no"]):
+            if re.match(r"^(?:dr\.?\s|clinic\b|hospital\b|patient\b|age\b|date\b|weight\b|reg\s*no\b)", lower_l):
                 continue
 
             # Strip leading bullet points or numbered list tokens (e.g. "1.", "Tab", "Cap", "Inj", "Rx")
             cleaned_line = line
             cleaned_line = re.sub(r"^(?:\d+\.|\*|-|•|\(?\d+\)?)\s*", "", cleaned_line).strip()
-            cleaned_line = re.sub(r"^(?:rx|tab(?:let)?\.?|cap(?:sule)?\.?|syr(?:up)?\.?|inj(?:ection)?\.?|oint(?:ment)?\.?)\s*", "", cleaned_line, flags=re.IGNORECASE).strip()
+            has_marker = bool(re.match(r"^(?:t\.?\s|tab\b|tablet\b|cap\b|capsule\b|syr\b|inj\b|oint\b)", cleaned_line, re.I))
+            cleaned_line = re.sub(r"^(?:rx\b\s*:?|t\.?\s|tab(?:let)?\b\.?|cap(?:sule)?\b\.?|syr(?:up)?\b\.?|inj(?:ection)?\b\.?|oint(?:ment)?\b\.?)\s*", "", cleaned_line, flags=re.IGNORECASE).strip()
+            if re.match(r"^(?:name|sex|mob|bp|b\.p|hr|spo2|temp|timing|for medicine|diagnosis|h/o|fever)\b", cleaned_line, re.I):
+                continue
+            if not has_marker and not (RE_DOSAGE_SIG.search(cleaned_line) or re.search(r"\d\s*(mg|mcg|ml)\b", cleaned_line, re.I)):
+                continue
             if len(cleaned_line) < 3:
                 continue
 
@@ -131,7 +142,7 @@ class PrescriptionScanner:
             drug_tokens = []
             for t in tokens:
                 lower_t = t.lower()
-                if any(x in lower_t for x in ["1-0", "0-0", "1-1", "0-1", "od", "bd", "tds", "qid", "hs", "day", "days", "week", "weeks"]):
+                if RE_DOSAGE_SIG.fullmatch(t.strip(".,")) or re.fullmatch(r"\d+-\d+-\d+|days?|weeks?|months?", lower_t):
                     break
                 if lower_t in ["tab", "cap", "syr", "inj", "tablet", "capsule"]:
                     continue
@@ -155,8 +166,17 @@ class PrescriptionScanner:
                     Medicine.is_active == True,
                     (Medicine.brand_name.ilike(f"%{clean_search_name}%") | Medicine.generic_name.ilike(f"%{clean_search_name}%")),
                 )
-                .first()
+                .limit(20).all()
             )
+            # Do not silently pick the first medicine when several strengths match.
+            if strength_val:
+                normalize = lambda value: re.sub(r"\W", "", (value or "").lower())
+                med = [m for m in med if normalize(m.strength) == normalize(strength_val)]
+            def name_key(value):
+                value = re.sub(r"\b\d+(?:\.\d+)?\s*(?:mg|mcg|g|ml|iu)?\b", "", value or "", flags=re.I)
+                return re.sub(r"\W", "", value.casefold())
+            med = [m for m in med if name_key(clean_search_name) in {name_key(m.brand_name), name_key(m.generic_name)}]
+            med = med[0] if len(med) == 1 else None
 
             is_avail = False
             stock_qty = 0
@@ -174,7 +194,8 @@ class PrescriptionScanner:
                 stock_qty = (
                     db.session.query(db.func.coalesce(db.func.sum(Inventory.quantity_available), 0))
                     .join(Batch, Inventory.batch_id == Batch.id)
-                    .filter(Inventory.store_id == store_id, Batch.medicine_id == med.id)
+                    .filter(Inventory.store_id == store_id, Batch.store_id == store_id,
+                            Batch.medicine_id == med.id, Batch.expiry_date >= datetime.date.today())
                     .scalar()
                 )
                 stock_qty = int(stock_qty)
@@ -187,14 +208,8 @@ class PrescriptionScanner:
                         alternatives = [c.to_dict() for c in alt_res.candidates[:3]]
 
             # Default dispensing quantity
-            dispense_qty = 10
-            if duration and "day" in duration.lower():
-                try:
-                    num_days = int(re.search(r"\d+", duration).group(0))
-                    doses_per_day = 2 if dosage_sig in ["1-0-1", "BD"] else 3 if dosage_sig in ["1-1-1", "TDS"] else 1
-                    dispense_qty = num_days * doses_per_day
-                except Exception:
-                    pass
+            # A schedule/circled duration is not an explicit dispensing quantity.
+            dispense_qty = None
 
             item = PrescribedMedicineItem(
                 raw_text=line,
@@ -208,7 +223,7 @@ class PrescriptionScanner:
                 matched_mrp=mrp_val,
                 is_available=is_avail,
                 available_units=stock_qty,
-                confidence=0.90 if med else 0.65,
+                confidence=None,
                 alternative_candidates=alternatives,
             )
             prescribed_items.append(item)
@@ -227,13 +242,76 @@ class PrescriptionScanner:
             unavailable_count=unavail_count,
             items=prescribed_items,
             raw_ocr_text=text,
-            is_fully_dispensable=(unavail_count == 0 and total_det > 0),
+            is_fully_dispensable=False,
             notes=note,
         )
 
-    def scan_prescription_image(self, image: np.ndarray, store_id: int) -> PrescriptionExtractionResult:
-        ocr_res = default_ocr_engine.run_ocr(image)
-        return self.parse_prescription_text(ocr_res.full_text, store_id)
+    def scan_prescription_image(self, image: np.ndarray, store_id: int, use_handwriting=False) -> PrescriptionExtractionResult:
+        if use_handwriting:
+            from app.ai.prescription_vision import read_handwriting
+            try:
+                reading = read_handwriting(image)
+            except Exception as error:
+                # Never log a provider exception body, key or prescription contents.
+                logger.warning("Prescription handwriting service unavailable (%s)", type(error).__name__)
+                return PrescriptionExtractionResult(0, 0, 0, engine="handwriting_unavailable",
+                    warnings=["Handwriting AI is unavailable. Retry later, choose local printed OCR, or enter the medicine rows manually."],
+                    notes="No medicines guessed. No prescription has been saved.")
+            result = PrescriptionExtractionResult(0, 0, 0, engine="handwriting_ai",
+                raw_ocr_text="\n".join(row["raw_text"] for row in reading["items"]), warnings=reading["warnings"])
+            for row in reading["items"]:
+                name = row.get("name")
+                uncertain = row["uncertain"] or not name
+                result.items.append(PrescribedMedicineItem(
+                    raw_text=row["raw_text"],
+                    detected_brand_or_generic=(row["raw_text"] if uncertain else name),
+                    strength=row.get("strength"), dosage_instructions=row.get("dosage_instructions"),
+                    duration=row.get("duration"), quantity_to_dispense=row.get("quantity")))
+                if uncertain:
+                    result.warnings.append(f"Unclear medicine name in row {len(result.items)}: compare with the original or contact the prescriber.")
+            result.total_detected = len(result.items)
+            result.unavailable_count = result.total_detected
+            result.notes = "Draft transcription only. Check every medicine name, strength, schedule and quantity before saving. No automatic catalog link or dispensing approval."
+            return result
+        import cv2
+        # Local-only shadow correction helps phone photographs of paper. Keep
+        # both readings visible; do not invent a more plausible handwritten drug.
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        background = cv2.GaussianBlur(gray, (0, 0), 25)
+        normalized = cv2.divide(gray, background, scale=255)
+        normalized = cv2.cvtColor(normalized, cv2.COLOR_GRAY2BGR)
+        readings = [default_ocr_engine.run_ocr(image), default_ocr_engine.run_ocr(normalized)]
+        candidates = []
+        for reading in readings:
+            # Rejoin OCR boxes on a visual row; OCR engines otherwise return
+            # disconnected words in reading order, losing the T./Tab marker.
+            boxes = [w for w in reading.word_boxes if len(w.box) == 4]
+            rows = []
+            for word in sorted(boxes, key=lambda w: sum(p[1] for p in w.box)/4):
+                center = sum(p[1] for p in word.box)/4
+                height = max(p[1] for p in word.box)-min(p[1] for p in word.box)
+                if rows and abs(center-rows[-1][0]) < max(8, min(height, rows[-1][1])*.65):
+                    rows[-1][2].append(word)
+                else:
+                    rows.append([center, height, [word]])
+            text = "\n".join(" ".join(w.text for w in sorted(row[2], key=lambda w: min(p[0] for p in w.box))) for row in rows) if rows else reading.full_text
+            candidates.append(self.parse_prescription_text(text, store_id))
+        result = max(candidates, key=lambda candidate: candidate.total_detected)
+        # Local printed OCR does not establish a handwritten identity. Preserve
+        # the visible draft but require a pharmacist to choose any catalog link.
+        for item in result.items:
+            item.matched_medicine_id = None
+            item.matched_brand_name = None
+            item.matched_mrp = None
+            item.is_available = False
+            item.available_units = 0
+            item.alternative_candidates = []
+        result.available_count = 0
+        result.unavailable_count = result.total_detected
+        result.engine = "local_ocr"
+        result.warnings = ["Local OCR is designed for printed text and may misread handwriting. Review the original and edit every medicine row; no automatic catalog links or quantities were assigned."]
+        result.notes = "Draft reading only. Unclear handwriting must be transcribed or confirmed by a pharmacist."
+        return result
 
 
 default_prescription_scanner = PrescriptionScanner()

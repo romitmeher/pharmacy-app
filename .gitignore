@@ -35,3 +35,4 @@ backend/.venv-training/
 .eslint-*.json
 .next-demo/
 **/.demo-credentials.json
+frontend/public/sw.js

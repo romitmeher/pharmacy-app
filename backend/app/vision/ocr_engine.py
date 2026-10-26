@@ -83,7 +83,7 @@ class OCREngine:
                         use_doc_orientation_classify=False,
                         use_doc_unwarping=False,
                         use_textline_orientation=self.use_angle_cls,
-                        enable_mkldnn=False,
+                        enable_mkldnn=os.environ.get("OCR_ENABLE_MKLDNN", "false").lower() == "true",
                         cpu_threads=4,
                         text_detection_model_name=os.environ.get("OCR_DETECTION_MODEL", "PP-OCRv5_mobile_det"),
                         text_recognition_model_name=os.environ.get("OCR_RECOGNITION_MODEL", "en_PP-OCRv5_mobile_rec"),
@@ -117,6 +117,7 @@ class OCREngine:
             logger.warning("PaddleOCR engine not active; returning empty result.")
             return OCRResult(full_text="", lines=[], word_boxes=[], avg_confidence=0.0)
 
+        original_height, original_width = image.shape[:2]
         largest_side = max(image.shape[:2])
         if largest_side > 1600:
             image = cv2.resize(image, None, fx=1600 / largest_side, fy=1600 / largest_side)
@@ -125,6 +126,8 @@ class OCREngine:
             # preferred scale. Upscale for detection; quality checks still use the original.
             scale = min(3.0, 900 / largest_side)
             image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        scale_x = original_width / image.shape[1]
+        scale_y = original_height / image.shape[0]
         raw_results = None
         try:
             with self._prediction_lock:
@@ -158,7 +161,8 @@ class OCREngine:
                         wb = OCRWordBox(
                             text=txt,
                             confidence=norm_conf,
-                            box=[[x, y], [x + w, y], [x + w, y + h], [x, y + h]],
+                            box=[[px * scale_x, py * scale_y] for px, py in
+                                 [[x, y], [x + w, y], [x + w, y + h], [x, y + h]]],
                         )
                         word_boxes.append(wb)
                         lines.append(txt)
@@ -189,12 +193,16 @@ class OCREngine:
             if hasattr(page, "get") or hasattr(page, "keys"):
                 texts = page.get("rec_texts") or page.get("text") or []
                 scores = page.get("rec_scores") or page.get("score") or []
-                boxes = page.get("dt_polys")
+                boxes = page.get("rec_polys")
+                if boxes is None:
+                    boxes = page.get("dt_polys")
                 if boxes is None:
                     boxes = page.get("boxes", [])
                 if hasattr(boxes, "tolist"):
                     boxes = boxes.tolist()
                 for t, s, b in zip(texts, scores, boxes):
+                    if hasattr(b, "tolist"):
+                        b = b.tolist()
                     c_txt = str(t).strip()
                     if c_txt:
                         word_boxes.append(OCRWordBox(text=c_txt, confidence=float(s), box=b if isinstance(b, list) else []))
@@ -218,6 +226,8 @@ class OCREngine:
                         logger.debug(f"Skipping line item: {line_err}")
                         continue
 
+        for word in word_boxes:
+            word.box = [[x * scale_x, y * scale_y] for x, y in word.box]
         full_text = "\n".join(lines)
         avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
 

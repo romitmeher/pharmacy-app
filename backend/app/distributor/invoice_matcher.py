@@ -11,8 +11,10 @@ Strict compliance with SmartPharm PRD:
 from dataclasses import dataclass, field
 import difflib
 import logging
+import re
 from typing import Any, Dict, List, Optional
 from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from app.models.medicine import Medicine, MedicineAlias
 from app.models.supplier import Supplier
@@ -124,7 +126,6 @@ class InvoiceCatalogMatcher:
             supplier = best_sup
 
         # 2. Line Items Matching
-        active_medicines = Medicine.query.filter_by(store_id=store_id, is_active=True).all()
         matched_items: List[MatchedInvoiceItem] = []
 
         subtotal = 0.0
@@ -134,11 +135,26 @@ class InvoiceCatalogMatcher:
             best_med = None
             best_conf = 0.0
 
+            # Bound fuzzy matching to plausible names. Never load the entire
+            # catalog or issue one lazy alias query per medicine.
+            ignored = {"tablet", "tablets", "tab", "tabs", "capsule", "capsules", "cap", "caps",
+                       "syrup", "injection", "powder", "cream", "ointment", "coated"}
+            tokens = list(dict.fromkeys(t for t in re.findall(r"[a-z0-9]{3,}", item.cleaned_medicine_name.lower())
+                                        if t not in ignored and not t.isdigit()))[:4]
+            candidates = []
+            if tokens:
+                conditions = []
+                for token in tokens:
+                    conditions.extend([Medicine.brand_name.ilike(f"%{token}%"),
+                        Medicine.aliases.any(or_(MedicineAlias.alias_type.is_(None), MedicineAlias.alias_type != "barcode") & MedicineAlias.alias_name.ilike(f"%{token}%"))])
+                candidates = (Medicine.query.filter_by(store_id=store_id, is_active=True)
+                    .filter(or_(*conditions)).options(selectinload(Medicine.aliases))
+                    .order_by(Medicine.id).limit(100).all())
             # Direct and alias matching
-            for med in active_medicines:
+            for med in candidates:
                 sim = _string_similarity(item.cleaned_medicine_name, med.brand_name)
                 # Check aliases if present
-                alias_sims = [_string_similarity(item.cleaned_medicine_name, a.alias_name) for a in med.aliases] if hasattr(med, "aliases") and med.aliases else [0.0]
+                alias_sims = [_string_similarity(item.cleaned_medicine_name, a.alias_name) for a in med.aliases if a.alias_type != "barcode"] or [0.0]
                 top_sim = max(sim, max(alias_sims, default=0.0))
 
                 if top_sim > best_conf:
@@ -152,7 +168,7 @@ class InvoiceCatalogMatcher:
             rate = item.purchase_rate or 0.0
             qty = item.quantity
             line_tot = item.total_amount if item.total_amount is not None else round(rate * qty, 2)
-            gst_pct = item.gst_percentage or 12.0
+            gst_pct = item.gst_percentage if item.gst_percentage is not None else 0.0
             line_tax = round(line_tot * (gst_pct / 100.0), 2)
 
             subtotal += line_tot
@@ -172,7 +188,7 @@ class InvoiceCatalogMatcher:
                     quantity=qty,
                     free_quantity=item.free_quantity,
                     purchase_rate=rate,
-                    mrp=item.mrp or rate * 1.25,
+                    mrp=item.mrp,
                     discount_percentage=item.discount_percentage,
                     gst_percentage=gst_pct,
                     total_amount=line_tot,

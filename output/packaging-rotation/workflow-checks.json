@@ -1,0 +1,46 @@
+[
+  {
+    "endpoint": "/api/health",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/auth/me",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/medicines?per_page=10",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/batches?per_page=1",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/sales?per_page=1",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/purchases?per_page=1",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/prescriptions?per_page=1",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/suppliers?per_page=1",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/expenses?per_page=1",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/inventory/expiry?days=30",
+    "status": 200
+  },
+  {
+    "endpoint": "/api/ml/reorder-recommendations?limit=3",
+    "status": 200
+  }
+]

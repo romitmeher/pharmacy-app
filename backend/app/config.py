@@ -71,6 +71,11 @@ class Config:
 
     # AI / LLM Configuration (Google Gemini 2.5 Flash / Pro)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+    PACKAGING_VISION_ENABLED = os.environ.get("PACKAGING_VISION_ENABLED", "true").lower() == "true"
+    PACKAGING_VISION_MODEL = os.environ.get("PACKAGING_VISION_MODEL", "gemini-3.5-flash")
+    PRESCRIPTION_VISION_MODEL = os.environ.get("PRESCRIPTION_VISION_MODEL", "gemini-3-flash-preview")
+    SMARTPHARM_PHOTO_MODEL = os.environ.get("SMARTPHARM_PHOTO_MODEL", "")
+    DEMO_PHOTO_REVIEW = os.environ.get("DEMO_PHOTO_REVIEW", "false").lower() == "true"
 
     # CORS
     CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")

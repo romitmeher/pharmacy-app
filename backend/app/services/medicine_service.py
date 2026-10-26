@@ -7,7 +7,7 @@ independent from batches and physical inventory.
 """
 
 from decimal import Decimal
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, select
 
 from app.extensions import db
 from app.models.medicine import (
@@ -18,6 +18,26 @@ from app.models.medicine import (
     DosageForm,
 )
 from app.utils.errors import ValidationError, NotFoundError
+from app.models.store import Store
+
+
+def _identity_key(brand, strength, manufacturer, dosage_form, route):
+    def text(value):
+        return " ".join((value or "").split()).casefold()
+    form = dosage_form.value if isinstance(dosage_form, DosageForm) else dosage_form
+    return (text(brand), "".join(text(strength).split()), text(manufacturer), text(form), text(route))
+
+
+def _reject_duplicate(store_id, brand, strength, manufacturer, dosage_form, route, exclude_id=None):
+    # Serialize API identity changes per store on databases with row locks.
+    db.session.execute(select(Store.id).where(Store.id == store_id).with_for_update()).scalar_one()
+    key = _identity_key(brand, strength, manufacturer, dosage_form, route)
+    candidates = Medicine.query.filter_by(store_id=store_id, is_active=True)
+    if exclude_id is not None:
+        candidates = candidates.filter(Medicine.id != exclude_id)
+    for other in candidates:
+        if _identity_key(other.brand_name, other.strength, other.manufacturer, other.dosage_form, other.route) == key:
+            raise ValidationError(f"This medicine already exists (ID {other.id}). Edit the existing medicine or add a new batch instead.")
 
 
 def _parse_dosage_form(value):
@@ -69,6 +89,7 @@ def create_medicine(store_id: int, data: dict, commit=True) -> Medicine:
         raise ValidationError("brand_name is required.")
 
     dosage_form = _parse_dosage_form(data.get("dosage_form"))
+    _reject_duplicate(store_id, brand_name, data.get("strength"), data.get("manufacturer"), dosage_form, data.get("route"))
     mrp = _parse_decimal(data.get("mrp"), "mrp")
     selling_price = _parse_decimal(data.get("selling_price"), "selling_price")
     gst_percentage = _parse_decimal(data.get("gst_percentage"), "gst_percentage")
@@ -204,6 +225,12 @@ def list_medicines(
 def update_medicine(store_id: int, medicine_id: int, data: dict) -> Medicine:
     """Update an existing medicine and optionally its ingredients/aliases."""
     medicine = get_medicine(store_id, medicine_id, include_inactive=True)
+    identity_fields = ("brand_name", "strength", "manufacturer", "dosage_form", "route")
+    if data.get("is_active", medicine.is_active) and (any(field in data for field in identity_fields) or data.get("is_active") is True):
+        proposed = {field: data.get(field, getattr(medicine, field)) for field in identity_fields}
+        proposed["dosage_form"] = _parse_dosage_form(proposed["dosage_form"])
+        _reject_duplicate(store_id, proposed["brand_name"], proposed["strength"], proposed["manufacturer"],
+                          proposed["dosage_form"], proposed["route"], exclude_id=medicine.id)
     if any((a.get("alias_type") or "").strip().lower() == "barcode" for a in (data.get("aliases") or [])):
         raise ValidationError("Link barcodes using the medicine barcode endpoint.")
 

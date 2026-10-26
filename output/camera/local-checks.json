@@ -1,0 +1,12 @@
+{
+  "base": "http://localhost:3000",
+  "saleSubmitted": false,
+  "hardwareEnterAndTab": true,
+  "realDecoderWithSimulatedVideo": true,
+  "noDuplicateFrameAdds": true,
+  "tracksStoppedAfterMatch": true,
+  "permissionFailureIsRecoverable": true,
+  "tracksStoppedAfterLatePermission": true,
+  "captureRoutesToPackagingPreview": true,
+  "captureStopsCamera": true
+}

@@ -108,6 +108,9 @@ export interface MatchResult {
 }
 
 export interface RecognitionPipelineResponse {
+  recognition_engine?: "local_ocr" | "google_package_transcription";
+  recognition_notice?: string | null;
+  demo_suggestion?: { medicine_id: number; name: string; strength: string | null; generic_name: string | null; experimental: boolean; message: string } | null;
   barcode?: string | null;
   photo_model?: { status: string; agrees_with_ocr: boolean; experimental: boolean; device: string } | null;
   success: boolean;
@@ -267,10 +270,12 @@ export interface ParsedDraftItem {
 }
 
 export interface MatchedDraftData {
-  purchase_invoice_id: number;
+  purchase_invoice_id: number | null;
   status: string;
   invoice_number: string;
-  supplier_id: number;
+  supplier_id: number | null;
+  requires_review?: boolean;
+  warnings?: string[];
   distributor_name: string;
   total_amount: number;
   items_count: number;
@@ -512,17 +517,20 @@ export interface PrescribedItemData {
   strength: string | null;
   dosage_instructions: string | null;
   duration: string | null;
-  quantity_to_dispense: number;
+  quantity_to_dispense: number | null;
   matched_medicine_id: number | null;
   matched_brand_name: string | null;
   matched_mrp: number | null;
   is_available: boolean;
   available_units: number;
-  confidence: number;
+  confidence: number | null;
   alternative_candidates: AlternativeCandidateData[];
 }
 
 export interface PrescriptionScanResponseData {
+  warnings?: string[];
+  engine?: string;
+  requires_verification?: boolean;
   total_detected: number;
   available_count: number;
   unavailable_count: number;
@@ -629,7 +637,8 @@ export async function getAlternativeMedicines(medicineId: number): Promise<Alter
  */
 export async function scanDoctorPrescription(
   text?: string,
-  imageFile?: File
+  imageFile?: File,
+  recognitionMode: "printed" | "handwriting" = "printed"
 ): Promise<PrescriptionScanResponseData> {
   const token = getAuthToken();
   let res: Response;
@@ -637,6 +646,7 @@ export async function scanDoctorPrescription(
   if (imageFile) {
     const formData = new FormData();
     formData.append("prescription", imageFile);
+    formData.append("recognition_mode", recognitionMode);
     res = await fetch(`${API_BASE_URL}/api/ai/prescription/scan`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },

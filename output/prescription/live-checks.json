@@ -1,0 +1,11 @@
+{
+  "deployedScanHTTP": 200,
+  "imagePreview": true,
+  "handwritingMode": true,
+  "rows": 4,
+  "warnings": 5,
+  "editableRows": true,
+  "noAutomaticMedicineLinks": true,
+  "quantitiesBlank": true,
+  "prescriptionSaved": false
+}

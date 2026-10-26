@@ -1,0 +1,26 @@
+{
+  "url": "https://smartpharm-web-244760124290.asia-south1.run.app",
+  "metrics": [
+    "53",
+    "11",
+    "4",
+    "3"
+  ],
+  "insightRows": 11,
+  "chartLabel": "Loaded invoices over the last seven days: 20/10/2026: 8, 21/10/2026: 7, 22/10/2026: 7, 23/10/2026: 7, 24/10/2026: 7, 25/10/2026: 7, 26/10/2026: 7",
+  "lookup": [
+    {
+      "width": 375,
+      "iconRight": 63,
+      "textStart": 77,
+      "rootOverflow": 0
+    },
+    {
+      "width": 1440,
+      "iconRight": 319,
+      "textStart": 333,
+      "rootOverflow": 0
+    }
+  ],
+  "realPaymentsSent": false
+}

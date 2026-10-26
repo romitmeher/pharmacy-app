@@ -23,6 +23,7 @@
 :root .status-badge.high:not(:has(.badge-icon))::before { content: '✓'; }
 :root .status-badge.med:not(:has(.badge-icon))::before, :root .status-badge.low:not(:has(.badge-icon))::before { content: '!'; }
 :root .table-container { max-height: 65dvh; overflow: auto; overscroll-behavior: contain; }
+:root .table-container, :root .ui-table-scroll { min-width: 0; max-width: 100%; }
 :root .data-table { border-collapse: separate; border-spacing: 0; font-size: var(--text-body); font-variant-numeric: tabular-nums lining-nums; }
 :root .data-table th { position: sticky; top: 0; z-index: 2; background: var(--bg-surface-elevated); color: var(--text-secondary); font-size: var(--text-small); text-transform: none; letter-spacing: var(--tracking-tight); }
 :root .data-table th, :root .data-table td { padding: var(--space-3) var(--space-4); height: var(--row-height); }

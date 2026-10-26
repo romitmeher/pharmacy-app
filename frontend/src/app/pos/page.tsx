@@ -5,6 +5,7 @@ import './pos.css';
 import { Button, Field, StatusBadge, EmptyState, Skeleton } from '@/components/ui/primitives';
 import { filterPOSMedicines, stockByMedicine as buildStockMap } from "@/lib/posCatalog";
 import POSCatalog from '@/components/POSCatalog';
+import CameraScanner from '@/components/CameraScanner';
 import { findBarcodeMedicine } from "@/lib/barcode";
 import { defaultPosPreferences, readPosPreferences, barcodeBeep } from "@/lib/posPreferences";
 import React, { useState, useEffect, useTransition, useCallback, useRef, useMemo } from "react";
@@ -122,13 +123,14 @@ export default function POSTerminalPage() {
 
   // Camera packaging recognition state (Phase 2 Vision-First POS)
   const [showCameraModal, setShowCameraModal] = useState<boolean>(false);
+  const [showLiveCamera, setShowLiveCamera] = useState(false);
   const [cvRecognizing, setCvRecognizing] = useState<boolean>(false);
   const [cvResult, setCvResult] = useState<RecognitionPipelineResponse | null>(null);
   const [cvImagePreview, setCvImagePreview] = useState<string | null>(null);
 
-  const handleCvFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePackagingPhoto = (file?: File) => {
     if (!file) return;
+    if (file.size > 12 * 1024 * 1024) { setErrorMessage("Use a packaging photo smaller than 12 MB."); return; }
 
     const reader = new FileReader();
     reader.onload = async () => {
@@ -378,14 +380,17 @@ export default function POSTerminalPage() {
 
   useEffect(() => {
     barcodePhotoApply.current = code => {
+      if (checkoutBusy.current) throw new Error("Checkout is in progress. Wait before scanning another medicine.");
+      if (loadingCatalog) throw new Error("The medicine catalog is still loading. Wait for stock to appear, then scan again.");
+      assertCurrentSession();
       const medicine = findBarcodeMedicine(medicines, code);
       if (handleAddToCart(medicine)) {
         barcodeBeep(posPreferences.barcodeBeep);
         setSuccessMessage(`Barcode ${code}: added 1 stock unit of ${medicine.brand_name}.`);
-      }
+      } else throw new Error("This medicine could not be added. Check available stock and the bill.");
     };
     return () => { barcodePhotoApply.current = null; };
-  }, [medicines, handleAddToCart, posPreferences.barcodeBeep]);
+  }, [medicines, handleAddToCart, posPreferences.barcodeBeep, loadingCatalog, assertCurrentSession]);
 
   // Update item quantity
   const handleUpdateQuantity = (index: number, delta: number) => {
@@ -555,7 +560,7 @@ export default function POSTerminalPage() {
   const changeDue = Math.max(0, tenderedNum - grandTotal);
 
   const visibleSelection = Math.min(selectedMedicine, Math.max(0, filteredMedicines.length - 1));
-  const blockingModal = showCameraModal || showHistoryModal || !!recentReceipt;
+  const blockingModal = showLiveCamera || showCameraModal || showHistoryModal || !!recentReceipt;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (recentReceipt && event.altKey && event.key.toLowerCase() === 'p') { event.preventDefault(); window.print(); return; }
@@ -580,7 +585,7 @@ export default function POSTerminalPage() {
     <div className="pos-terminal">
       <header className="page-header pos-header">
         <div><p className="pos-eyebrow">COUNTER & DISPENSING</p><h1 className="page-title">POS Billing Terminal</h1><p className="page-subtitle">FEFO Stock Dispensing • GST Compliance • Retail Pharmacy Counter</p></div>
-        <div className="pos-actions"><ThemeToggle /><Button variant="secondary" onClick={handleVoiceSearch} aria-pressed={listening}><Mic size={16} />{listening ? 'Stop listening' : 'Voice search'}</Button><Button variant="secondary" onClick={() => { setCvResult(null); setCvImagePreview(null); setShowCameraModal(true); }}><Camera size={16} />Scan barcode / packaging</Button><Button variant="secondary" onClick={handleOpenHistory}><History size={16} />Recent Invoices</Button></div>
+        <div className="pos-actions"><ThemeToggle /><Button variant="secondary" onClick={handleVoiceSearch} aria-pressed={listening}><Mic size={16} />{listening ? 'Stop listening' : 'Voice search'}</Button><Button variant="secondary" disabled={isSubmitting} onClick={() => setShowLiveCamera(true)}><Camera size={16} />Camera scanner</Button><Button variant="secondary" onClick={handleOpenHistory}><History size={16} />Recent Invoices</Button></div>
       </header>
       <section className="pos-sync" aria-label="Terminal synchronization">
         <div className="pos-sync-line"><StatusBadge tone={online ? 'success' : 'warning'}>{online ? 'Online' : "Offline — using this account's saved catalog"}</StatusBadge><span role="status">{queue.length} local sale{queue.length === 1 ? '' : 's'} awaiting synchronization or review</span><Button variant="quiet" disabled={!online || syncing} onClick={() => void syncQueuedSales()}>{syncing ? 'Synchronizing…' : 'Sync now'}</Button></div>
@@ -591,11 +596,11 @@ export default function POSTerminalPage() {
       <div className="pos-workspace">
         <section className="pos-catalog" aria-label="Medicine catalog">
           <div className="ui-card pos-search-card">
-            <form className="pos-barcode-form" onSubmit={handleBarcodeScan}><label className="ui-field pos-barcode-field">Barcode <span className="pos-key">F2</span><input ref={barcodeRef} aria-label="Barcode scanner input" className="form-input" type="text" autoComplete="off" spellCheck={false} autoFocus placeholder="Scan barcode, then press Enter" value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} maxLength={64} disabled={loadingCatalog || isSubmitting} /></label><Button type="submit" disabled={loadingCatalog || isSubmitting}>Add barcode</Button></form>
+            <form className="pos-barcode-form" onSubmit={handleBarcodeScan}><label className="ui-field pos-barcode-field">USB / Bluetooth barcode scanner <span className="pos-key">F2</span><input ref={barcodeRef} aria-label="Barcode scanner input" className="form-input" type="text" autoComplete="off" spellCheck={false} autoFocus placeholder="Scan barcode, then Enter or Tab" value={barcodeInput} onChange={e => setBarcodeInput(e.target.value)} onKeyDown={e => { if(e.key === 'Tab' && barcodeInput.trim()){e.preventDefault();handleBarcodeScan(e);} }} maxLength={64} disabled={loadingCatalog || isSubmitting} /></label><Button type="submit" disabled={loadingCatalog || isSubmitting}>Add barcode</Button></form>
             <div className="pos-search-row"><div className="ui-field pos-search-field"><label htmlFor="pos-medicine-search">Medicine name, molecule or barcode</label><input id="pos-medicine-search" ref={searchRef} className="form-input" type="search" value={searchQuery} placeholder="Search stocked medicines…" onChange={e => { setSearchQuery(e.target.value); setSelectedMedicine(0); }} disabled={isSubmitting} onKeyDown={e => {
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); setSelectedMedicine(Math.max(0, Math.min(filteredMedicines.length - 1, visibleSelection + (e.key === 'ArrowDown' ? 1 : -1)))); }
               if (e.key === 'Enter' && !loadingCatalog) { e.preventDefault(); const selected = catalogQuery === searchQuery ? filteredMedicines[visibleSelection] : filterPOSMedicines(medicines, searchQuery)[0]; setCatalogQuery(searchQuery); if (selected) handleAddToCart(selected); }
-            }} aria-describedby="pos-search-help" /></div><label className="ui-button ui-button--secondary pos-photo-label"><Camera size={16} />{barcodePhotoBusy ? 'Reading barcode…' : 'Barcode photo / camera'}<input className="pos-file-input" type="file" aria-label="Scan barcode photo or camera" accept="image/*" capture="environment" disabled={loadingCatalog || barcodePhotoBusy || isSubmitting} onChange={e => { void handleBarcodePhoto(e.target.files?.[0]); e.target.value = ''; }} /></label></div>
+            }} aria-describedby="pos-search-help" /></div><Button variant="secondary" disabled={isSubmitting} onClick={() => setShowLiveCamera(true)}><Camera size={16} />Live camera</Button><label className="ui-button ui-button--secondary pos-photo-label"><Upload size={16} />{barcodePhotoBusy ? 'Reading barcode…' : 'Barcode photo'}<input className="pos-file-input" type="file" aria-label="Scan barcode photo or camera" accept="image/*" capture="environment" disabled={loadingCatalog || barcodePhotoBusy || isSubmitting} onChange={e => { void handleBarcodePhoto(e.target.files?.[0]); e.target.value = ''; }} /></label></div>
             <p id="pos-search-help" className="ui-hint">↑ ↓ Choose medicine · Enter Add selected medicine · Nearest expiry batch selected automatically</p>
           </div>
           {errorMessage && <div role="alert" className="pos-message pos-message--error"><AlertTriangle size={18} /><span>{errorMessage}</span></div>}
@@ -816,6 +821,12 @@ export default function POSTerminalPage() {
       {/* =====================================================================
           Modal: Vision-First Camera Packaging Recognition (PRD Phase 2)
           ===================================================================== */}
+      {showLiveCamera && <CameraScanner onClose={() => setShowLiveCamera(false)} onBarcode={code => {
+        if (!barcodePhotoApply.current) throw new Error("Scanner is not ready. Please retry.");
+        barcodePhotoApply.current(code); setShowLiveCamera(false);
+      }} onCapture={file => {
+        setShowLiveCamera(false); setCvResult(null); setCvImagePreview(null); setShowCameraModal(true); handlePackagingPhoto(file);
+      }} />}
       {showCameraModal && (
         <div className="modal-backdrop" onClick={() => !cvRecognizing && setShowCameraModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "640px" }}>
@@ -841,7 +852,7 @@ export default function POSTerminalPage() {
                     Scan barcode or medicine packaging
                   </h2>
                   <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-                    PRD Phase 2: Live Computer Vision Packaging Identification with Human Verification
+                    Review the recognized medicine before adding it to the bill
                   </p>
                 </div>
               </div>
@@ -851,6 +862,9 @@ export default function POSTerminalPage() {
             </div>
 
             <div className="modal-body">
+              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
+                Show the printed medicine name and composition. Package photos may be sent to Google for text recognition; verify the result against the pack.
+              </p>
               {/* File Upload / Camera Input */}
               <div
                 style={{
@@ -867,8 +881,9 @@ export default function POSTerminalPage() {
                   id="cv-file-input"
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   style={{ display: "none" }}
-                  onChange={handleCvFileUpload}
+                  onChange={e => handlePackagingPhoto(e.target.files?.[0])}
                 />
 
                 {cvImagePreview ? (
@@ -887,7 +902,7 @@ export default function POSTerminalPage() {
                       Upload or Capture Packaging Image
                     </div>
                     <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                      Click to choose image file or capture photo via connected POS webcam
+                      Choose a photo here, or use Camera scanner for a live viewfinder
                     </div>
                   </div>
                 )}
@@ -915,13 +930,23 @@ export default function POSTerminalPage() {
                       justifyContent: "space-between",
                     }}
                   >
-                    <span>Image Quality Check: <strong>{cvResult.quality?.is_acceptable ? "Acceptable (Sharp)" : "Review Suggested"}</strong></span>
+                    <span>Basic photo checks: <strong>{cvResult.quality?.is_acceptable ? "Passed — verify printed details" : "Recapture suggested"}</strong></span>
                     <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                       Blur: {cvResult.quality?.blur_score?.toFixed(1) || "0"} | Glare: {cvResult.quality?.is_glare ? "Yes" : "No"}
                     </span>
                   </div>
 
                   {/* Recognition Match Candidate */}
+                  {cvResult.recognition_notice && (
+                    <p role="status" style={{ fontSize: "0.75rem", color: "var(--status-med-text)" }}>
+                      {cvResult.recognition_notice} Try the barcode or catalog search if the photo cannot be matched.
+                    </p>
+                  )}
+                  {cvResult.recognition_engine === "google_package_transcription" && (
+                    <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                      Package text read with Google and matched to your catalog. Confirm the medicine and every ingredient strength before adding.
+                    </p>
+                  )}
                   {cvResult.match_result?.top_candidate && !cvResult.match_result.low_confidence ? (
                     <div
                       style={{
@@ -988,7 +1013,13 @@ export default function POSTerminalPage() {
                     </div>
                   ) : (
                     <div style={{ textAlign: "center", padding: "1rem", color: "var(--status-low-text)", fontSize: "0.8125rem" }}>
-                      {cvResult.barcode
+                      {cvResult.demo_suggestion ? (
+                        <div style={{ color: "var(--text-primary)", textAlign: "left" }}>
+                          <strong>Demo photo suggestion: {cvResult.demo_suggestion.name}</strong>
+                          <p>{cvResult.demo_suggestion.generic_name} {cvResult.demo_suggestion.strength || ""}</p>
+                          <p>{cvResult.demo_suggestion.message}</p>
+                        </div>
+                      ) : cvResult.barcode
                         ? `Barcode ${cvResult.barcode} is not linked to one active medicine. Link it in Medicines Catalog, then sync POS.`
                         : "Unable to confidently identify this medicine. Capture another image or search manually."}
                       {cvResult.ocr?.full_text && (
@@ -997,9 +1028,9 @@ export default function POSTerminalPage() {
                         </div>
                       )}
                       <button className="btn btn-secondary" style={{ marginTop: "0.75rem" }} onClick={() => {
-                        setSearchQuery(cvResult.extracted_entities?.brand_name || "");
+                        setSearchQuery(cvResult.demo_suggestion?.name || cvResult.extracted_entities?.brand_name || "");
                         setShowCameraModal(false);
-                      }}>Search catalog manually</button>
+                      }}>{cvResult.demo_suggestion ? "Review medicine in catalog" : "Search catalog manually"}</button>
                     </div>
                   )}
                 </div>

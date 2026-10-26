@@ -179,6 +179,9 @@ def download(root=None, workers=12, limit=0, min_free_gb=10):
 
 
 def reference_similarity(image, name, strength="", root=None):
+    from flask import has_app_context, current_app
+    if has_app_context() and not current_app.testing:
+        return None  # Offline SQLite training indexes are not operational databases.
     root = Path(root or DATA_ROOT / "medicine_photos").resolve()
     if not (root / "library.sqlite3").exists():
         return None

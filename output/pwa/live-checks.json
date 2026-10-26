@@ -1,0 +1,13 @@
+{
+  "url": "https://smartpharm-web-244760124290.asia-south1.run.app",
+  "https": true,
+  "manifestErrors": [],
+  "installabilityErrors": [],
+  "iconsValid": true,
+  "workerActivated": true,
+  "workerNoStore": true,
+  "protectedDeepLinks": true,
+  "offlineFallback": true,
+  "reconnect": true,
+  "noPrivateCache": true
+}

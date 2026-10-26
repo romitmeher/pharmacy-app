@@ -63,7 +63,7 @@ export default function DashboardPage() {
       setRecentSales(salesRes.items || []);
       setTodaySalesCount(salesRes.total || (salesRes.items || []).length);
       setPendingDraftsCount(purchaseRes.total || (purchaseRes.items || []).length);
-      setCriticalExpiryCount(expiryRes.summary?.critical || 0 + (expiryRes.summary?.expired || 0));
+      setCriticalExpiryCount((expiryRes.summary?.critical || 0) + (expiryRes.summary?.expired || 0));
 
       // Low stock = batches with total_available <= 10
       const lowStockBatches = (batchRes.batches || []).filter(
@@ -120,7 +120,11 @@ export default function DashboardPage() {
   const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   const activity = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - (6 - index));
-    return { label: day.toLocaleDateString('en-IN', { weekday: 'short' }), date: day.toLocaleDateString('en-IN'), count: recentSales.filter(sale => sameDay(new Date(sale.sale_date), day)).length };
+    return { label: day.toLocaleDateString('en-IN', { weekday: 'short' }), date: day.toLocaleDateString('en-IN'), count: recentSales.filter(sale => {
+      // Backend datetimes are stored in UTC; an offset-free ISO string is not local time.
+      const stamp = /(?:Z|[+-]\d{2}:\d{2})$/i.test(sale.sale_date) ? sale.sale_date : `${sale.sale_date}Z`;
+      return sameDay(new Date(stamp), day);
+    }).length };
   });
   const maximum = Math.max(1, ...activity.map(day => day.count));
   return (

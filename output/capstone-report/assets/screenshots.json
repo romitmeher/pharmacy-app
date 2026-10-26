@@ -1,0 +1,44 @@
+[
+  {
+    "name": "02-dashboard",
+    "route": "/",
+    "title": "Your pharmacy,\nat a glance.",
+    "capturedAt": "2026-10-25T19:31:12.629Z"
+  },
+  {
+    "name": "03-pos",
+    "route": "/pos",
+    "title": "POS Billing Terminal",
+    "capturedAt": "2026-10-25T19:31:17.381Z"
+  },
+  {
+    "name": "04-inventory",
+    "route": "/inventory",
+    "title": "Inventory & Batches",
+    "capturedAt": "2026-10-25T19:31:22.244Z"
+  },
+  {
+    "name": "05-medicines",
+    "route": "/medicines",
+    "title": "Medicines Catalog",
+    "capturedAt": "2026-10-25T19:31:26.994Z"
+  },
+  {
+    "name": "06-purchases",
+    "route": "/purchases",
+    "title": "Purchases & Invoices",
+    "capturedAt": "2026-10-25T19:31:31.827Z"
+  },
+  {
+    "name": "07-prescriptions",
+    "route": "/prescriptions",
+    "title": "Prescriptions & Verification",
+    "capturedAt": "2026-10-25T19:31:37.277Z"
+  },
+  {
+    "name": "08-expiry",
+    "route": "/expiry",
+    "title": "Expiry Management",
+    "capturedAt": "2026-10-25T19:31:42.198Z"
+  }
+]

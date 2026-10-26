@@ -1,0 +1,12 @@
+[
+  {
+    "expected": "Dromef",
+    "status": 200,
+    "seconds": 1.09,
+    "candidate": "Dromef",
+    "low_confidence": false,
+    "rotation": 0,
+    "strength": null,
+    "correct": true
+  }
+]

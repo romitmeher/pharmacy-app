@@ -23,7 +23,7 @@ from app.vision.ocr_engine import OCRResult
 
 # Regex Patterns for Indian Medicine Packaging
 RE_STRENGTH = re.compile(
-    r"\b(\d+(?:\.\d+)?)\s*(mg|g|mcg|ml|iu|%|w\/v|w\/w)\b", re.IGNORECASE
+    r"(?<![\w/])(\d+(?:\.\d+)?)\s*(mg|g|mcg|ml|iu|%|w\/v|w\/w)\b", re.IGNORECASE
 )
 
 RE_BATCH = re.compile(
@@ -209,15 +209,25 @@ def extract_entities(ocr_lines: Union[List[Dict[str, Any]], List[str], str, OCRR
 
     # 4. Strength
     str_match = None
+    component_strengths = []
     for line in lines_list:
         text = line.get("text", "")
         if re.search(r"\b(?:max(?:imum)?|daily|dosage|dose|hours?|exceed|overdose)\b", text, re.I):
             continue
-        str_match = RE_STRENGTH.search(text)
-        if str_match:
-            break
+        matches = list(RE_STRENGTH.finditer(text))
+        if matches and str_match is None:
+            str_match = matches[0]
+        for item in matches:
+            value = f"{item.group(1)} {item.group(2).lower()}"
+            if value not in component_strengths:
+                component_strengths.append(value)
     if str_match:
         extracted["strength"] = f"{str_match.group(1)} {str_match.group(2).lower()}"
+        # Combination packs print each ingredient's dose on a separate line.
+        # Require a composition heading; never combine arbitrary warning doses.
+        if (re.search(r"\beach\b[^\n]{0,80}\bcontains\b", full_text, re.I)
+                and 2 <= len(component_strengths) <= 6):
+            extracted["strength"] = " + ".join(component_strengths)
         extracted["confidence_factors"]["strength"] = 0.85
     else:
         # Fallback for Indian pharma convention where strength is part of brand name (e.g. Crocin 650, Dolo 650)

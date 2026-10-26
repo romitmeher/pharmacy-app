@@ -55,6 +55,8 @@ def scan_distributor_invoice():
         file = request.files["invoice"]
         filename = (file.filename or "").lower()
         file_bytes = file.read()
+        if len(file_bytes) > 12 * 1024 * 1024:
+            return jsonify({"error": "ValidationError", "message": "Invoice must be at most 12 MB."}), 400
 
         if filename.endswith(".pdf"):
             parsed = default_invoice_parser.parse_pdf(file_bytes)
@@ -64,13 +66,29 @@ def scan_distributor_invoice():
             import numpy as np
             nparr = np.frombuffer(file_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            from app.vision.ocr_engine import default_ocr_engine
-            ocr_res = default_ocr_engine.run_ocr(img)
-            parsed = default_invoice_parser.parse_text(ocr_res.full_text)
+            if img is None:
+                return jsonify({"error": "ValidationError", "message": "Invalid invoice image."}), 400
+            parsed = default_invoice_parser.parse_image(img)
     elif raw_text:
         parsed = default_invoice_parser.parse_text(raw_text)
     else:
         return jsonify({"error": "ValidationError", "message": "Provide an invoice file or raw_text."}), 400
+
+    if not parsed.items:
+        return jsonify({"error": "ValidationError", "message": "No readable invoice rows found. Upload a straight, close photo or enter the bill manually. No purchase draft was created."}), 422
+    if parsed.extraction_method == "ocr_coordinate_layout":
+        if parsed.total_amount is None or parsed.total_amount <= 0:
+            return jsonify({"error": "ValidationError", "message": "The invoice total could not be read. Enter the bill manually; nothing was saved.", "parsed_preview": parsed.to_dict()}), 422
+        preview = default_catalog_matcher.match(parsed, store_id=store_id)
+        return jsonify({"status": "review_required", "message": "Invoice read. Review the extracted rows before saving a purchase draft. Stock is unchanged.", "data": {
+            "purchase_invoice_id": None, "status": "preview", "invoice_number": parsed.invoice_number,
+            "supplier_id": preview.supplier_id, "distributor_name": parsed.distributor_name,
+            "total_amount": parsed.total_amount, "items_count": len(parsed.items),
+            "matched_draft": preview.to_dict(), "requires_review": True,
+            "warnings": parsed.warnings, "extraction_method": parsed.extraction_method,
+        }}), 200
+    if any(item.expiry_date is None for item in parsed.items):
+        return jsonify({"error": "ValidationError", "message": "Some expiry dates could not be read. Review the bill manually; no draft was created.", "parsed_preview": parsed.to_dict()}), 422
 
     # Cross-reference catalog and suppliers
     matched_draft = default_catalog_matcher.match(parsed, store_id=store_id)
@@ -126,7 +144,7 @@ def scan_distributor_invoice():
             medicine_id=item.medicine_id,
             raw_medicine_name=item.raw_item_name,
             batch_number=item.batch_number,
-            expiry_date=exp_date or (datetime.date.today() + datetime.timedelta(days=365)),
+            expiry_date=exp_date,
             quantity=item.quantity,
             received_quantity=item.quantity,  # default expected
             purchase_rate=item.purchase_rate,
@@ -150,6 +168,9 @@ def scan_distributor_invoice():
             "total_amount": float(purchase_invoice.total_amount),
             "items_count": len(matched_draft.items),
             "matched_draft": matched_draft.to_dict(),
+            "requires_review": True,
+            "warnings": parsed.warnings,
+            "extraction_method": parsed.extraction_method,
         },
     }), 201
 
