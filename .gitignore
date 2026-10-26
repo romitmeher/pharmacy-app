@@ -36,3 +36,10 @@ backend/.venv-training/
 .next-demo/
 **/.demo-credentials.json
 frontend/public/sw.js
+
+# Temporary browser profiles and local diagnostic scripts.
+/tmp/
+
+# Raw Lighthouse reports embed page snapshots and CSS selectors.
+/output/pwa/*.report.json
+/output/pwa/*.report.html
